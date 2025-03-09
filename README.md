@@ -163,6 +163,51 @@ The application is configured for deployment on Vercel. Follow these steps for a
    npx vercel --prod
    ```
 
+### Git Workflow
+
+This project follows a structured Git workflow to ensure stable deployments and effective collaboration:
+
+1. **Main Branch (Production)**
+   - The `main` branch contains production-ready code
+   - Changes to `main` are deployed automatically to the production environment
+   - Direct commits to `main` are not allowed
+
+2. **Development Branch**
+   - The `development` branch is used for ongoing development
+   - All features, fixes, and enhancements should be developed on this branch
+   - The `development` branch is deployed to a preview environment
+
+3. **Feature Branches**
+   - For significant features, create branches from `development`
+   - Use naming conventions: `feature/feature-name`, `fix/bug-name`
+   - Merge feature branches back to `development` when complete
+
+4. **Standard Workflow**
+   ```bash
+   # Start with development branch
+   git checkout development
+   git pull origin development
+   
+   # Create feature branch (for significant features)
+   git checkout -b feature/your-feature
+   
+   # Make changes and commit
+   git add .
+   git commit -m "Descriptive message"
+   
+   # Push changes
+   git push origin feature/your-feature
+   
+   # Create PR to merge into development
+   
+   # After testing on development, merge to main for production
+   git checkout main
+   git merge development
+   git push origin main
+   ```
+
+For detailed guidelines, refer to the [Development Workflow Guide](docs/context-rules/development-workflow.md).
+
 ### Setting Up Authentication
 
 To ensure the authentication flow works correctly in production:
@@ -279,6 +324,17 @@ To ensure the authentication flow works correctly in production:
    - Every pull request gets a unique preview URL
    - Test changes before merging to production
    - Access previews via Vercel dashboard or GitHub checks
+
+## Project Documentation
+
+Comprehensive documentation for the project is maintained in the `docs/context-rules` directory:
+
+- [Development Workflow](docs/context-rules/development-workflow.md) - Guidelines for the development process and Git workflow
+- [Project Context](docs/context-rules/project-context.md) - Essential information about the project architecture and design
+- [Common Issues](docs/context-rules/common-issues.md) - Solutions to frequently encountered problems
+- [Code Quality Standards](docs/context-rules/code-quality.md) - Coding standards and technical debt management
+
+These documents should be referenced regularly to maintain consistency across the project and ensure all development follows established best practices.
 
 ## License
 
