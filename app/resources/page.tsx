@@ -6,6 +6,9 @@ import { ResourceListSkeleton } from '@/app/components/molecules/ResourceSkeleto
 export default function ResourcesPage() {
   const { data: resources, isLoading, error } = useResources();
 
+  // Add debug logging
+  console.log('Resources:', { resources, isLoading, error });
+
   if (isLoading) {
     return <ResourceListSkeleton count={5} />;
   }
@@ -14,7 +17,7 @@ export default function ResourcesPage() {
     return (
       <div className="text-center py-8">
         <h2 className="text-xl font-semibold text-red-600 dark:text-red-400">
-          Error loading resources
+          Error loading resources: {error.message}
         </h2>
         <p className="text-light-text-secondary dark:text-dark-text-secondary mt-2">
           Please try again later

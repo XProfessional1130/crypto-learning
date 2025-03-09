@@ -20,44 +20,61 @@ export interface DashboardMetric {
 
 export class DatabaseService {
   static async getResources(): Promise<Resource[]> {
-    const { data, error } = await supabase
-      .from('resources')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      console.log('Fetching resources from Supabase...');
+      const { data, error } = await supabase
+        .from('resources')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching resources:', error);
-      return [];
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(`Failed to fetch resources: ${error.message}`);
+      }
+
+      console.log('Resources fetched:', data);
+      return data || [];
+    } catch (error) {
+      console.error('Error in getResources:', error);
+      throw error;
     }
-
-    return data || [];
   }
 
   static async getDashboardMetrics(userId: string): Promise<DashboardMetric[]> {
-    const { data, error } = await supabase
-      .from('dashboard_metrics')
-      .select('*')
-      .eq('user_id', userId)
-      .order('timestamp', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('dashboard_metrics')
+        .select('*')
+        .eq('user_id', userId)
+        .order('timestamp', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching metrics:', error);
-      return [];
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(`Failed to fetch metrics: ${error.message}`);
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getDashboardMetrics:', error);
+      throw error;
     }
-
-    return data || [];
   }
 
   static async updateMetric(metric: Partial<DashboardMetric>): Promise<void> {
-    const { error } = await supabase
-      .from('dashboard_metrics')
-      .upsert({
-        ...metric,
-        updated_at: new Date().toISOString(),
-      });
+    try {
+      const { error } = await supabase
+        .from('dashboard_metrics')
+        .upsert({
+          ...metric,
+          updated_at: new Date().toISOString(),
+        });
 
-    if (error) {
-      console.error('Error updating metric:', error);
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(`Failed to update metric: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Error in updateMetric:', error);
       throw error;
     }
   }
