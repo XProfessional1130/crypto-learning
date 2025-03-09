@@ -4,7 +4,7 @@ export default function About() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-12 text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">About LearningCrypto</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">About Learning Crypto</h1>
         <p className="mx-auto mt-4 max-w-3xl text-xl text-gray-500">
           Our mission is to make crypto education accessible, personalized, and actionable for everyone.
         </p>
