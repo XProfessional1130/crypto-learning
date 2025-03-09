@@ -40,7 +40,7 @@ export default function AuthButtons({ user, onSignOut, mobile = false }: AuthBut
         Sign in
       </Button>
       <Button
-        href="/auth/signup"
+        href="/auth/signin"
         variant="glass"
         size={mobile ? "md" : "sm"}
         className={mobile ? 'w-full justify-start' : ''}
