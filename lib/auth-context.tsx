@@ -67,16 +67,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sign in with OTP
   const signIn = async (email: string) => {
-    // ALWAYS use the production URL for redirects in the magic link emails
-    const redirectUrl = 'https://lc-platform.vercel.app/auth/callback';
-    
-    // Sign in with OTP, explicitly setting the redirect URL
-    return await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
-    });
+    try {
+      // ALWAYS use the production URL for redirects in the magic link emails
+      const redirectUrl = 'https://lc-platform.vercel.app/auth/callback';
+      
+      console.log("Initiating signIn with email and redirectUrl:", { email, redirectUrl });
+      
+      // Sign in with OTP, explicitly setting the redirect URL
+      const response = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
+      });
+      
+      console.log("Supabase signInWithOtp response:", response);
+      
+      return response;
+    } catch (error) {
+      console.error("Error in signIn function:", error);
+      return { error };
+    }
   };
 
   // Sign out
