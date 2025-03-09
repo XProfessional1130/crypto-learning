@@ -8,6 +8,8 @@ const nextConfig = {
     // Disable TypeScript checking during production builds
     ignoreBuildErrors: true,
   },
+  reactStrictMode: true,
+  swcMinify: true,
 };
 
 module.exports = nextConfig; 
