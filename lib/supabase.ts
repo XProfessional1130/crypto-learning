@@ -6,7 +6,9 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 // Define the site URL for redirects
-const siteUrl = 'https://lc-platform.vercel.app';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL 
+  || (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : '')
+  || 'http://localhost:3000';
 
 // Create Supabase client for client-side operations with proper auth configuration
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -15,8 +17,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    debug: process.env.NODE_ENV === 'development',
   }
 });
+
+// Log any initialization issues in development
+if (process.env.NODE_ENV === 'development') {
+  if (!supabaseUrl) console.error('Missing NEXT_PUBLIC_SUPABASE_URL');
+  if (!supabaseAnonKey) console.error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY');
+}
 
 // For server-side operations that require higher privileges
 export const createServiceClient = () => {
