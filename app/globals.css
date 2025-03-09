@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --brand-primary: #39817c;
+  --brand-light: #4ba5a0;
+  --brand-dark: #2d6663;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-light: var(--brand-light);
+  --color-brand-dark: var(--brand-dark);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* Dark mode when system preference is dark */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --brand-primary: #39817c;
+    --brand-light: #4ba5a0;
+    --brand-dark: #2d6663;
+  }
+}
+
+/* Dark mode when manually toggled via the dark class */
+html.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --brand-primary: #39817c;
+  --brand-light: #4ba5a0;
+  --brand-dark: #2d6663;
+}
+
+html.dark body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* Ensure all elements get smooth transitions when theme changes */
+html {
+  transition: color-scheme 0.3s ease;
+}
+
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: ease-in-out;
+  transition-duration: 0.3s;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+a {
+  color: var(--brand-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--brand-light);
+}
