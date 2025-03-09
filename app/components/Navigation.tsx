@@ -29,8 +29,21 @@ export default function Navigation() {
   const visibleNavItems = navItems.filter(item => item.public || user);
 
   const handleSignOut = async () => {
-    await signOut();
-    // No need to redirect as the auth state change will trigger a UI update
+    try {
+      // Execute sign out and force navigation to home page
+      const { error } = await signOut();
+      
+      if (error) {
+        console.error("Error signing out:", error);
+        // Show error to user if needed
+        return;
+      }
+      
+      // Force page reload to fully clear state (this is a backup - the auth context also does this)
+      window.location.href = '/';
+    } catch (err) {
+      console.error("Unexpected error during sign out:", err);
+    }
   };
 
   return (

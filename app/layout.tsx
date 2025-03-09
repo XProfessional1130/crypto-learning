@@ -58,6 +58,17 @@ export default function RootLayout({
             }
           `,
         }} />
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            // Check for URL hash with auth tokens
+            if (typeof window !== 'undefined') {
+              const hash = window.location.hash;
+              if (hash && hash.includes('access_token')) {
+                console.log('Found access_token in URL hash (layout)');
+              }
+            }
+          `
+        }} />
       </head>
       <body className={`${inter.className} h-full antialiased`}>
         <Providers>

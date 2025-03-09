@@ -16,23 +16,16 @@ export default function SignIn() {
     setMessage('');
 
     try {
-      console.log("Attempting to sign in with email:", email);
+      const { error } = await signIn(email);
       
-      // Capture any potential error with the signIn function
-      try {
-        const { error } = await signIn(email);
-        if (error) {
-          console.error("Supabase auth error:", error);
-          setMessage(`Error: ${error.message}`);
-        } else {
-          setMessage('Check your email for the magic link!');
-        }
-      } catch (signInError: any) {
-        console.error("Sign-in function error:", signInError);
-        setMessage(`Error: ${signInError.message}`);
+      if (error) {
+        console.error("Sign-in error:", error);
+        setMessage(`Error: ${error.message}`);
+      } else {
+        setMessage('Check your email for the magic link!');
       }
     } catch (error: any) {
-      console.error("Outer catch error:", error);
+      console.error("Sign-in error:", error);
       setMessage(`Error: ${error.message}`);
     } finally {
       setLoading(false);

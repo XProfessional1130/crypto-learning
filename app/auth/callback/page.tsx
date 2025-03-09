@@ -8,84 +8,71 @@ export default function AuthCallback() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
+  
   useEffect(() => {
-    const handleAuthCallback = async () => {
+    const handleCallback = async () => {
       try {
-        console.log("Auth callback page loaded - starting authentication process");
-        
-        // Handle both hash-based and PKCE flow authentication
-        // With PKCE flow, Supabase will handle the token exchange automatically
-        console.log("Getting current session");
-        const { data, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          setError(sessionError.message);
-        } else if (data?.session) {
-          console.log('Authentication successful, session found');
-          // Redirect to dashboard on successful login
-          router.push('/dashboard');
-        } else {
-          console.log('No active session found, checking URL parameters');
-          // If we don't have a session yet, try to exchange the code for a session
-          // Important for PKCE flow
-          const params = new URLSearchParams(window.location.search);
-          if (params.has('code')) {
-            console.log('Auth code found in URL, exchanging for session');
-            // We have a code from PKCE flow
-            try {
-              const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(params.get('code') || '');
-              
-              if (exchangeError) {
-                console.error('Code exchange error:', exchangeError);
-                setError(exchangeError.message);
-              } else {
-                console.log('Code exchange successful, redirecting to dashboard');
-                // Successful exchange, redirect to dashboard
-                router.push('/dashboard');
-              }
-            } catch (exchangeTryError: any) {
-              console.error('Error during code exchange:', exchangeTryError);
-              setError(`Error exchanging code: ${exchangeTryError.message}`);
-            }
-          } else {
-            // No code in URL, check if there's a hash with access token (old flow)
-            const hash = window.location.hash;
-            console.log(`No code found. Hash present: ${Boolean(hash && hash.includes('access_token'))}`);
-            
-            if (hash && hash.includes('access_token')) {
-              // Old flow with hash
-              try {
-                const { error: hashError } = await supabase.auth.getSession();
-                
-                if (hashError) {
-                  console.error('Hash-based auth error:', hashError);
-                  setError(hashError.message);
-                } else {
-                  console.log('Hash-based authentication successful');
-                  // Redirect to dashboard on successful login
-                  router.push('/dashboard');
-                }
-              } catch (hashTryError: any) {
-                console.error('Error during hash auth:', hashTryError);
-                setError(`Hash auth error: ${hashTryError.message}`);
-              }
-            } else {
-              console.error('No authentication code or token found in URL');
-              setError('No authentication code or token found');
-            }
+        // First check for hash fragment with access_token
+        const hash = window.location.hash;
+        if (hash && hash.includes('access_token')) {
+          console.log('Found access_token in hash, checking session...');
+          
+          // Let Supabase handle the hash
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            console.error('Session error:', sessionError);
+            setError(sessionError.message);
+            setLoading(false);
+            return;
+          }
+          
+          if (session) {
+            console.log('Session established from hash!');
+            router.push('/dashboard');
+            return;
           }
         }
+        
+        // If no hash or no session from hash, try code parameter
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        
+        if (!code) {
+          // If we have a hash but couldn't get a session, try one more time with getSession
+          if (hash) {
+            const { data } = await supabase.auth.getSession();
+            if (data.session) {
+              router.push('/dashboard');
+              return;
+            }
+          }
+          
+          setError('No authentication code or token found');
+          setLoading(false);
+          return;
+        }
+        
+        // Exchange the code for a session
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        
+        if (exchangeError) {
+          console.error('Code exchange error:', exchangeError);
+          setError(exchangeError.message);
+          setLoading(false);
+          return;
+        }
+        
+        console.log('Authentication successful');
+        router.push('/dashboard');
       } catch (err: any) {
         console.error('Auth callback error:', err);
         setError(err.message);
-      } finally {
         setLoading(false);
       }
     };
 
-    handleAuthCallback();
+    handleCallback();
   }, [router]);
 
   return (

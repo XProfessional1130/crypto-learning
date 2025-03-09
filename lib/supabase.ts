@@ -10,15 +10,12 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
   || (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : '')
   || 'http://localhost:3000';
 
-// Create Supabase client for client-side operations with proper auth configuration
+// Create Supabase client for client-side operations with simple auth configuration
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    debug: process.env.NODE_ENV === 'development',
+    persistSession: true,
+    autoRefreshToken: true
   }
 });
 
