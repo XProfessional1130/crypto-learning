@@ -1,5 +1,6 @@
 {
   "devDependencies": {
-    "autoprefixer": "^10.4.20"
+    "autoprefixer": "^10.4.20",
+    "vercel": "^41.3.2"
   }
 }
