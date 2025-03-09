@@ -34,12 +34,12 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="bg-light-bg-primary dark:bg-dark-bg-secondary border-b border-gray-200 dark:border-dark-bg-accent shadow-sm">
+    <nav className="glass animate-blur-in border-b border-white/10 dark:border-dark-bg-accent/20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 justify-between">
           <div className="flex">
             <div className="flex flex-shrink-0 items-center">
-              <Link href="/" className="text-xl font-bold text-brand-primary">
+              <Link href="/" className="text-xl font-bold text-gradient">
                 LearningCrypto
               </Link>
             </div>
@@ -66,7 +66,7 @@ export default function Navigation() {
             {/* Mobile menu button */}
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-md p-2 text-light-text-secondary dark:text-dark-text-secondary hover:bg-light-bg-accent dark:hover:bg-dark-bg-accent hover:text-brand-primary focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-primary"
+              className="inline-flex items-center justify-center rounded-md p-2 nav-link hover:bg-white/10 dark:hover:bg-dark-bg-accent/30 focus:outline-none focus:ring-2 focus:ring-brand-primary"
               aria-expanded="false"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >

@@ -6,7 +6,7 @@ import Container from './Container';
 interface SectionProps {
   children: ReactNode;
   className?: string;
-  background?: 'white' | 'light' | 'dark' | 'primary' | 'none';
+  background?: 'white' | 'light' | 'dark' | 'primary' | 'brand' | 'glass' | 'none';
   spacing?: 'sm' | 'md' | 'lg' | 'xl';
   containerMaxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
 }
@@ -20,10 +20,12 @@ export default function Section({
 }: SectionProps) {
   // Background styles
   const backgroundStyles = {
-    white: 'bg-white',
-    light: 'bg-gray-50',
-    dark: 'bg-gray-900 text-white',
-    primary: 'bg-indigo-700 text-white',
+    white: 'bg-light-bg-primary dark:bg-dark-bg-primary',
+    light: 'bg-light-bg-secondary dark:bg-dark-bg-secondary',
+    dark: 'bg-dark-bg-primary text-dark-text-primary',
+    primary: 'bg-brand-primary/95 text-white',
+    brand: 'bg-brand-gradient text-white',
+    glass: 'glass',
     none: '',
   };
   

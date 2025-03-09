@@ -7,16 +7,22 @@ import Button from '../ui/Button';
 interface AuthButtonsProps {
   user: User | null;
   onSignOut: () => Promise<void>;
+  mobile?: boolean;
 }
 
-export default function AuthButtons({ user, onSignOut }: AuthButtonsProps) {
+export default function AuthButtons({ user, onSignOut, mobile = false }: AuthButtonsProps) {
   if (user) {
     return (
-      <div className="flex items-center space-x-3">
+      <div className={mobile ? 'space-y-2' : 'flex items-center space-x-4'}>
         <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-          {user.email?.split('@')[0]}
+          {user.email}
         </span>
-        <Button onClick={onSignOut} variant="outline" size="sm">
+        <Button
+          variant="ghost"
+          size={mobile ? "md" : "sm"}
+          onClick={onSignOut}
+          className={mobile ? 'w-full justify-start' : ''}
+        >
           Sign out
         </Button>
       </div>
@@ -24,11 +30,21 @@ export default function AuthButtons({ user, onSignOut }: AuthButtonsProps) {
   }
 
   return (
-    <div className="flex items-center space-x-4">
-      <Link href="/auth/signin" className="text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary hover:text-brand-primary">
+    <div className={mobile ? 'space-y-2' : 'flex items-center space-x-4'}>
+      <Button
+        href="/auth/signin"
+        variant="ghost"
+        size={mobile ? "md" : "sm"}
+        className={mobile ? 'w-full justify-start' : ''}
+      >
         Sign in
-      </Link>
-      <Button href="/auth/signup" size="sm">
+      </Button>
+      <Button
+        href="/auth/signup"
+        variant="glass"
+        size={mobile ? "md" : "sm"}
+        className={mobile ? 'w-full justify-start' : ''}
+      >
         Sign up
       </Button>
     </div>

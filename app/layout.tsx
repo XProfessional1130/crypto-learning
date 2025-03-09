@@ -1,6 +1,6 @@
+import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from 'next/font/google'
-import "./globals.css";
 import { AuthProvider } from "../lib/auth-context";
 import { ThemeProvider } from "../lib/theme-context";
 import Navigation from "./components/Navigation";
@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="h-full" suppressHydrationWarning>
       <head>
         {/* Force a repaint when dark class changes */}
         <script dangerouslySetInnerHTML={{
@@ -58,12 +58,23 @@ export default function RootLayout({
           `,
         }} />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} h-full antialiased`}>
         <AuthProvider>
           <ThemeProvider>
-            <div className="min-h-screen flex flex-col bg-light-bg-primary dark:bg-dark-bg-primary text-light-text-primary dark:text-dark-text-primary">
-              <Navigation />
-              <main className="flex-grow">{children}</main>
+            {/* Background decorative elements */}
+            <div className="fixed inset-0 z-[-1] overflow-hidden">
+              <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-brand-200/30 dark:bg-brand-900/20 blur-3xl animate-pulse-slow"></div>
+              <div className="absolute bottom-[-30%] left-[-10%] w-[600px] h-[600px] rounded-full bg-brand-100/30 dark:bg-brand-800/20 blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
+              <div className="absolute top-[30%] left-[20%] w-[300px] h-[300px] rounded-full bg-blue-100/20 dark:bg-blue-900/10 blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+            </div>
+
+            <div className="min-h-screen flex flex-col relative z-0">
+              <div className="sticky top-0 z-40">
+                <Navigation />
+              </div>
+              <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+                {children}
+              </main>
               <Footer />
             </div>
           </ThemeProvider>

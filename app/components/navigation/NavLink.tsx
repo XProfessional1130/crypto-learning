@@ -16,10 +16,10 @@ export default function NavLink({
   active, 
   onClick 
 }: NavLinkProps) {
-  const baseClasses = 'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium';
+  const baseClasses = 'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-all duration-200';
   const activeClasses = active 
-    ? 'border-brand-primary text-brand-primary dark:text-brand-light' 
-    : 'border-transparent text-light-text-secondary dark:text-dark-text-secondary hover:border-light-bg-accent dark:hover:border-dark-bg-accent hover:text-light-text-primary dark:hover:text-dark-text-primary';
+    ? 'border-brand-primary nav-link-active' 
+    : 'border-transparent nav-link hover:border-brand-primary/30';
   
   return (
     <Link 

@@ -3,76 +3,124 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --brand-primary: #39817c;
-  --brand-light: #4ba5a0;
-  --brand-dark: #2d6663;
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 245, 250, 250;
+  --brand-color: 57, 129, 124;
+  --brand-light: 77, 181, 176;
+  --brand-dark: 45, 102, 99;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-brand-primary: var(--brand-primary);
-  --color-brand-light: var(--brand-light);
-  --color-brand-dark: var(--brand-dark);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-/* Dark mode when system preference is dark */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --brand-primary: #39817c;
-    --brand-light: #4ba5a0;
-    --brand-dark: #2d6663;
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 15, 23, 42;
+    --background-end-rgb: 20, 30, 50;
   }
 }
 
-/* Dark mode when manually toggled via the dark class */
-html.dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --brand-primary: #39817c;
-  --brand-light: #4ba5a0;
-  --brand-dark: #2d6663;
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-light-bg-primary to-light-bg-accent dark:from-dark-bg-primary dark:to-dark-bg-secondary text-light-text-primary dark:text-dark-text-primary;
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight;
+  }
+
+  h1 {
+    @apply text-4xl sm:text-5xl md:text-6xl;
+  }
+
+  h2 {
+    @apply text-3xl sm:text-4xl md:text-5xl;
+  }
+
+  h3 {
+    @apply text-2xl sm:text-3xl md:text-4xl;
+  }
+
+  a {
+    @apply text-brand-500 hover:text-brand-400 dark:text-brand-300 dark:hover:text-brand-200 transition-colors duration-200;
+  }
 }
 
-html.dark body {
-  background-color: var(--background);
-  color: var(--foreground);
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+
+  .btn-primary {
+    @apply bg-brand-primary hover:bg-brand-dark text-white;
+  }
+
+  .btn-secondary {
+    @apply bg-glass-white backdrop-blur-md dark:bg-glass-dark border border-white/10 dark:border-dark-bg-accent/20 text-light-text-primary dark:text-dark-text-primary hover:bg-white/80 dark:hover:bg-dark-bg-accent/70;
+  }
+
+  .btn-outline {
+    @apply border-2 border-brand-primary bg-transparent text-brand-primary hover:bg-brand-primary/10 dark:hover:bg-brand-primary/20;
+  }
+
+  .glass {
+    @apply bg-glass-white dark:bg-glass-dark backdrop-blur-md border border-white/20 dark:border-dark-bg-accent/10 shadow-glass;
+  }
+
+  .glass-card {
+    @apply glass rounded-xl p-6;
+  }
+
+  .brand-glass {
+    @apply bg-glass-brand backdrop-blur-md border border-brand-primary/30 shadow-glass text-white;
+  }
+
+  .card {
+    @apply glass-card transition-all duration-300 hover:shadow-glass-strong;
+  }
+
+  .input {
+    @apply w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-dark-bg-accent/50 bg-white/80 dark:bg-dark-bg-secondary/70 backdrop-blur-sm text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all duration-200;
+  }
+
+  .scrollbar-thin {
+    @apply scrollbar-thin scrollbar-thumb-brand-primary/30 scrollbar-track-transparent hover:scrollbar-thumb-brand-primary/50;
+  }
+
+  .nav-link {
+    @apply text-light-text-secondary dark:text-dark-text-secondary hover:text-brand-primary dark:hover:text-brand-light transition-colors duration-200;
+  }
+
+  .nav-link-active {
+    @apply text-brand-primary dark:text-brand-light font-medium;
+  }
 }
 
-/* Ensure all elements get smooth transitions when theme changes */
-html {
-  transition: color-scheme 0.3s ease;
-}
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-light;
+  }
 
-* {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-  transition-timing-function: ease-in-out;
-  transition-duration: 0.3s;
-}
+  .glass-effect {
+    @apply backdrop-blur-md bg-white/70 dark:bg-dark-bg-primary/70 border border-white/20 dark:border-dark-bg-accent/20;
+  }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-}
+  .glass-brand-effect {
+    @apply backdrop-blur-md bg-brand-gradient border border-brand-primary/30;
+  }
 
-h1, h2, h3, h4, h5, h6 {
-  font-weight: bold;
-  line-height: 1.2;
-}
+  .animate-blur-in {
+    animation: blur-in 0.5s ease-out forwards;
+  }
 
-a {
-  color: var(--brand-primary);
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-a:hover {
-  color: var(--brand-light);
+  @keyframes blur-in {
+    0% {
+      backdrop-filter: blur(0px);
+      opacity: 0;
+    }
+    100% {
+      backdrop-filter: blur(8px);
+      opacity: 1;
+    }
+  }
 }
