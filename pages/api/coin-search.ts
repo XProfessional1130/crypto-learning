@@ -6,6 +6,21 @@ type CoinSearchResponse = {
   error?: string;
 }
 
+// Simple in-memory store for rate limiting
+// In production, use Redis or similar for distributed rate limiting
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute window
+const MAX_REQUESTS_PER_WINDOW = 10; // 10 requests per minute
+const ipRequestCounts = new Map<string, { count: number; timestamp: number }>();
+
+// Helper function to get client IP address
+const getClientIp = (req: NextApiRequest): string => {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = forwarded 
+    ? (typeof forwarded === 'string' ? forwarded : forwarded[0])
+    : req.socket.remoteAddress || 'unknown';
+  return typeof ip === 'string' ? ip : 'unknown';
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<CoinSearchResponse>
@@ -13,6 +28,32 @@ export default async function handler(
   // Only allow GET requests
   if (req.method !== 'GET') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  // Basic rate limiting
+  const clientIp = getClientIp(req);
+  const now = Date.now();
+  const clientRateLimit = ipRequestCounts.get(clientIp);
+  
+  // Reset count if window has expired
+  if (clientRateLimit && now - clientRateLimit.timestamp > RATE_LIMIT_WINDOW) {
+    ipRequestCounts.set(clientIp, { count: 1, timestamp: now });
+  } 
+  // Increment count if exists
+  else if (clientRateLimit) {
+    // Check if rate limit exceeded
+    if (clientRateLimit.count >= MAX_REQUESTS_PER_WINDOW) {
+      return res.status(429).json({ 
+        success: false, 
+        error: 'Rate limit exceeded. Please try again later.' 
+      });
+    }
+    
+    clientRateLimit.count += 1;
+  } 
+  // Initialize new client
+  else {
+    ipRequestCounts.set(clientIp, { count: 1, timestamp: now });
   }
 
   const { query } = req.query;
@@ -25,8 +66,8 @@ export default async function handler(
   const searchQuery = Array.isArray(query) ? query[0] : query;
   
   try {
-    // Get API key from environment variable
-    const apiKey = process.env.NEXT_PUBLIC_CMC_API_KEY;
+    // Get API key from environment variable - NOT using NEXT_PUBLIC prefix
+    const apiKey = process.env.CMC_API_KEY;
     
     if (!apiKey) {
       return res.status(500).json({ success: false, error: 'API key not configured' });
