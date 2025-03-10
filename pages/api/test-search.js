@@ -1,4 +1,4 @@
-import { searchCoins, getCoinData } from '@/lib/services/dexscreener';
+import { searchCoins, getCoinData } from '@/lib/services/coinmarketcap';
 
 export default async function handler(req, res) {
   try {
