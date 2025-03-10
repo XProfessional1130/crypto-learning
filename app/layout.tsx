@@ -3,9 +3,10 @@ import type { Metadata } from "next";
 import { Inter } from 'next/font/google'
 import { AuthProvider } from "../lib/auth-context";
 import { ThemeProvider } from "../lib/theme-context";
+import QueryProvider from "../lib/providers/query-provider";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
-import { Providers } from './providers';
+import CoinDataInitializer from "./components/CoinDataInitializer";
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,44 +21,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="h-full" suppressHydrationWarning>
+    <html lang="en">
       <head>
-        {/* Force a repaint when dark class changes */}
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            // This script helps ensure dark mode is applied properly
-            try {
-              // Immediately apply the theme from localStorage to avoid flicker
-              const storedTheme = localStorage.getItem('theme');
-              
-              if (storedTheme === 'dark' || 
-                  (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark');
-                document.documentElement.classList.remove('light');
-              } else {
-                document.documentElement.classList.remove('dark');
-                document.documentElement.classList.add('light');
-              }
-              
-              // Watch for theme changes and force UI update if needed
-              const observer = new MutationObserver(mutations => {
-                mutations.forEach(mutation => {
-                  if (mutation.attributeName === 'class') {
-                    // Force repaint by toggling a style
-                    document.body.style.transition = 'background-color 0.01s';
-                    setTimeout(() => {
-                      document.body.style.transition = '';
-                    }, 50);
-                  }
-                });
-              });
-              
-              observer.observe(document.documentElement, { attributes: true });
-            } catch (e) {
-              console.error('Theme initialization error:', e);
-            }
-          `,
-        }} />
         <script dangerouslySetInnerHTML={{
           __html: `
             // Check for URL hash with auth tokens
@@ -71,7 +36,8 @@ export default function RootLayout({
         }} />
       </head>
       <body className={`${inter.className} h-full antialiased`}>
-        <Providers>
+        <CoinDataInitializer />
+        <QueryProvider>
           <AuthProvider>
             <ThemeProvider>
               {/* Background decorative elements */}
@@ -92,7 +58,7 @@ export default function RootLayout({
               </div>
             </ThemeProvider>
           </AuthProvider>
-        </Providers>
+        </QueryProvider>
       </body>
     </html>
   );

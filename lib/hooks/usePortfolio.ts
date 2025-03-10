@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { PortfolioSummary } from '@/types/portfolio';
 import { 
@@ -8,8 +8,12 @@ import {
   removeCoinFromPortfolio,
   updatePreferredCurrency
 } from '@/lib/services/portfolio';
-import { searchCoins } from '@/lib/services/coinmarketcap';
-import { useToast } from '@chakra-ui/react';
+import { searchCoins, initCoinDataService, cleanupCaches } from '@/lib/services/coinmarketcap';
+import { useToast } from '@/lib/hooks/useToast';
+
+// Refresh intervals
+const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes instead of 5
+const CACHE_CLEANUP_INTERVAL = 30 * 60 * 1000; // 30 minutes
 
 export function usePortfolio() {
   const { user } = useAuth();
@@ -18,16 +22,26 @@ export function usePortfolio() {
   const [error, setError] = useState<string | null>(null);
   const [preferredCurrency, setPreferredCurrency] = useState<'USD' | 'BTC'>('USD');
   const toast = useToast();
+  const lastFetchRef = useRef<number>(0);
+  const MIN_FETCH_INTERVAL = 60 * 1000; // 1 minute minimum between fetches
 
-  const fetchPortfolio = async () => {
+  const fetchPortfolio = async (forceFetch = false) => {
     if (!user) {
       setPortfolio(null);
       setLoading(false);
       return;
     }
 
+    // Implement throttling to avoid excessive fetches
+    const now = Date.now();
+    if (!forceFetch && now - lastFetchRef.current < MIN_FETCH_INTERVAL) {
+      console.log('Skipping portfolio fetch - too soon since last fetch');
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    lastFetchRef.current = now;
 
     try {
       console.log(`Fetching portfolio for user ${user.id}...`);
@@ -50,21 +64,35 @@ export function usePortfolio() {
   };
 
   useEffect(() => {
+    // Initialize the coin data service when the component mounts
+    initCoinDataService()
+      .then(() => console.log('Coin data service initialized'))
+      .catch(err => console.error('Failed to initialize coin data service:', err));
+    
     // Initial fetch when component mounts or user changes
     if (user) {
       console.log('User authenticated, fetching portfolio...');
-      fetchPortfolio();
+      fetchPortfolio(true); // Force fetch on initial load
     }
     
-    // Set up refresh interval (5 minutes)
-    const intervalId = setInterval(() => {
+    // Set up refresh interval (now 10 minutes instead of 5)
+    const refreshIntervalId = setInterval(() => {
       if (user) {
         console.log('Auto-refreshing portfolio...');
         fetchPortfolio();
       }
-    }, 5 * 60 * 1000);
+    }, AUTO_REFRESH_INTERVAL);
     
-    return () => clearInterval(intervalId);
+    // Set up cache cleanup interval
+    const cacheCleanupIntervalId = setInterval(() => {
+      console.log('Cleaning up coin data caches...');
+      cleanupCaches();
+    }, CACHE_CLEANUP_INTERVAL);
+    
+    return () => {
+      clearInterval(refreshIntervalId);
+      clearInterval(cacheCleanupIntervalId);
+    };
   }, [user]);
 
   const addCoin = async (coinId: string, amount: number) => {
@@ -272,6 +300,6 @@ export function usePortfolio() {
     removeCoin,
     changeCurrency,
     searchForCoins,
-    refreshPortfolio: fetchPortfolio
+    refreshPortfolio: () => fetchPortfolio(true) // Force refresh when explicitly called
   };
 } 
