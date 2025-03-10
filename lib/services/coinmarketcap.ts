@@ -3,6 +3,15 @@ import { CoinData } from '@/types/portfolio';
 // Cache settings
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 const priceCache = new Map<string, { data: CoinData; timestamp: number }>();
+let globalDataCache: { data: GlobalData; timestamp: number } | null = null;
+
+// Define global data type
+export interface GlobalData {
+  btcDominance: number;
+  ethDominance: number;
+  totalMarketCap: number;
+  totalVolume24h: number;
+}
 
 // Helper function to check if cache is valid
 const isCacheValid = (timestamp: number): boolean => {
@@ -126,5 +135,56 @@ export async function getBtcPrice(): Promise<number> {
   } catch (error) {
     console.error('Error fetching BTC price:', error);
     return 0;
+  }
+}
+
+/**
+ * Helper to get ETH price
+ */
+export async function getEthPrice(): Promise<number> {
+  try {
+    // Ethereum is ID 1027 on CMC
+    const ethData = await getCoinData('1027');
+    return ethData?.priceUsd || 0;
+  } catch (error) {
+    console.error('Error fetching ETH price:', error);
+    return 0;
+  }
+}
+
+/**
+ * Get global market data including BTC and ETH dominance
+ */
+export async function getGlobalData(): Promise<GlobalData | null> {
+  // Check cache first
+  if (globalDataCache && isCacheValid(globalDataCache.timestamp)) {
+    return globalDataCache.data;
+  }
+  
+  try {
+    // Use our internal API endpoint
+    const response = await fetch(`${getBaseUrl()}/api/global-data`);
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (!result.success || !result.data) {
+      console.error('API returned error:', result.error);
+      return null;
+    }
+    
+    // Update cache
+    globalDataCache = {
+      data: result.data,
+      timestamp: Date.now()
+    };
+    
+    return result.data;
+  } catch (error) {
+    console.error('Error fetching global data:', error);
+    return null;
   }
 } 

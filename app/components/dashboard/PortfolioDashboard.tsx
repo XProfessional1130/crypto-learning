@@ -5,6 +5,7 @@ import { useWatchlist, WatchlistItem } from '@/lib/hooks/useWatchlist';
 import AddCoinModal from './AddCoinModal';
 import CryptoNews from './CryptoNews';
 import Image from 'next/image';
+import { getBtcPrice, getEthPrice, getGlobalData, GlobalData } from '@/lib/services/coinmarketcap';
 
 export default function PortfolioDashboard() {
   const { 
@@ -24,8 +25,10 @@ export default function PortfolioDashboard() {
   
   const { user } = useAuth();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [btcPrice, setBtcPrice] = useState(41235);
-  const [ethPrice, setEthPrice] = useState(2243);
+  const [btcPrice, setBtcPrice] = useState<number | null>(null);
+  const [ethPrice, setEthPrice] = useState<number | null>(null);
+  const [globalData, setGlobalData] = useState<GlobalData | null>(null);
+  const [loadingPrices, setLoadingPrices] = useState(true);
   
   // Handler for when a coin is added to ensure UI updates
   const handleCoinAdded = () => {
@@ -33,24 +36,32 @@ export default function PortfolioDashboard() {
     refreshPortfolio();
   };
   
-  // Fetch BTC and ETH prices
+  // Fetch BTC and ETH prices and global data
   useEffect(() => {
-    // In a real implementation, fetch actual prices from an API
-    // For now, using static values from the screenshot
-    const fetchPrices = async () => {
+    const fetchData = async () => {
+      setLoadingPrices(true);
       try {
-        // Mock API call - would be replaced with actual API call
-        setBtcPrice(41235);
-        setEthPrice(2243);
+        // Fetch prices and global data in parallel
+        const [btcPriceData, ethPriceData, globalMarketData] = await Promise.all([
+          getBtcPrice(),
+          getEthPrice(),
+          getGlobalData()
+        ]);
+        
+        setBtcPrice(btcPriceData);
+        setEthPrice(ethPriceData);
+        setGlobalData(globalMarketData);
       } catch (error) {
-        console.error('Error fetching crypto prices:', error);
+        console.error('Error fetching crypto data:', error);
+      } finally {
+        setLoadingPrices(false);
       }
     };
     
-    fetchPrices();
+    fetchData();
     
     // Set up refresh interval (5 minutes)
-    const intervalId = setInterval(fetchPrices, 5 * 60 * 1000);
+    const intervalId = setInterval(fetchData, 5 * 60 * 1000);
     
     return () => clearInterval(intervalId);
   }, []);
@@ -114,14 +125,64 @@ export default function PortfolioDashboard() {
         
         {/* Bitcoin Price Card */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Bitcoin Price</p>
-          <p className="text-3xl font-bold">${btcPrice.toLocaleString()}</p>
+          <div className="flex items-center mb-2">
+            <img 
+              src="https://s2.coinmarketcap.com/static/img/coins/64x64/1.png"
+              alt="Bitcoin"
+              className="w-5 h-5 mr-2"
+            />
+            <p className="text-sm text-gray-500 dark:text-gray-400">Bitcoin Price</p>
+          </div>
+          
+          {loadingPrices ? (
+            <div className="flex items-center h-9">
+              <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-8 w-24 rounded"></div>
+            </div>
+          ) : (
+            <>
+              <p className="text-3xl font-bold">
+                ${btcPrice !== null ? btcPrice.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '---'}
+              </p>
+              <div className="mt-2 flex items-center">
+                <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs px-2 py-0.5 rounded-full flex items-center">
+                  <span className="font-medium">
+                    {globalData?.btcDominance ? globalData.btcDominance.toFixed(1) : '---'}% Dominance
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
         
         {/* Ethereum Price Card */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Ethereum Price</p>
-          <p className="text-3xl font-bold">${ethPrice.toLocaleString()}</p>
+          <div className="flex items-center mb-2">
+            <img 
+              src="https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png"
+              alt="Ethereum"
+              className="w-5 h-5 mr-2"
+            />
+            <p className="text-sm text-gray-500 dark:text-gray-400">Ethereum Price</p>
+          </div>
+          
+          {loadingPrices ? (
+            <div className="flex items-center h-9">
+              <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-8 w-24 rounded"></div>
+            </div>
+          ) : (
+            <>
+              <p className="text-3xl font-bold">
+                ${ethPrice !== null ? ethPrice.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '---'}
+              </p>
+              <div className="mt-2 flex items-center">
+                <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full flex items-center">
+                  <span className="font-medium">
+                    {globalData?.ethDominance ? globalData.ethDominance.toFixed(1) : '---'}% Dominance
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
       
