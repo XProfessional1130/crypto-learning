@@ -1,18 +1,10 @@
 import { useState, useEffect } from 'react';
 import { usePortfolio } from '@/lib/hooks/usePortfolio';
 import { useAuth } from '@/lib/auth-context';
-import { useWatchlist } from '@/lib/hooks/useWatchlist';
+import { useWatchlist, WatchlistItem } from '@/lib/hooks/useWatchlist';
 import AddCoinModal from './AddCoinModal';
 import CryptoNews from './CryptoNews';
-
-// Define watchlist item type
-interface WatchlistItem {
-  symbol: string;
-  name: string;
-  price: number;
-  change24h: number;
-  icon: string; // Symbol short code for icon (e.g., SOL, LINK)
-}
+import Image from 'next/image';
 
 export default function PortfolioDashboard() {
   const { 
@@ -174,8 +166,20 @@ export default function PortfolioDashboard() {
                       <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="py-4">
                           <div className="flex items-center">
-                            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 text-xs font-bold">
-                              {item.coinSymbol.substring(0, 3)}
+                            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 text-xs font-bold overflow-hidden">
+                              <img 
+                                src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
+                                alt={item.coinSymbol}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = item.coinSymbol.substring(0, 3);
+                                  }
+                                }}
+                              />
                             </div>
                             <div>
                               <div className="font-medium">{item.coinSymbol}</div>
@@ -222,13 +226,25 @@ export default function PortfolioDashboard() {
                 watchlist.map((coin) => (
                   <div key={coin.id} className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 text-xs font-bold ${
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 text-xs font-bold overflow-hidden ${
                         coin.symbol === 'SOL' ? 'bg-purple-100 text-purple-600' :
                         coin.symbol === 'LINK' ? 'bg-blue-100 text-blue-600' :
                         coin.symbol === 'AVAX' ? 'bg-green-100 text-green-600' :
                         'bg-red-100 text-red-600'
                       }`}>
-                        {coin.icon}
+                        <img 
+                          src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${coin.id}.png`}
+                          alt={coin.symbol}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = coin.icon || coin.symbol.substring(0, 3);
+                            }
+                          }}
+                        />
                       </div>
                       <span>{coin.name}</span>
                     </div>
