@@ -8,6 +8,7 @@ import NavLink from './navigation/NavLink';
 import MobileMenu from './navigation/MobileMenu';
 import AuthButtons from './navigation/AuthButtons';
 import ThemeToggle from './ThemeToggle';
+import { supabase } from '@/lib/supabase';
 
 // Navigation items - moved outside component to avoid recreation on each render
 const navItems = [
@@ -30,19 +31,17 @@ export default function Navigation() {
 
   const handleSignOut = async () => {
     try {
-      // Execute sign out and force navigation to home page
-      const { error } = await signOut();
+      // Direct call to supabase signOut for more reliability
+      await supabase.auth.signOut();
       
-      if (error) {
-        console.error("Error signing out:", error);
-        // Show error to user if needed
-        return;
-      }
-      
-      // Force page reload to fully clear state (this is a backup - the auth context also does this)
+      // Force reload to homepage - this ensures sign out works even if context is having issues
+      console.log("Signing out and forcing page reload");
       window.location.href = '/';
     } catch (err) {
       console.error("Unexpected error during sign out:", err);
+      
+      // Fallback - attempt force reload even if error
+      window.location.href = '/';
     }
   };
 
