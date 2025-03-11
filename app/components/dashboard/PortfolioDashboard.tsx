@@ -3,9 +3,11 @@ import { usePortfolio } from '@/lib/hooks/usePortfolio';
 import { useAuth } from '@/lib/auth-context';
 import { useWatchlist, WatchlistItem } from '@/lib/hooks/useWatchlist';
 import AddCoinModal from './AddCoinModal';
+import AssetDetailModal from './AssetDetailModal';
 import CryptoNews from './CryptoNews';
 import Image from 'next/image';
 import { getBtcPrice, getEthPrice, getGlobalData, GlobalData } from '@/lib/services/coinmarketcap';
+import { PortfolioItemWithPrice } from '@/types/portfolio';
 
 // Function to format cryptocurrency prices adaptively based on their value
 const formatCryptoPrice = (price: number): string => {
@@ -44,6 +46,8 @@ export default function PortfolioDashboard() {
   
   const { user } = useAuth();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<PortfolioItemWithPrice | null>(null);
+  const [isAssetDetailModalOpen, setIsAssetDetailModalOpen] = useState(false);
   const [btcPrice, setBtcPrice] = useState<number | null>(null);
   const [ethPrice, setEthPrice] = useState<number | null>(null);
   const [globalData, setGlobalData] = useState<GlobalData | null>(null);
@@ -52,6 +56,20 @@ export default function PortfolioDashboard() {
   // Handler for when a coin is added to ensure UI updates
   const handleCoinAdded = () => {
     console.log("Coin added, refreshing portfolio...");
+    refreshPortfolio();
+  };
+
+  // Handler for opening the asset detail modal
+  const handleAssetClick = (asset: PortfolioItemWithPrice) => {
+    setSelectedAsset(asset);
+    setIsAssetDetailModalOpen(true);
+  };
+  
+  // Handler for closing the asset detail modal
+  const handleAssetDetailModalClose = () => {
+    setIsAssetDetailModalOpen(false);
+    setSelectedAsset(null);
+    // Refresh the portfolio data to ensure UI is updated
     refreshPortfolio();
   };
   
@@ -87,6 +105,14 @@ export default function PortfolioDashboard() {
   
   const loading = portfolioLoading || watchlistLoading;
   const error = portfolioError || watchlistError;
+  
+  // Create a sorted version of the portfolio items
+  const getSortedPortfolioItems = () => {
+    if (!portfolio || !portfolio.items) return [];
+    
+    // Return a new sorted array by valueUsd (descending)
+    return [...portfolio.items].sort((a, b) => b.valueUsd - a.valueUsd);
+  };
   
   if (loading) {
     return (
@@ -244,8 +270,12 @@ export default function PortfolioDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {portfolio.items.map(item => (
-                      <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    {getSortedPortfolioItems().map(item => (
+                      <tr 
+                        key={item.id} 
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                        onClick={() => handleAssetClick(item)}
+                      >
                         <td className="py-4">
                           <div className="flex items-center">
                             <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 text-xs font-bold overflow-hidden">
@@ -297,8 +327,12 @@ export default function PortfolioDashboard() {
 
                 {/* Mobile Card Layout - Only shown on mobile */}
                 <div className="md:hidden space-y-4">
-                  {portfolio.items.map(item => (
-                    <div key={item.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+                  {getSortedPortfolioItems().map(item => (
+                    <div 
+                      key={item.id} 
+                      className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm cursor-pointer"
+                      onClick={() => handleAssetClick(item)}
+                    >
                       <div className="flex items-center mb-3">
                         <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 text-xs font-bold overflow-hidden">
                           <img 
@@ -430,6 +464,13 @@ export default function PortfolioDashboard() {
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)}
         onCoinAdded={handleCoinAdded}
+      />
+
+      {/* Asset Detail Modal */}
+      <AssetDetailModal 
+        isOpen={isAssetDetailModalOpen}
+        onClose={handleAssetDetailModalClose}
+        asset={selectedAsset}
       />
     </div>
   );
