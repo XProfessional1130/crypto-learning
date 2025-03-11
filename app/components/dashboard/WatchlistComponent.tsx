@@ -92,7 +92,7 @@ export default function WatchlistComponent() {
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Watchlist</h2>
         <button 
           onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-800 text-white rounded-lg transition-colors"
+          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
         >
           Add Coin
         </button>
@@ -109,7 +109,7 @@ export default function WatchlistComponent() {
           </button>
         </div>
       ) : (
-        <div className="overflow-y-auto flex-grow space-y-4 w-full pr-1 max-h-[calc(100vh-24rem)] scrollbar-thin dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">
+        <div className="overflow-y-auto flex-grow space-y-4 w-full pr-1 max-h-[calc(100vh-24rem)] scrollbar-thin">
           {watchlist.map((item) => {
             const targetPercentage = getTargetPercentage(item);
             const isTargetHigher = item.priceTarget ? item.priceTarget > item.price : false;
