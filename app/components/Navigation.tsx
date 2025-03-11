@@ -8,6 +8,7 @@ import NavLink from './navigation/NavLink';
 import MobileMenu from './navigation/MobileMenu';
 import AuthButtons from './navigation/AuthButtons';
 import ThemeToggle from './ThemeToggle';
+import ThemeLogo from './ThemeLogo';
 import { supabase } from '@/lib/supabase';
 
 // Navigation items - moved outside component to avoid recreation on each render
@@ -51,9 +52,7 @@ export default function Navigation() {
         <div className="flex h-16 justify-between">
           <div className="flex">
             <div className="flex flex-shrink-0 items-center">
-              <Link href="/" className="text-xl font-bold text-gradient">
-                LearningCrypto
-              </Link>
+              <ThemeLogo width={180} height={40} />
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               {visibleNavItems.map((item) => (
