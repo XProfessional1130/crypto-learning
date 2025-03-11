@@ -74,10 +74,24 @@ export default function TeamWatchlist({
 
   // Handle add coin to watchlist
   const handleAddToWatchlist = async (coin: CoinData, priceTarget?: number) => {
+    console.log('handleAddToWatchlist called with coin:', coin);
+    console.log('Price target:', priceTarget);
+    console.log('isAdmin value:', isAdmin);
+    
     try {
-      await addToWatchlist(coin, priceTarget);
-      setShowAddToWatchlistModal(false);
-      refreshWatchlist(true);
+      console.log('Calling addToWatchlist service');
+      const result = await addToWatchlist(coin, priceTarget);
+      console.log('addToWatchlist service result:', result);
+      
+      // Only close modal and refresh if the operation was successful
+      if (result && result.success) {
+        console.log('Closing modal and refreshing watchlist');
+        setShowAddToWatchlistModal(false);
+        await refreshWatchlist(true);
+        console.log('Watchlist refreshed');
+      } else {
+        console.error('Failed to add coin to watchlist:', (result as { message?: string })?.message || 'Unknown error');
+      }
     } catch (error) {
       console.error('Error adding coin to team watchlist:', error);
     }

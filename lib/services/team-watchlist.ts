@@ -58,15 +58,23 @@ export async function getTeamWatchlist(): Promise<{ items: WatchlistItem[] }> {
  * Only admin users can call this function successfully
  */
 export async function addToTeamWatchlist(coinData: CoinData, priceTarget?: number): Promise<{success: boolean, message: string}> {
+  console.log('addToTeamWatchlist called with coinData:', coinData);
+  console.log('priceTarget:', priceTarget);
+  
   try {
     // Verify the user is the admin
     const session = await supabase.auth.getSession();
     const currentUserId = session.data.session?.user?.id;
     
+    console.log('Current user ID:', currentUserId);
+    console.log('TEAM_ADMIN_ID:', TEAM_ADMIN_ID);
+    
     if (!currentUserId || currentUserId !== TEAM_ADMIN_ID) {
       console.error('Only the admin can modify the team watchlist');
       return { success: false, message: 'Only the admin can modify the team watchlist' };
     }
+    
+    console.log('User is admin, proceeding with database insert');
     
     // Insert the coin into the team watchlist
     const { data, error } = await supabase
@@ -85,6 +93,7 @@ export async function addToTeamWatchlist(coinData: CoinData, priceTarget?: numbe
       return { success: false, message: 'Failed to add coin to team watchlist' };
     }
     
+    console.log('Coin added successfully:', data);
     return { success: true, message: 'Coin added to team watchlist successfully' };
     
   } catch (error) {

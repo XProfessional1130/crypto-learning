@@ -6,7 +6,7 @@ import { searchCoins } from '@/lib/services/coinmarketcap';
 interface TeamAddToWatchlistModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCoinAdded?: (coin: CoinData, priceTarget?: number) => void;
+  onCoinAdded?: (coin: CoinData, priceTarget?: number) => Promise<any>;
 }
 
 export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }: TeamAddToWatchlistModalProps) {
@@ -24,13 +24,17 @@ export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     
+    console.log('handleSearch called with query:', searchQuery);
     setIsSearching(true);
     setSearchError(null);
     setNoResults(false);
     setSearchResults([]);
     
     try {
+      console.log('Calling searchCoins API');
       const results = await searchCoins(searchQuery);
+      console.log(`Found ${results.length} results:`, results);
+      
       setSearchResults(results);
       
       if (results.length === 0) {
@@ -55,11 +59,18 @@ export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }
   const handleAddCoin = async () => {
     if (!selectedCoin) return;
     
+    console.log('handleAddCoin called with coin:', selectedCoin);
+    console.log('Price target:', priceTarget > 0 ? priceTarget : undefined);
+    
     setIsAdding(true);
     try {
       // Call the onCoinAdded callback if provided
       if (onCoinAdded) {
-        onCoinAdded(selectedCoin, priceTarget > 0 ? priceTarget : undefined);
+        console.log('Calling onCoinAdded callback');
+        await onCoinAdded(selectedCoin, priceTarget > 0 ? priceTarget : undefined);
+        console.log('onCoinAdded callback completed successfully');
+      } else {
+        console.warn('onCoinAdded callback is not provided');
       }
       
       // Reset form and close modal
@@ -79,6 +90,12 @@ export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }
     setPriceTarget(0);
     setSearchError(null);
     setNoResults(false);
+  };
+  
+  // Add an onSubmit handler for the search form
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSearch();
   };
   
   if (!isOpen) return null;
@@ -102,7 +119,7 @@ export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }
           
           {!selectedCoin ? (
             <div>
-              <div className="mb-4">
+              <form onSubmit={handleSearchSubmit} className="mb-4">
                 <div className="flex items-center rounded-md border border-gray-300 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 overflow-hidden">
                   <input
                     type="text"
@@ -110,17 +127,16 @@ export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by name or symbol..."
                     className="flex-1 px-4 py-2 focus:outline-none"
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   />
                   <button 
-                    onClick={handleSearch}
+                    type="submit"
                     className="bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-700 border-none"
                     disabled={isSearching || !searchQuery.trim()}
                   >
                     {isSearching ? 'Searching...' : 'Search'}
                   </button>
                 </div>
-              </div>
+              </form>
               
               {searchError && (
                 <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-md">

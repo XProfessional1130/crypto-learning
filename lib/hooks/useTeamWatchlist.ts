@@ -126,6 +126,7 @@ export function useTeamWatchlist() {
   useEffect(() => {
     // Make sure coin data service is initialized
     if (!isCoinDataServiceInitialized) {
+      console.log('Initializing coin data service for useTeamWatchlist');
       initCoinDataService()
         .then(() => {
           console.log('Coin data service initialized for watchlist');
@@ -149,9 +150,21 @@ export function useTeamWatchlist() {
     };
   }, []);
 
+  // Initialize the coin data service if not already done
+  useEffect(() => {
+    if (!isCoinDataServiceInitialized) {
+      console.log('Initializing coin data service for useTeamWatchlist');
+      initCoinDataService();
+      isCoinDataServiceInitialized = true;
+    }
+  }, []);
+
   // Add a coin to the team watchlist (admin only)
   const addToWatchlist = async (coinData: CoinData, priceTarget?: number) => {
+    console.log('addToWatchlist called with:', { coinData, priceTarget });
+    
     if (!user) {
+      console.error('User not authenticated');
       toast({
         title: 'Error',
         description: 'You must be logged in to perform this action',
@@ -162,7 +175,11 @@ export function useTeamWatchlist() {
       return { success: false };
     }
 
+    console.log('Current user ID:', user.id);
+    console.log('TEAM_ADMIN_ID:', TEAM_ADMIN_ID);
+    
     if (user.id !== TEAM_ADMIN_ID) {
+      console.error('User is not admin');
       toast({
         title: 'Error',
         description: 'Only the admin can modify the team watchlist',
@@ -173,8 +190,11 @@ export function useTeamWatchlist() {
       return { success: false };
     }
 
+    console.log('User is admin, proceeding with addToTeamWatchlist');
+    
     try {
       const result = await addToTeamWatchlist(coinData, priceTarget);
+      console.log('addToTeamWatchlist result:', result);
       
       if (result.success) {
         // Refresh the watchlist to get the updated data
