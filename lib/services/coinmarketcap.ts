@@ -11,6 +11,11 @@ let globalDataCache: { data: GlobalData; timestamp: number } | null = null;
 let topCoinsCache: { data: CoinData[]; timestamp: number } | null = null;
 let searchResultsCache = new Map<string, { data: CoinData[]; timestamp: number }>();
 
+// Singleton pattern
+let isInitialized = false;
+let isInitializing = false;
+let initializationPromise: Promise<void> | null = null;
+
 // Queue for batching coin requests
 type QueuedRequest = {
   coinId: string;
@@ -53,29 +58,49 @@ export async function initCoinDataService(): Promise<void> {
     return;
   }
 
-  try {
-    console.log('Initializing coin data service...');
-    
-    // Prefetch top 100 coins in parallel with global data
-    try {
-      await Promise.all([
-        prefetchTopCoins().catch(err => {
-          console.error('Error prefetching top coins, continuing anyway:', err);
-          return []; // Return empty array to prevent Promise.all from failing
-        }),
-        getGlobalData().catch(err => {
-          console.error('Error fetching global data, continuing anyway:', err);
-          return null; // Return null to prevent Promise.all from failing
-        }),
-      ]);
-      console.log('Coin data service initialized');
-    } catch (parallelError) {
-      console.error('Error running parallel initialization, continuing anyway:', parallelError);
-    }
-  } catch (error) {
-    console.error('Error initializing coin data service:', error);
-    // We don't rethrow the error to prevent breaking the app
+  // If already initialized or initializing, return existing promise
+  if (isInitialized) {
+    console.log('Coin data service already initialized');
+    return;
   }
+  
+  if (isInitializing && initializationPromise) {
+    console.log('Coin data service initialization already in progress');
+    return initializationPromise;
+  }
+
+  isInitializing = true;
+  initializationPromise = new Promise<void>(async (resolve) => {
+    try {
+      console.log('Initializing coin data service...');
+      
+      // Prefetch top 100 coins in parallel with global data
+      try {
+        await Promise.all([
+          prefetchTopCoins().catch(err => {
+            console.error('Error prefetching top coins, continuing anyway:', err);
+            return []; // Return empty array to prevent Promise.all from failing
+          }),
+          getGlobalData().catch(err => {
+            console.error('Error fetching global data, continuing anyway:', err);
+            return null; // Return null to prevent Promise.all from failing
+          }),
+        ]);
+        isInitialized = true;
+        console.log('Coin data service initialized');
+      } catch (parallelError) {
+        console.error('Error running parallel initialization, continuing anyway:', parallelError);
+      }
+      resolve();
+    } catch (error) {
+      console.error('Error initializing coin data service:', error);
+      resolve(); // We still resolve to prevent breaking the app
+    } finally {
+      isInitializing = false;
+    }
+  });
+  
+  return initializationPromise;
 }
 
 /**
