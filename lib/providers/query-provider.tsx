@@ -10,9 +10,11 @@ export default function QueryProvider({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000, // 1 minute
+            staleTime: 5 * 60 * 1000, // 5 minutes instead of 1 minute
+            gcTime: 10 * 60 * 1000, // 10 minutes
             retry: 1,
             refetchOnMount: false,
+            refetchOnWindowFocus: false, // Prevent unnecessary refetches when window regains focus
           },
         },
       })
@@ -21,7 +23,7 @@ export default function QueryProvider({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <ReactQueryDevtools initialIsOpen={false} />
+      {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );
 } 

@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useWatchlist, WatchlistItem } from '@/lib/hooks/useWatchlist';
 import { CoinData } from '@/types/portfolio';
 import WatchlistItemDetailModal from './WatchlistItemDetailModal';
 import AddToWatchlistModal from './AddToWatchlistModal';
-import { formatCryptoPrice, formatPercentage } from '@/lib/utils/format';
+import { cn } from '@/lib/utils/classnames';
+import { calculateProgressPercentage, formatCryptoPrice, formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
 import Image from 'next/image';
 
 // Define props interface for WatchlistComponent
@@ -103,22 +104,6 @@ const WatchlistItemCard = memo(({
   );
 });
 WatchlistItemCard.displayName = 'WatchlistItemCard';
-
-// Calculate progress percentage toward target (for progress bar)
-const calculateProgressPercentage = (currentPrice: number, targetPrice: number): number => {
-  if (!targetPrice || currentPrice === targetPrice) return 100;
-  
-  // If target is higher than current (we want price to go up)
-  if (targetPrice > currentPrice) {
-    // Calculate how far we've moved toward the target
-    return Math.min(100, Math.max(0, (currentPrice / targetPrice) * 100));
-  } 
-  // If target is lower than current (we want price to go down)
-  else {
-    // Calculate how far we've moved toward the target (reverse direction)
-    return Math.min(100, Math.max(0, (targetPrice / currentPrice) * 100));
-  }
-};
 
 const WatchlistComponent = ({ onRefresh }: WatchlistComponentProps) => {
   const {

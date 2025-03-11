@@ -6,40 +6,7 @@ import { CoinData } from '@/types/portfolio';
 import { PlusCircle, Edit2, Trash } from 'lucide-react';
 import TeamAddToWatchlistModal from './TeamAddToWatchlistModal';
 import TeamWatchlistItemDetailModal from './TeamWatchlistItemDetailModal';
-
-// Function to format cryptocurrency prices adaptively based on their value
-const formatCryptoPrice = (price: number): string => {
-  if (!price) return '$---';
-
-  if (price >= 1) {
-    // For prices $1 and above: round to whole number
-    return `$${Math.round(price).toLocaleString()}`;
-  } else if (price >= 0.01) {
-    // For prices between $0.01 and $1: show 2 decimal places
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  } else if (price >= 0.0001) {
-    // For prices between $0.0001 and $0.01: show 4 decimal places
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
-  } else {
-    // For extremely low prices: show as "< $0.0001"
-    return `< $0.0001`;
-  }
-};
-
-// Function to format large numbers (like market cap and volume)
-const formatLargeNumber = (num: number): string => {
-  if (!num) return '$---';
-  
-  if (num >= 1_000_000_000) {
-    return `$${(num / 1_000_000_000).toFixed(1)}B`;
-  } else if (num >= 1_000_000) {
-    return `$${(num / 1_000_000).toFixed(1)}M`;
-  } else if (num >= 1_000) {
-    return `$${(num / 1_000).toFixed(1)}K`;
-  } else {
-    return `$${num.toFixed(0)}`;
-  }
-};
+import { formatCryptoPrice, formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
 
 interface TeamWatchlistProps {
   watchlist: WatchlistItem[];

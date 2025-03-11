@@ -9,25 +9,7 @@ import Image from 'next/image';
 import { getBtcPrice, getEthPrice, getGlobalData, GlobalData } from '@/lib/services/coinmarketcap';
 import { PortfolioItemWithPrice } from '@/types/portfolio';
 import WatchlistComponent from './WatchlistComponent';
-
-// Function to format cryptocurrency prices adaptively based on their value
-const formatCryptoPrice = (price: number): string => {
-  if (!price) return '$---';
-
-  if (price >= 1) {
-    // For prices $1 and above: round to whole number
-    return `$${Math.round(price).toLocaleString()}`;
-  } else if (price >= 0.01) {
-    // For prices between $0.01 and $1: show 2 decimal places
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  } else if (price >= 0.0001) {
-    // For prices between $0.0001 and $0.01: show 4 decimal places
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
-  } else {
-    // For extremely low prices: show as "< $0.0001"
-    return `< $0.0001`;
-  }
-};
+import { formatCryptoPrice, formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
 
 // Memoized Stats Card component
 const StatsCard = memo(({ title, value, icon = null, dominance = null, loading = false, valueClassName = '' }: {
@@ -179,10 +161,14 @@ export default function PortfolioDashboard() {
     refreshPortfolio();
   }, [refreshPortfolio]);
   
-  // Fetch BTC and ETH prices and global data
+  // Fetch BTC and ETH prices and global data with optimized loading
   useEffect(() => {
     const fetchData = async () => {
-      setLoadingPrices(true);
+      // Only show loading indicator if we don't have any data yet
+      if (!btcPrice || !ethPrice || !globalData) {
+        setLoadingPrices(true);
+      }
+      
       try {
         // Fetch prices and global data in parallel
         const [btcPriceData, ethPriceData, globalMarketData] = await Promise.all([
@@ -201,13 +187,14 @@ export default function PortfolioDashboard() {
       }
     };
     
+    // Initial fetch
     fetchData();
     
     // Set up refresh interval (5 minutes)
     const intervalId = setInterval(fetchData, 5 * 60 * 1000);
     
     return () => clearInterval(intervalId);
-  }, []);
+  }, []); // Empty dependency array as we want this to run once on mount
   
   const loading = portfolioLoading || watchlistLoading;
   const error = portfolioError || watchlistError;
