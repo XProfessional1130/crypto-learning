@@ -123,27 +123,36 @@ export default function TeamWatchlist({
 
   if (!watchlist || watchlist.length === 0) {
     return (
-      <div className="rounded-lg bg-blue-50 p-4 text-blue-600">
-        <p className="mb-2 font-semibold">No assets in the team watchlist yet.</p>
-        {isAdmin ? (
-          <div className="mt-4">
-            <button 
-              onClick={() => {
-                console.log('Empty state Add Asset button clicked');
-                setShowAddToWatchlistModal(true);
-                console.log('showAddToWatchlistModal set to:', true);
-              }}
-              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Asset to Team Watchlist
-            </button>
-          </div>
-        ) : (
-          <p className="text-sm">
-            The team watchlist is managed by the admin. Currently, no assets have been added.
-          </p>
-        )}
+      <div>
+        <div className="rounded-lg bg-blue-50 p-4 text-blue-600">
+          <p className="mb-2 font-semibold">No assets in the team watchlist yet.</p>
+          {isAdmin ? (
+            <div className="mt-4">
+              <button 
+                onClick={() => {
+                  console.log('Empty state Add Asset button clicked');
+                  setShowAddToWatchlistModal(true);
+                  console.log('showAddToWatchlistModal set to:', true);
+                }}
+                className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Asset to Team Watchlist
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm">
+              The team watchlist is managed by the admin. Currently, no assets have been added.
+            </p>
+          )}
+        </div>
+        
+        {/* Add To Watchlist Modal - needed here too for empty state */}
+        <TeamAddToWatchlistModal
+          isOpen={showAddToWatchlistModal}
+          onClose={() => setShowAddToWatchlistModal(false)}
+          onCoinAdded={handleAddToWatchlist}
+        />
       </div>
     );
   }
