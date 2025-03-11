@@ -4,6 +4,7 @@ import { CoinData } from '@/types/portfolio';
 import WatchlistItemDetailModal from './WatchlistItemDetailModal';
 import AddToWatchlistModal from './AddToWatchlistModal';
 import { formatCryptoPrice, formatPercentage } from '@/lib/utils/format';
+import Image from 'next/image';
 
 export default function WatchlistComponent() {
   const {
@@ -98,7 +99,7 @@ export default function WatchlistComponent() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {watchlist.map((item) => {
             const targetPercentage = getTargetPercentage(item);
             const isTargetHigher = item.priceTarget ? item.priceTarget > item.price : false;
@@ -110,20 +111,20 @@ export default function WatchlistComponent() {
               <div 
                 key={item.id}
                 onClick={() => handleItemClick(item)}
-                className="bg-gray-50 dark:bg-gray-750 rounded-lg p-5 cursor-pointer hover:shadow-md transition-all border border-gray-100 dark:border-gray-700"
+                className="bg-gray-50 dark:bg-gray-750 rounded-lg p-5 cursor-pointer hover:shadow-md transition-all border border-gray-100 dark:border-gray-700 w-full"
               >
                 <div className="flex items-center mb-4">
-                  <div className="flex-shrink-0 h-12 w-12 relative mr-3">
+                  <div className="w-10 h-10 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center mr-3 overflow-hidden border border-gray-200 dark:border-gray-600">
                     <img 
                       src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.id}.png`}
                       alt={item.symbol}
-                      className="rounded-full bg-white p-0.5 border border-gray-200 dark:border-gray-600 w-full h-full object-cover"
+                      className="w-full h-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
                         const parent = target.parentElement;
                         if (parent) {
-                          parent.innerHTML = `<div class="w-full h-full rounded-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold">${item.symbol.substring(0, 3)}</div>`;
+                          parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-gray-700 dark:text-gray-200 font-bold">${item.symbol.substring(0, 3)}</div>`;
                         }
                       }}
                     />
@@ -148,25 +149,25 @@ export default function WatchlistComponent() {
                   )}
                   
                   {item.priceTarget && (
-                    <div className="mt-3">
-                      <div className="flex justify-between items-center mb-1.5">
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Progress to target</div>
-                        <div className={`text-xs font-bold ${
+                    <div className="mt-4">
+                      <div className="flex justify-between items-center">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">Progress to target</div>
+                        <div className={`text-sm font-bold ${
                           isTargetHigher ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                         }`}>
                           {Math.round(progressPercentage)}%
                         </div>
                       </div>
                       
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden mt-1.5">
                         <div 
-                          className={`h-2.5 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
+                          className={`h-3 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
                           style={{ width: `${progressPercentage}%` }}
                         ></div>
                       </div>
                       
-                      <div className="flex justify-end mt-2">
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                      <div className="flex justify-end mt-3">
+                        <span className={`text-sm font-medium px-3 py-1.5 rounded-full ${
                           isTargetHigher
                             ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
                             : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
