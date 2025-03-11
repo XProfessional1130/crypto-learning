@@ -1,0 +1,13 @@
+---
+description: This is the projects tech stack
+globs: 
+alwaysApply: false
+---
+
+#Technical Stack
+
+- Next.js for the frontend
+- Supabase for the backend
+- Vercel to host
+- Stripe for fiat subscription payments
+- Radom for crypto subscription payments

@@ -1,0 +1,13 @@
+---
+description: How I like to code
+globs: 
+alwaysApply: false
+---
+
+# Coding workflow preference
+
+- Focus on areas of cdoe relevant to the task
+- Don't touch code that is not related to the task
+- Write thorough tests for major functionality
+- Avoid making major changes to the patterns or the architecture of how a feature works, after it has shown to work well, unless explicitly instructed
+- Always think about what other areas or features may be affected by code changes
