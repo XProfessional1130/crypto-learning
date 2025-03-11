@@ -1,6 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { WatchlistItem } from '@/lib/hooks/useWatchlist';
 import { GlobalData } from '@/lib/services/coinmarketcap';
+import { useTeamWatchlist } from '@/lib/hooks/useTeamWatchlist';
+import { CoinData } from '@/types/portfolio';
+import { PlusCircle, Edit2, Trash } from 'lucide-react';
+import TeamAddToWatchlistModal from './TeamAddToWatchlistModal';
+import TeamWatchlistItemDetailModal from './TeamWatchlistItemDetailModal';
 
 // Function to format cryptocurrency prices adaptively based on their value
 const formatCryptoPrice = (price: number): string => {
@@ -53,6 +58,11 @@ export default function TeamWatchlist({
   globalData,
   getTargetPercentage
 }: TeamWatchlistProps) {
+  const { isAdmin, addToWatchlist, updatePriceTarget, removeFromWatchlist, refreshWatchlist } = useTeamWatchlist();
+  const [showAddToWatchlistModal, setShowAddToWatchlistModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
+  const [showItemDetailModal, setShowItemDetailModal] = useState(false);
+
   // Create a sorted version of the watchlist items by market cap
   const sortedWatchlistItems = useMemo(() => {
     if (!watchlist || watchlist.length === 0) return [];
@@ -61,6 +71,23 @@ export default function TeamWatchlist({
     // In a real app, you might want to sort by market cap, but we use price here as a simple metric
     return [...watchlist].sort((a, b) => b.price - a.price);
   }, [watchlist]);
+
+  // Handle add coin to watchlist
+  const handleAddToWatchlist = async (coin: CoinData, priceTarget?: number) => {
+    try {
+      await addToWatchlist(coin, priceTarget);
+      setShowAddToWatchlistModal(false);
+      refreshWatchlist(true);
+    } catch (error) {
+      console.error('Error adding coin to team watchlist:', error);
+    }
+  };
+
+  // Handle opening item detail modal for editing
+  const handleSelectItem = (item: WatchlistItem) => {
+    setSelectedItem(item);
+    setShowItemDetailModal(true);
+  };
 
   if (loading || isDataLoading) {
     return (
@@ -84,16 +111,39 @@ export default function TeamWatchlist({
     return (
       <div className="rounded-lg bg-blue-50 p-4 text-blue-600">
         <p className="mb-2 font-semibold">No assets in the team watchlist yet.</p>
-        <p className="text-sm">
-          The team watchlist is managed through the user with email set in NEXT_PUBLIC_TEAM_ADMIN_EMAIL. 
-          That user needs to add assets to their watchlist through the regular dashboard.
-        </p>
+        {isAdmin ? (
+          <div className="mt-4">
+            <button 
+              onClick={() => setShowAddToWatchlistModal(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center"
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Asset to Team Watchlist
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm">
+            The team watchlist is managed by the admin. Currently, no assets have been added.
+          </p>
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {isAdmin && (
+        <div className="flex justify-end mb-4">
+          <button 
+            onClick={() => setShowAddToWatchlistModal(true)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center"
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Asset
+          </button>
+        </div>
+      )}
+      
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -113,13 +163,18 @@ export default function TeamWatchlist({
                   Price Target
                 </th>
               )}
+              {isAdmin && (
+                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
             {sortedWatchlistItems.map((item: WatchlistItem) => {
               const targetPercentage = getTargetPercentage(item);
               return (
-                <tr key={item.id}>
+                <tr key={item.id} className={isAdmin ? "cursor-pointer hover:bg-gray-50" : ""} onClick={isAdmin ? () => handleSelectItem(item) : undefined}>
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center">
                       <div className="h-10 w-10 flex-shrink-0 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
@@ -167,6 +222,31 @@ export default function TeamWatchlist({
                       )}
                     </td>
                   )}
+                  {isAdmin && (
+                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                      <button 
+                        className="text-indigo-600 hover:text-indigo-900 mr-3"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectItem(item);
+                        }}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <button 
+                        className="text-red-600 hover:text-red-900"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Remove ${item.name} from the team watchlist?`)) {
+                            await removeFromWatchlist(item.id);
+                            refreshWatchlist(true);
+                          }
+                        }}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -180,6 +260,34 @@ export default function TeamWatchlist({
           Our team is closely monitoring these assets for potential investment opportunities. We perform thorough technical and fundamental analysis before adding any asset to our watchlist.
         </p>
       </div>
+
+      {/* Add To Watchlist Modal - Only shown when admin clicks Add Asset button */}
+      {showAddToWatchlistModal && (
+        <TeamAddToWatchlistModal
+          isOpen={showAddToWatchlistModal}
+          onClose={() => setShowAddToWatchlistModal(false)}
+          onCoinAdded={handleAddToWatchlist}
+        />
+      )}
+
+      {/* Item Detail Modal - Only shown when admin clicks on an item */}
+      {showItemDetailModal && selectedItem && (
+        <TeamWatchlistItemDetailModal
+          item={selectedItem}
+          isOpen={showItemDetailModal}
+          onClose={() => setShowItemDetailModal(false)}
+          onUpdatePriceTarget={async (newTarget) => {
+            await updatePriceTarget(selectedItem.id, newTarget);
+            setShowItemDetailModal(false);
+            refreshWatchlist(true);
+          }}
+          onRemove={async () => {
+            await removeFromWatchlist(selectedItem.id);
+            setShowItemDetailModal(false);
+            refreshWatchlist(true);
+          }}
+        />
+      )}
     </div>
   );
 } 

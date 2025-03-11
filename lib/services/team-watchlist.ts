@@ -1,39 +1,38 @@
 import { WatchlistItem } from '@/lib/hooks/useWatchlist';
 import { getMultipleCoinsData } from './coinmarketcap';
 import supabase from './supabase-client';
+import { CoinData } from '@/types/portfolio';
 
-// Use the admin's UID directly instead of email lookup
+// Admin ID is needed for permission checks
 const TEAM_ADMIN_ID = process.env.NEXT_PUBLIC_TEAM_ADMIN_ID || '529cfde5-d8c3-4a6a-a9dc-5bb67fb039b5';
 
 /**
- * Fetch the team watchlist for the admin user
- * Using the admin's UID directly for efficient queries
+ * Fetch the team watchlist from the dedicated team_watchlist table
  */
 export async function getTeamWatchlist(): Promise<{ items: WatchlistItem[] }> {
   try {
-    console.log(`Attempting to fetch team watchlist for admin with ID: ${TEAM_ADMIN_ID}`);
+    console.log('Attempting to fetch team watchlist from team_watchlist table');
     
-    // Check if the watchlist table exists by making a small query
+    // Check if the team_watchlist table exists by making a small query
     const { data: tableCheckData, error: tableCheckError } = await supabase
-      .from('watchlist')
+      .from('team_watchlist')
       .select('id')
       .limit(1);
     
     if (tableCheckError) {
-      console.error('Error checking watchlist table:', tableCheckError);
-      console.log('The watchlist table may not exist yet.');
+      console.error('Error checking team_watchlist table:', tableCheckError);
+      console.log('The team_watchlist table may not exist yet. Please run the database migrations.');
       
       // Return empty watchlist
       return { items: [] };
     }
     
-    console.log('Connected to watchlist table successfully');
+    console.log('Connected to team_watchlist table successfully');
     
-    // Directly fetch watchlist items using the admin's UID
+    // Fetch all watchlist items from the team_watchlist table
     const { data: watchlistItems, error } = await supabase
-      .from('watchlist')
-      .select('*')
-      .eq('user_id', TEAM_ADMIN_ID);
+      .from('team_watchlist')
+      .select('*');
       
     if (error) {
       console.error('Error fetching team watchlist items:', error);
@@ -41,7 +40,7 @@ export async function getTeamWatchlist(): Promise<{ items: WatchlistItem[] }> {
     }
     
     if (!watchlistItems || watchlistItems.length === 0) {
-      console.log('No watchlist items found for admin user. The user might not have added any assets yet.');
+      console.log('No watchlist items found in the team watchlist.');
     }
     
     return processWatchlistItems(watchlistItems || []);
@@ -55,11 +54,121 @@ export async function getTeamWatchlist(): Promise<{ items: WatchlistItem[] }> {
 }
 
 /**
+ * Add a coin to the team watchlist
+ * Only admin users can call this function successfully
+ */
+export async function addToTeamWatchlist(coinData: CoinData, priceTarget?: number): Promise<{success: boolean, message: string}> {
+  try {
+    // Verify the user is the admin
+    const session = await supabase.auth.getSession();
+    const currentUserId = session.data.session?.user?.id;
+    
+    if (!currentUserId || currentUserId !== TEAM_ADMIN_ID) {
+      console.error('Only the admin can modify the team watchlist');
+      return { success: false, message: 'Only the admin can modify the team watchlist' };
+    }
+    
+    // Insert the coin into the team watchlist
+    const { data, error } = await supabase
+      .from('team_watchlist')
+      .insert({
+        coin_id: coinData.id,
+        symbol: coinData.symbol,
+        name: coinData.name,
+        price_target: priceTarget || null
+      })
+      .select('*')
+      .single();
+      
+    if (error) {
+      console.error('Error adding coin to team watchlist:', error);
+      return { success: false, message: 'Failed to add coin to team watchlist' };
+    }
+    
+    return { success: true, message: 'Coin added to team watchlist successfully' };
+    
+  } catch (error) {
+    console.error('Error adding coin to team watchlist:', error);
+    return { success: false, message: 'An unexpected error occurred' };
+  }
+}
+
+/**
+ * Update a coin's price target in the team watchlist
+ * Only admin users can call this function successfully
+ */
+export async function updateTeamWatchlistPriceTarget(itemId: string, priceTarget: number): Promise<{success: boolean, message: string}> {
+  try {
+    // Verify the user is the admin
+    const session = await supabase.auth.getSession();
+    const currentUserId = session.data.session?.user?.id;
+    
+    if (!currentUserId || currentUserId !== TEAM_ADMIN_ID) {
+      console.error('Only the admin can modify the team watchlist');
+      return { success: false, message: 'Only the admin can modify the team watchlist' };
+    }
+    
+    // Update the price target
+    const { data, error } = await supabase
+      .from('team_watchlist')
+      .update({ price_target: priceTarget })
+      .eq('id', itemId)
+      .select('*')
+      .single();
+      
+    if (error) {
+      console.error('Error updating coin in team watchlist:', error);
+      return { success: false, message: 'Failed to update coin in team watchlist' };
+    }
+    
+    return { success: true, message: 'Coin updated in team watchlist successfully' };
+    
+  } catch (error) {
+    console.error('Error updating coin in team watchlist:', error);
+    return { success: false, message: 'An unexpected error occurred' };
+  }
+}
+
+/**
+ * Remove a coin from the team watchlist
+ * Only admin users can call this function successfully
+ */
+export async function removeFromTeamWatchlist(itemId: string): Promise<{success: boolean, message: string}> {
+  try {
+    // Verify the user is the admin
+    const session = await supabase.auth.getSession();
+    const currentUserId = session.data.session?.user?.id;
+    
+    if (!currentUserId || currentUserId !== TEAM_ADMIN_ID) {
+      console.error('Only the admin can modify the team watchlist');
+      return { success: false, message: 'Only the admin can modify the team watchlist' };
+    }
+    
+    // Delete the coin from the team watchlist
+    const { error } = await supabase
+      .from('team_watchlist')
+      .delete()
+      .eq('id', itemId);
+      
+    if (error) {
+      console.error('Error removing coin from team watchlist:', error);
+      return { success: false, message: 'Failed to remove coin from team watchlist' };
+    }
+    
+    return { success: true, message: 'Coin removed from team watchlist successfully' };
+    
+  } catch (error) {
+    console.error('Error removing coin from team watchlist:', error);
+    return { success: false, message: 'An unexpected error occurred' };
+  }
+}
+
+/**
  * Process watchlist items and add price data
  */
 async function processWatchlistItems(watchlistItems: any[]): Promise<{ items: WatchlistItem[] }> {
   if (!watchlistItems || watchlistItems.length === 0) {
-    console.log('No watchlist items found for admin user.');
+    console.log('No watchlist items found in the team watchlist.');
     // Return empty watchlist if no items exist yet
     return { items: [] };
   }

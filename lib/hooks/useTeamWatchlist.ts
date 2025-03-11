@@ -1,8 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { WatchlistItem } from '@/lib/hooks/useWatchlist';
-import { getTeamWatchlist } from '@/lib/services/team-watchlist';
+import { 
+  getTeamWatchlist,
+  addToTeamWatchlist,
+  updateTeamWatchlistPriceTarget,
+  removeFromTeamWatchlist
+} from '@/lib/services/team-watchlist';
 import { useToast } from '@/lib/hooks/useToast';
 import { initCoinDataService } from '@/lib/services/coinmarketcap';
+import { useAuth } from '@/lib/auth-context';
+import { CoinData } from '@/types/portfolio';
+
+// Admin ID for permission checks
+const TEAM_ADMIN_ID = process.env.NEXT_PUBLIC_TEAM_ADMIN_ID || '529cfde5-d8c3-4a6a-a9dc-5bb67fb039b5';
 
 // Refresh intervals and cache settings - reuse same settings as portfolio for consistency
 const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
@@ -24,8 +34,19 @@ export function useTeamWatchlist() {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const toast = useToast();
   const lastFetchRef = useRef<number>(0);
+  const { user } = useAuth();
+
+  // Check if the current user is the admin
+  useEffect(() => {
+    if (user && user.id === TEAM_ADMIN_ID) {
+      setIsAdmin(true);
+    } else {
+      setIsAdmin(false);
+    }
+  }, [user]);
 
   // Fetch watchlist data with caching
   const fetchTeamWatchlist = useCallback(async (forceFetch = false) => {
@@ -128,6 +149,198 @@ export function useTeamWatchlist() {
     };
   }, []);
 
+  // Add a coin to the team watchlist (admin only)
+  const addToWatchlist = async (coinData: CoinData, priceTarget?: number) => {
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to perform this action',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return { success: false };
+    }
+
+    if (user.id !== TEAM_ADMIN_ID) {
+      toast({
+        title: 'Error',
+        description: 'Only the admin can modify the team watchlist',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return { success: false };
+    }
+
+    try {
+      const result = await addToTeamWatchlist(coinData, priceTarget);
+      
+      if (result.success) {
+        // Refresh the watchlist to get the updated data
+        await fetchTeamWatchlist(true);
+        
+        toast({
+          title: 'Success',
+          description: 'Coin added to team watchlist',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error adding coin to team watchlist:', error);
+      
+      toast({
+        title: 'Error',
+        description: 'Failed to add coin to team watchlist',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      
+      return { success: false, message: 'An unexpected error occurred' };
+    }
+  };
+
+  // Update a coin's price target in the team watchlist (admin only)
+  const updatePriceTarget = async (itemId: string, priceTarget: number) => {
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to perform this action',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return { success: false };
+    }
+
+    if (user.id !== TEAM_ADMIN_ID) {
+      toast({
+        title: 'Error',
+        description: 'Only the admin can modify the team watchlist',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return { success: false };
+    }
+
+    try {
+      const result = await updateTeamWatchlistPriceTarget(itemId, priceTarget);
+      
+      if (result.success) {
+        // Refresh the watchlist to get the updated data
+        await fetchTeamWatchlist(true);
+        
+        toast({
+          title: 'Success',
+          description: 'Price target updated in team watchlist',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error updating coin in team watchlist:', error);
+      
+      toast({
+        title: 'Error',
+        description: 'Failed to update coin in team watchlist',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      
+      return { success: false, message: 'An unexpected error occurred' };
+    }
+  };
+
+  // Remove a coin from the team watchlist (admin only)
+  const removeFromWatchlist = async (itemId: string) => {
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to perform this action',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return { success: false };
+    }
+
+    if (user.id !== TEAM_ADMIN_ID) {
+      toast({
+        title: 'Error',
+        description: 'Only the admin can modify the team watchlist',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return { success: false };
+    }
+
+    try {
+      const result = await removeFromTeamWatchlist(itemId);
+      
+      if (result.success) {
+        // Refresh the watchlist to get the updated data
+        await fetchTeamWatchlist(true);
+        
+        toast({
+          title: 'Success',
+          description: 'Coin removed from team watchlist',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error removing coin from team watchlist:', error);
+      
+      toast({
+        title: 'Error',
+        description: 'Failed to remove coin from team watchlist',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      
+      return { success: false, message: 'An unexpected error occurred' };
+    }
+  };
+
   // Calculate target percentage (useful for watchlist items with price targets)
   const getTargetPercentage = (item: WatchlistItem): number => {
     if (!item.priceTarget || !item.price) return 0;
@@ -136,11 +349,21 @@ export function useTeamWatchlist() {
     return ((item.priceTarget - item.price) / item.price) * 100;
   };
 
+  // Check if a coin is already in the watchlist
+  const isInWatchlist = (coinId: string): boolean => {
+    return watchlist.some(item => item.coinId === coinId);
+  };
+
   return {
     watchlist,
     loading,
     error,
+    isAdmin,
     refreshWatchlist: fetchTeamWatchlist,
-    getTargetPercentage
+    getTargetPercentage,
+    isInWatchlist,
+    addToWatchlist,
+    updatePriceTarget,
+    removeFromWatchlist
   };
 } 

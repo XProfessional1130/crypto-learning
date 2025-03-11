@@ -1,39 +1,37 @@
-import { PortfolioItemWithPrice, PortfolioSummary } from '@/types/portfolio';
+import { PortfolioItemWithPrice, PortfolioSummary, CoinData } from '@/types/portfolio';
 import { getMultipleCoinsData } from './coinmarketcap';
 import supabase from './supabase-client';
 
-// Use the admin's UID directly instead of email lookup
+// Admin ID is still needed for checking permissions
 const TEAM_ADMIN_ID = process.env.NEXT_PUBLIC_TEAM_ADMIN_ID || '529cfde5-d8c3-4a6a-a9dc-5bb67fb039b5';
 
 /**
- * Fetch the team portfolio for the admin user
- * Using the admin's UID directly for efficient queries
+ * Fetch the team portfolio from the dedicated team_portfolio table
  */
 export async function getTeamPortfolio(): Promise<PortfolioSummary> {
   try {
-    console.log(`Attempting to fetch team portfolio for admin with ID: ${TEAM_ADMIN_ID}`);
+    console.log('Attempting to fetch team portfolio from team_portfolio table');
     
-    // Check if user_portfolios table exists by making a small query
+    // Check if team_portfolio table exists by making a small query
     const { data: tableCheckData, error: tableCheckError } = await supabase
-      .from('user_portfolios')
+      .from('team_portfolio')
       .select('id')
       .limit(1);
     
     if (tableCheckError) {
-      console.error('Error checking user_portfolios table:', tableCheckError);
-      console.log('The user_portfolios table may not exist yet. Please run the database migrations.');
+      console.error('Error checking team_portfolio table:', tableCheckError);
+      console.log('The team_portfolio table may not exist yet. Please run the database migrations.');
       
       // Return empty portfolio
       return createEmptyPortfolio();
     }
     
-    console.log('Connected to user_portfolios table successfully');
+    console.log('Connected to team_portfolio table successfully');
     
-    // Directly fetch portfolio items using the admin's UID
+    // Fetch all portfolio items from the team_portfolio table
     const { data: portfolioItems, error } = await supabase
-      .from('user_portfolios')
-      .select('*')
-      .eq('user_id', TEAM_ADMIN_ID);
+      .from('team_portfolio')
+      .select('*');
       
     if (error) {
       console.error('Error fetching team portfolio items:', error);
@@ -41,7 +39,7 @@ export async function getTeamPortfolio(): Promise<PortfolioSummary> {
     }
     
     if (!portfolioItems || portfolioItems.length === 0) {
-      console.log('No portfolio items found for admin user. The user might not have added any assets yet.');
+      console.log('No portfolio items found in the team portfolio.');
     }
     
     return processPortfolioItems(portfolioItems || []);
@@ -49,6 +47,117 @@ export async function getTeamPortfolio(): Promise<PortfolioSummary> {
   } catch (error) {
     console.error('Error fetching team portfolio:', error);
     return createEmptyPortfolio();
+  }
+}
+
+/**
+ * Add a coin to the team portfolio
+ * Only admin users can call this function successfully
+ */
+export async function addCoinToTeamPortfolio(coinData: CoinData, amount: number): Promise<{success: boolean, message: string}> {
+  try {
+    // Verify the user is the admin
+    const session = await supabase.auth.getSession();
+    const currentUserId = session.data.session?.user?.id;
+    
+    if (!currentUserId || currentUserId !== TEAM_ADMIN_ID) {
+      console.error('Only the admin can modify the team portfolio');
+      return { success: false, message: 'Only the admin can modify the team portfolio' };
+    }
+    
+    // Insert the coin into the team portfolio
+    const { data, error } = await supabase
+      .from('team_portfolio')
+      .insert({
+        coin_id: coinData.id,
+        coin_symbol: coinData.symbol,
+        coin_name: coinData.name,
+        amount: amount,
+        preferred_currency: 'USD'
+      })
+      .select('*')
+      .single();
+      
+    if (error) {
+      console.error('Error adding coin to team portfolio:', error);
+      return { success: false, message: 'Failed to add coin to team portfolio' };
+    }
+    
+    return { success: true, message: 'Coin added to team portfolio successfully' };
+    
+  } catch (error) {
+    console.error('Error adding coin to team portfolio:', error);
+    return { success: false, message: 'An unexpected error occurred' };
+  }
+}
+
+/**
+ * Update a coin's amount in the team portfolio
+ * Only admin users can call this function successfully
+ */
+export async function updateTeamPortfolioCoinAmount(itemId: string, amount: number): Promise<{success: boolean, message: string}> {
+  try {
+    // Verify the user is the admin
+    const session = await supabase.auth.getSession();
+    const currentUserId = session.data.session?.user?.id;
+    
+    if (!currentUserId || currentUserId !== TEAM_ADMIN_ID) {
+      console.error('Only the admin can modify the team portfolio');
+      return { success: false, message: 'Only the admin can modify the team portfolio' };
+    }
+    
+    // Update the coin amount
+    const { data, error } = await supabase
+      .from('team_portfolio')
+      .update({ amount })
+      .eq('id', itemId)
+      .select('*')
+      .single();
+      
+    if (error) {
+      console.error('Error updating coin in team portfolio:', error);
+      return { success: false, message: 'Failed to update coin in team portfolio' };
+    }
+    
+    return { success: true, message: 'Coin updated in team portfolio successfully' };
+    
+  } catch (error) {
+    console.error('Error updating coin in team portfolio:', error);
+    return { success: false, message: 'An unexpected error occurred' };
+  }
+}
+
+/**
+ * Remove a coin from the team portfolio
+ * Only admin users can call this function successfully
+ */
+export async function removeFromTeamPortfolio(itemId: string): Promise<{success: boolean, message: string}> {
+  try {
+    // Verify the user is the admin
+    const session = await supabase.auth.getSession();
+    const currentUserId = session.data.session?.user?.id;
+    
+    if (!currentUserId || currentUserId !== TEAM_ADMIN_ID) {
+      console.error('Only the admin can modify the team portfolio');
+      return { success: false, message: 'Only the admin can modify the team portfolio' };
+    }
+    
+    // Delete the coin from the team portfolio
+    const { error } = await supabase
+      .from('team_portfolio')
+      .delete()
+      .eq('id', itemId);
+      
+    if (error) {
+      console.error('Error removing coin from team portfolio:', error);
+      return { success: false, message: 'Failed to remove coin from team portfolio' };
+    }
+    
+    return { success: true, message: 'Coin removed from team portfolio successfully' };
+    
+  } catch (error) {
+    console.error('Error removing coin from team portfolio:', error);
+    return { success: false, message: 'An unexpected error occurred' };
   }
 }
 
@@ -71,7 +180,7 @@ function createEmptyPortfolio(): PortfolioSummary {
  */
 async function processPortfolioItems(portfolioItems: any[]): Promise<PortfolioSummary> {
   if (!portfolioItems || portfolioItems.length === 0) {
-    console.log('No portfolio items found for admin user.');
+    console.log('No portfolio items found in team portfolio.');
     return createEmptyPortfolio();
   }
   
@@ -100,7 +209,7 @@ async function processPortfolioItems(portfolioItems: any[]): Promise<PortfolioSu
     
     return {
       id: item.id,
-      userId: item.user_id,
+      userId: TEAM_ADMIN_ID, // Use the admin ID as the userId to satisfy the type
       coinId: item.coin_id,
       coinSymbol: item.coin_symbol,
       coinName: item.coin_name,
