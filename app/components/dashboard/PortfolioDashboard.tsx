@@ -7,6 +7,25 @@ import CryptoNews from './CryptoNews';
 import Image from 'next/image';
 import { getBtcPrice, getEthPrice, getGlobalData, GlobalData } from '@/lib/services/coinmarketcap';
 
+// Function to format cryptocurrency prices adaptively based on their value
+const formatCryptoPrice = (price: number): string => {
+  if (!price) return '$---';
+
+  if (price >= 1) {
+    // For prices $1 and above: round to whole number
+    return `$${Math.round(price).toLocaleString()}`;
+  } else if (price >= 0.01) {
+    // For prices between $0.01 and $1: show 2 decimal places
+    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  } else if (price >= 0.0001) {
+    // For prices between $0.0001 and $0.01: show 4 decimal places
+    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
+  } else {
+    // For extremely low prices: show as "< $0.0001"
+    return `< $0.0001`;
+  }
+};
+
 export default function PortfolioDashboard() {
   const { 
     portfolio, 
@@ -141,7 +160,7 @@ export default function PortfolioDashboard() {
           ) : (
             <>
               <p className="text-3xl font-bold">
-                ${btcPrice !== null ? btcPrice.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '---'}
+                {formatCryptoPrice(btcPrice || 0)}
               </p>
               <div className="mt-2 flex items-center">
                 <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs px-2 py-0.5 rounded-full flex items-center">
@@ -172,7 +191,7 @@ export default function PortfolioDashboard() {
           ) : (
             <>
               <p className="text-3xl font-bold">
-                ${ethPrice !== null ? ethPrice.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '---'}
+                {formatCryptoPrice(ethPrice || 0)}
               </p>
               <div className="mt-2 flex items-center">
                 <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full flex items-center">
@@ -213,11 +232,13 @@ export default function PortfolioDashboard() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full">
+                {/* Desktop Table - Hidden on mobile */}
+                <table className="min-w-full hidden md:table">
                   <thead>
                     <tr className="text-left text-gray-500 dark:text-gray-400 text-sm uppercase">
                       <th className="pb-3">Asset</th>
                       <th className="pb-3 text-right">Amount</th>
+                      <th className="pb-3 text-right">Price</th>
                       <th className="pb-3 text-right">Value</th>
                       <th className="pb-3 text-right">24h Change</th>
                     </tr>
@@ -252,20 +273,80 @@ export default function PortfolioDashboard() {
                           {item.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })}
                         </td>
                         <td className="py-4 text-right">
-                          ${item.valueUsd.toLocaleString(undefined, { 
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2 
-                          })}
+                          {formatCryptoPrice(item.priceUsd)}
                         </td>
-                        <td className={`py-4 text-right ${
-                          item.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'
-                        }`}>
-                          {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(1)}%
+                        <td className="py-4 text-right">
+                          {formatCryptoPrice(item.valueUsd)}
+                        </td>
+                        <td className="py-4 text-right">
+                          <span className={`${
+                            item.priceChange24h >= 0 
+                              ? 'text-green-600 dark:text-green-400' 
+                              : 'text-red-600 dark:text-red-400'
+                          }`}>
+                            {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(1)}%
+                          </span>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+
+                {/* Mobile Card Layout - Only shown on mobile */}
+                <div className="md:hidden space-y-4">
+                  {portfolio.items.map(item => (
+                    <div key={item.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+                      <div className="flex items-center mb-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 text-xs font-bold overflow-hidden">
+                          <img 
+                            src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
+                            alt={item.coinSymbol}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = item.coinSymbol.substring(0, 3);
+                              }
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <div className="font-medium">{item.coinSymbol}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{item.coinName}</div>
+                        </div>
+                        <div className="ml-auto flex items-center">
+                          <div className="text-right mr-4">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">Price</div>
+                            <div className="font-medium">{formatCryptoPrice(item.priceUsd)}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">24H</div>
+                            <div className={`font-medium ${
+                              item.priceChange24h >= 0 
+                                ? 'text-green-600 dark:text-green-400' 
+                                : 'text-red-600 dark:text-red-400'
+                            }`}>
+                              {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(1)}%
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-base">
+                        <div>
+                          <div className="text-gray-500 dark:text-gray-400 text-sm mb-1">Amount</div>
+                          <div className="font-medium text-lg">{item.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-gray-500 dark:text-gray-400 text-sm mb-1">Value</div>
+                          <div className="font-medium text-lg">{formatCryptoPrice(item.valueUsd)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -310,9 +391,9 @@ export default function PortfolioDashboard() {
                       <span>{coin.name}</span>
                     </div>
                     <div className="text-right">
-                      <div>${coin.price.toLocaleString()}</div>
+                      <div>{formatCryptoPrice(coin.price)}</div>
                       <div className={`text-sm ${
-                        coin.change24h >= 0 ? 'text-green-500' : 'text-red-500'
+                        coin.change24h >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                       }`}>
                         {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(1)}%
                       </div>
