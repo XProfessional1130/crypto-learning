@@ -87,7 +87,7 @@ export default function WatchlistComponent() {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 h-full">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Watchlist</h2>
         <button 
@@ -109,7 +109,7 @@ export default function WatchlistComponent() {
           </button>
         </div>
       ) : (
-        <div className="space-y-4 w-full">
+        <div className="space-y-4 w-full overflow-hidden">
           {watchlist.map((item) => {
             const targetPercentage = getTargetPercentage(item);
             const isTargetHigher = item.priceTarget ? item.priceTarget > item.price : false;
@@ -121,64 +121,65 @@ export default function WatchlistComponent() {
               <div 
                 key={item.id}
                 onClick={() => handleItemClick(item)}
-                className="bg-gray-50 dark:bg-gray-750 rounded-lg p-4 cursor-pointer hover:shadow-md transition-all border border-gray-100 dark:border-gray-700 w-full flex flex-col md:flex-row md:items-center gap-4"
+                className="bg-gray-50 dark:bg-gray-750 rounded-lg p-3 cursor-pointer hover:shadow-md transition-all border border-gray-100 dark:border-gray-700 w-full"
               >
-                <div className="flex items-center flex-shrink-0">
-                  <div className="w-10 h-10 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center mr-3 overflow-hidden border border-gray-200 dark:border-gray-600">
+                <div className="flex items-center mb-3">
+                  <div className="w-8 h-8 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center mr-2 overflow-hidden border border-gray-200 dark:border-gray-600">
                     <div className="w-full h-full flex items-center justify-center text-gray-700 dark:text-gray-200 font-bold">
                       {item.symbol.substring(0, 3)}
                     </div>
                   </div>
-                  <div>
-                    <div className="text-lg font-bold">{item.symbol}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{item.name}</div>
+                  <div className="min-w-0 flex-shrink">
+                    <div className="text-base font-bold">{item.symbol}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[100px]">{item.name}</div>
                   </div>
                 </div>
                 
-                <div className="flex-grow flex flex-col md:flex-row md:items-center gap-4 w-full">
-                  <div className="md:flex-1 flex flex-row justify-between md:justify-start md:gap-8">
-                    <div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">Current:</div>
-                      <div className="text-lg font-medium">{formatCryptoPrice(item.price)}</div>
-                    </div>
-                    
-                    {item.priceTarget && (
-                      <div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">Target:</div>
-                        <div className="text-lg font-medium">{formatCryptoPrice(item.priceTarget)}</div>
-                      </div>
-                    )}
+                <div className="grid grid-cols-2 gap-2 w-full">
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Current:</div>
+                    <div className="text-sm font-medium">{formatCryptoPrice(item.price)}</div>
                   </div>
                   
                   {item.priceTarget && (
-                    <div className="md:flex-1 flex flex-col">
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Target:</div>
+                      <div className="text-sm font-medium">{formatCryptoPrice(item.priceTarget)}</div>
+                    </div>
+                  )}
+                  
+                  {item.priceTarget && (
+                    <div className="col-span-2 mt-2">
                       <div className="flex justify-between items-center">
-                        <div className="text-sm text-gray-500 dark:text-gray-400">Progress to target</div>
-                        <div className={`text-sm font-bold ${
+                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <span>Progress</span>
+                          <span className="text-xs text-gray-400">to target</span>
+                        </div>
+                        <div className={`text-xs font-bold ${
                           isTargetHigher ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                         }`}>
                           {Math.round(progressPercentage)}%
                         </div>
                       </div>
                       
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden mt-1.5">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden mt-1">
                         <div 
-                          className={`h-3 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
+                          className={`h-2 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
                           style={{ width: `${progressPercentage}%` }}
                         ></div>
                       </div>
+                      
+                      <div className="flex justify-end mt-2">
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          isTargetHigher
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          {formatPercentage(Math.abs(targetPercentage))} {isTargetHigher ? 'upside' : 'downside'}
+                        </span>
+                      </div>
                     </div>
                   )}
-                  
-                  <div className="md:w-auto flex justify-end">
-                    <span className={`text-sm font-medium px-3 py-1.5 rounded-full ${
-                      isTargetHigher
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
-                        : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                    }`}>
-                      {formatPercentage(Math.abs(targetPercentage))} {isTargetHigher ? 'upside' : 'downside'}
-                    </span>
-                  </div>
                 </div>
               </div>
             );
