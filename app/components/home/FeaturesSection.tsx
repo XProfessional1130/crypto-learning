@@ -39,17 +39,25 @@ const features = [
 
 export default function FeaturesSection() {
   return (
-    <Section background="white">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-          Everything You Need to Succeed in Crypto
+    <Section background="none" className="relative py-28">
+      {/* Subtle background elements */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <div className="absolute top-1/4 left-0 w-[300px] h-[300px] rounded-full bg-brand-100/5 dark:bg-brand-900/5 blur-[60px]"></div>
+        <div className="absolute bottom-1/4 right-0 w-[350px] h-[350px] rounded-full bg-indigo-100/5 dark:bg-indigo-900/5 blur-[70px]"></div>
+      </div>
+      
+      <div className="relative z-10 text-center">
+        <h2 className="text-4xl font-bold tracking-tight sm:text-5xl mb-4">
+          <span className="text-light-text-primary dark:text-dark-text-primary">Everything You Need to</span>
+          <br />
+          <span className="text-gradient">Succeed in Crypto</span>
         </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-xl text-gray-500 sm:mt-4">
+        <p className="mx-auto mt-6 max-w-2xl text-xl text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
           Our comprehensive platform provides the tools and knowledge for both beginners and experts.
         </p>
       </div>
 
-      <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((feature, index) => (
           <FeatureCard 
             key={index}

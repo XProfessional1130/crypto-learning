@@ -45,11 +45,22 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>
             <ThemeProvider>
-              {/* Background decorative elements */}
+              {/* Enhanced background decorative elements */}
               <div className="fixed inset-0 z-[-1] overflow-hidden">
-                <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-brand-200/30 dark:bg-brand-900/20 blur-3xl animate-pulse-slow"></div>
-                <div className="absolute bottom-[-30%] left-[-10%] w-[600px] h-[600px] rounded-full bg-brand-100/30 dark:bg-brand-800/20 blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
-                <div className="absolute top-[30%] left-[20%] w-[300px] h-[300px] rounded-full bg-blue-100/20 dark:bg-blue-900/10 blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+                {/* Main large gradient blobs */}
+                <div className="absolute top-[-15%] right-[-10%] w-[700px] h-[700px] rounded-full bg-gradient-to-br from-brand-200/30 to-brand-300/10 dark:from-brand-800/20 dark:to-brand-900/10 blur-[120px] animate-pulse-slow"></div>
+                <div className="absolute bottom-[-20%] left-[-15%] w-[800px] h-[800px] rounded-full bg-gradient-to-tr from-brand-100/20 to-teal-200/10 dark:from-brand-700/15 dark:to-teal-800/10 blur-[150px] animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+                
+                {/* Secondary accent blobs */}
+                <div className="absolute top-[20%] left-[25%] w-[400px] h-[400px] rounded-full bg-gradient-to-r from-blue-200/15 to-indigo-200/10 dark:from-blue-800/10 dark:to-indigo-900/5 blur-[80px] animate-pulse-slow" style={{ animationDelay: '3s' }}></div>
+                <div className="absolute bottom-[30%] right-[20%] w-[350px] h-[350px] rounded-full bg-gradient-to-l from-teal-200/10 to-emerald-200/5 dark:from-teal-800/10 dark:to-emerald-900/5 blur-[70px] animate-pulse-slow" style={{ animationDelay: '4s' }}></div>
+                
+                {/* Subtle noise texture overlay */}
+                <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('/noise.svg')] bg-repeat"></div>
+                
+                {/* Optional light beam effect */}
+                <div className="absolute top-0 left-1/3 w-[2px] h-[200px] bg-gradient-to-b from-brand-300/40 to-transparent blur-[2px] dark:from-brand-400/30"></div>
+                <div className="absolute top-0 left-2/3 w-[1px] h-[150px] bg-gradient-to-b from-brand-200/30 to-transparent blur-[1px] dark:from-brand-300/20"></div>
               </div>
 
               <div className="min-h-screen flex flex-col relative z-0">

@@ -47,19 +47,21 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="glass animate-blur-in border-b border-white/10 dark:border-dark-bg-accent/20">
+    <nav className="backdrop-blur-lg bg-white/10 dark:bg-dark-bg-primary/20 border-b border-white/10 dark:border-white/5 shadow-sm animate-blur-in">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 justify-between">
-          <div className="flex">
+        <div className="flex h-20 justify-between items-center">
+          <div className="flex items-center">
             <div className="flex flex-shrink-0 items-center">
               <ThemeLogo width={180} height={40} />
             </div>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+            <div className="hidden sm:ml-10 sm:flex sm:space-x-8">
               {visibleNavItems.map((item) => (
                 <NavLink 
                   key={item.name}
                   href={item.href}
                   active={pathname === item.href}
+                  className="px-3 py-2 text-sm font-medium transition-all duration-200 hover:text-brand-primary dark:hover:text-brand-light"
+                  activeClassName="text-brand-primary dark:text-brand-light font-semibold after:block after:w-full after:h-0.5 after:mt-1 after:bg-gradient-to-r after:from-brand-primary after:to-brand-light after:rounded-full"
                 >
                   {item.name}
                 </NavLink>
@@ -67,7 +69,7 @@ export default function Navigation() {
             </div>
           </div>
           
-          <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
+          <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-5">
             <ThemeToggle />
             <AuthButtons user={user} onSignOut={handleSignOut} />
           </div>
@@ -77,7 +79,7 @@ export default function Navigation() {
             {/* Mobile menu button */}
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-md p-2 nav-link hover:bg-white/10 dark:hover:bg-dark-bg-accent/30 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              className="inline-flex items-center justify-center rounded-md p-2 text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/10 dark:hover:bg-dark-bg-accent/30 hover:text-brand-primary dark:hover:text-brand-light focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all duration-200"
               aria-expanded="false"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
