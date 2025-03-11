@@ -284,7 +284,7 @@ export default function PortfolioDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Portfolio Section - Takes up 2/3 of the space */}
         <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6" style={{ height: 'calc(100vh - 24rem)' }}>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Your Portfolio</h2>
               <button 
@@ -306,7 +306,7 @@ export default function PortfolioDashboard() {
                 </button>
               </div>
             ) : (
-              <div className="overflow-y-auto max-h-[calc(100vh-24rem)] scrollbar-thin">
+              <div className="overflow-y-auto h-[calc(100%-4rem)] scrollbar-thin">
                 {sortedPortfolioItems.map((item) => (
                   <PortfolioItem 
                     key={item.id} 
@@ -326,7 +326,7 @@ export default function PortfolioDashboard() {
         </div>
         
         {/* Watchlist Section - Takes up 1/3 of the space */}
-        <div className="h-full">
+        <div className="lg:col-span-1 h-auto">
           <WatchlistComponent />
         </div>
       </div>

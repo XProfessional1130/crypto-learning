@@ -128,19 +128,17 @@ const WatchlistComponent = () => {
   const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   
-  // Initial load and refresh control
+  // Only load once on mount, with no dependencies to prevent reruns
   useEffect(() => {
     // Initial data load
     refreshWatchlist();
-    // Don't include refreshWatchlist in deps to prevent continuous refreshing
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array to ensure it only runs once
 
   // Handler for when a coin is added to ensure UI updates
   const handleCoinAdded = useCallback(() => {
-    console.log("Coin added to watchlist, refreshing...");
-    // Manually refresh only when a coin is added
-    refreshWatchlist();
-  }, [refreshWatchlist]);
+    // Do nothing - the state is updated directly in useWatchlist
+  }, []);
 
   // Handler for opening the item detail modal
   const handleItemClick = useCallback((item: WatchlistItem) => {
@@ -152,9 +150,19 @@ const WatchlistComponent = () => {
   const handleDetailModalClose = useCallback(() => {
     setIsDetailModalOpen(false);
     setSelectedItem(null);
-    // Refresh after modal closes to get updated data
-    refreshWatchlist();
-  }, [refreshWatchlist]);
+    // No need to refresh here
+  }, []);
+  
+  // Modal for adding coins - Only render when open
+  const addCoinModal = isAddModalOpen ? (
+    <AddToWatchlistModal
+      isOpen={isAddModalOpen}
+      onClose={() => {
+        setIsAddModalOpen(false);
+      }}
+      onCoinAdded={handleCoinAdded}
+    />
+  ) : null;
 
   if (loading) {
     return (
@@ -179,7 +187,7 @@ const WatchlistComponent = () => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 h-full flex flex-col">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 flex flex-col" style={{ height: 'calc(100vh - 24rem)' }}>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Watchlist</h2>
         <button 
@@ -201,7 +209,7 @@ const WatchlistComponent = () => {
           </button>
         </div>
       ) : (
-        <div className="overflow-y-auto flex-grow space-y-4 w-full pr-1 max-h-[calc(100vh-24rem)] scrollbar-thin">
+        <div className="overflow-y-auto h-[calc(100%-4rem)] space-y-4 w-full pr-1 scrollbar-thin">
           {watchlist.map((item) => {
             const targetPercentage = getTargetPercentage(item);
             const isTargetHigher = item.priceTarget ? item.priceTarget > item.price : false;
@@ -224,13 +232,7 @@ const WatchlistComponent = () => {
       )}
 
       {/* Modal for adding coins - Only render when open */}
-      {isAddModalOpen && (
-        <AddToWatchlistModal
-          isOpen={isAddModalOpen}
-          onClose={() => setIsAddModalOpen(false)}
-          onCoinAdded={handleCoinAdded}
-        />
-      )}
+      {addCoinModal}
 
       {/* Modal for viewing/editing watchlist item details - Only render when open */}
       {isDetailModalOpen && selectedItem && (
