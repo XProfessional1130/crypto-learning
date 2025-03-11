@@ -277,6 +277,9 @@ export default function PortfolioDashboard() {
                         </td>
                         <td className="py-4 text-right">
                           {formatCryptoPrice(item.valueUsd)}
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {item.percentage.toFixed(1)}%
+                          </div>
                         </td>
                         <td className="py-4 text-right">
                           <span className={`${
@@ -341,7 +344,12 @@ export default function PortfolioDashboard() {
                         </div>
                         <div className="text-right">
                           <div className="text-gray-500 dark:text-gray-400 text-sm mb-1">Value</div>
-                          <div className="font-medium text-lg">{formatCryptoPrice(item.valueUsd)}</div>
+                          <div>
+                            <div className="font-medium text-lg">{formatCryptoPrice(item.valueUsd)}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {item.percentage.toFixed(1)}%
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
