@@ -1,5 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CoinData } from '@/types/portfolio';
+import { useAuth } from '@/lib/auth-context';
+import { 
+  fetchWatchlist as fetchWatchlistFromDB, 
+  addToWatchlist as addToWatchlistInDB,
+  updatePriceTarget as updatePriceTargetInDB,
+  removeFromWatchlist as removeFromWatchlistInDB
+} from '@/lib/services/watchlist';
+import { getMultipleCoinsData } from '@/lib/services/coinmarketcap';
 
 // Define watchlist item type
 export interface WatchlistItem {
@@ -15,97 +23,113 @@ export interface WatchlistItem {
 
 /**
  * Hook to manage a user's coin watchlist
- * Note: This is currently using mock data, will be replaced with 
- * actual database integration in a future update
  */
 export function useWatchlist() {
-  // Mock data for watchlist
-  const mockWatchlist: WatchlistItem[] = [
-    { 
-      id: '1', 
-      symbol: 'SOL', 
-      name: 'Solana', 
-      price: 128.04, 
-      change24h: 3.2, 
-      icon: 'SOL',
-      priceTarget: 150.00,
-      createdAt: new Date().toISOString()
-    },
-    { 
-      id: '2', 
-      symbol: 'LINK', 
-      name: 'Chainlink', 
-      price: 14.76, 
-      change24h: -1.8, 
-      icon: 'LINK',
-      priceTarget: 20.00,
-      createdAt: new Date().toISOString()
-    },
-    { 
-      id: '3', 
-      symbol: 'AVAX', 
-      name: 'Avalanche', 
-      price: 35.40, 
-      change24h: 0.5, 
-      icon: 'AVAX',
-      priceTarget: 50.00,
-      createdAt: new Date().toISOString()
-    }
-  ];
-
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>(mockWatchlist);
-  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Add a coin to watchlist
-  const addToWatchlist = (coin: CoinData, priceTarget: number) => {
-    setWatchlist(prev => {
-      // Check if coin already exists in watchlist
-      if (prev.some(item => item.id === coin.id)) {
-        // Update the existing item with new target price
-        return prev.map(item => 
-          item.id === coin.id 
-            ? { 
-                ...item, 
-                price: coin.priceUsd,
-                change24h: coin.priceChange24h,
-                priceTarget: priceTarget,
-                updatedAt: new Date().toISOString()
-              } 
-            : item
-        );
+  // Fetch watchlist items from the database
+  const fetchWatchlist = useCallback(async () => {
+    if (!user) {
+      setWatchlist([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Fetch watchlist items from the database
+      const watchlistItems = await fetchWatchlistFromDB();
+      
+      if (watchlistItems.length === 0) {
+        setWatchlist([]);
+        setLoading(false);
+        return;
       }
       
-      // Add new watchlist item
-      const newItem: WatchlistItem = {
-        id: coin.id,
-        symbol: coin.symbol,
-        name: coin.name,
-        price: coin.priceUsd,
-        change24h: coin.priceChange24h,
-        icon: coin.symbol,
-        priceTarget: priceTarget,
-        createdAt: new Date().toISOString()
-      };
+      // Get coin IDs for price fetching
+      const coinIds = watchlistItems.map(item => item.coin_id);
       
-      return [...prev, newItem];
-    });
+      // Fetch current prices for all coins in the watchlist
+      const pricesMap = await getMultipleCoinsData(coinIds);
+      
+      // Map database items to WatchlistItem format with current prices
+      const watchlistWithPrices = watchlistItems.map(dbItem => {
+        const coinData = pricesMap[dbItem.coin_id];
+        
+        return {
+          id: dbItem.id,
+          symbol: dbItem.symbol,
+          name: dbItem.name,
+          price: coinData?.priceUsd || 0,
+          change24h: coinData?.priceChange24h || 0,
+          icon: dbItem.symbol,
+          priceTarget: dbItem.price_target || undefined,
+          createdAt: dbItem.created_at
+        };
+      });
+      
+      setWatchlist(watchlistWithPrices);
+    } catch (err) {
+      console.error('Error fetching watchlist:', err);
+      setError('Failed to load watchlist. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  // Load watchlist when user changes
+  useEffect(() => {
+    fetchWatchlist();
+  }, [fetchWatchlist]);
+
+  // Add a coin to watchlist
+  const addToWatchlist = async (coin: CoinData, priceTarget: number) => {
+    if (!user) return;
+    
+    try {
+      await addToWatchlistInDB(coin, priceTarget);
+      await fetchWatchlist(); // Refresh the watchlist
+    } catch (err) {
+      console.error('Error adding to watchlist:', err);
+      setError('Failed to add coin to watchlist');
+    }
   };
 
   // Remove a coin from watchlist
-  const removeFromWatchlist = (coinId: string) => {
-    setWatchlist(prev => prev.filter(coin => coin.id !== coinId));
+  const removeFromWatchlist = async (coinId: string) => {
+    if (!user) return;
+    
+    try {
+      await removeFromWatchlistInDB(coinId);
+      setWatchlist(prev => prev.filter(coin => coin.id !== coinId));
+    } catch (err) {
+      console.error('Error removing from watchlist:', err);
+      setError('Failed to remove coin from watchlist');
+    }
   };
 
   // Update price target for a coin
-  const updatePriceTarget = (coinId: string, newPriceTarget: number) => {
-    setWatchlist(prev => 
-      prev.map(item => 
-        item.id === coinId 
-          ? { ...item, priceTarget: newPriceTarget } 
-          : item
-      )
-    );
+  const updatePriceTarget = async (coinId: string, newPriceTarget: number) => {
+    if (!user) return;
+    
+    try {
+      await updatePriceTargetInDB(coinId, newPriceTarget);
+      setWatchlist(prev => 
+        prev.map(item => 
+          item.id === coinId 
+            ? { ...item, priceTarget: newPriceTarget } 
+            : item
+        )
+      );
+    } catch (err) {
+      console.error('Error updating price target:', err);
+      setError('Failed to update price target');
+    }
   };
 
   // Check if a coin is in the watchlist
@@ -119,25 +143,9 @@ export function useWatchlist() {
     return ((coin.priceTarget - coin.price) / coin.price) * 100;
   };
 
-  // Refresh watchlist prices (would connect to API in production)
+  // Refresh watchlist prices
   const refreshWatchlist = async () => {
-    setLoading(true);
-    try {
-      // In a real implementation, this would fetch current prices
-      // For now, we'll just simulate a refresh with small price changes
-      setWatchlist(prev => 
-        prev.map(item => ({
-          ...item,
-          price: item.price * (1 + (Math.random() * 0.02 - 0.01)), // ±1% change
-          change24h: item.change24h + (Math.random() * 1 - 0.5)   // ±0.5% change
-        }))
-      );
-    } catch (error) {
-      console.error('Error refreshing watchlist:', error);
-      setError('Failed to refresh watchlist prices');
-    } finally {
-      setLoading(false);
-    }
+    await fetchWatchlist();
   };
 
   return {

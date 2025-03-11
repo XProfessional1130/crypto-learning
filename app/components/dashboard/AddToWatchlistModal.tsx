@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CoinData } from '@/types/portfolio';
 import { useWatchlist } from '@/lib/hooks/useWatchlist';
 import { searchCoins } from '@/lib/services/coinmarketcap';
+import { formatCryptoPrice, formatPercentage } from '@/lib/utils/format';
 
 interface AddToWatchlistModalProps {
   isOpen: boolean;
@@ -187,13 +188,10 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
                           </div>
                           <div className="text-right">
                             <div>
-                              ${coin.priceUsd.toLocaleString(undefined, { 
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 6 
-                              })}
+                              {formatCryptoPrice(coin.priceUsd)}
                             </div>
                             <div className={`text-xs ${coin.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                              {coin.priceChange24h >= 0 ? '+' : ''}{coin.priceChange24h.toFixed(2)}%
+                              {formatPercentage(coin.priceChange24h)}
                             </div>
                           </div>
                         </button>
@@ -237,10 +235,7 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
                     <div className="text-gray-500 dark:text-gray-400">{selectedCoin.name}</div>
                   </div>
                   <div className="ml-auto font-medium">
-                    ${selectedCoin.priceUsd.toLocaleString(undefined, { 
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 6 
-                    })}
+                    {formatCryptoPrice(selectedCoin.priceUsd)}
                   </div>
                 </div>
                 
@@ -264,17 +259,11 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
                     <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Target Analysis</div>
                     <div className="flex justify-between items-center">
                       <div>Current price:</div>
-                      <div className="font-medium">${selectedCoin.priceUsd.toLocaleString(undefined, { 
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 6 
-                      })}</div>
+                      <div className="font-medium">{formatCryptoPrice(selectedCoin.priceUsd)}</div>
                     </div>
                     <div className="flex justify-between items-center">
                       <div>Target price:</div>
-                      <div className="font-medium">${priceTarget.toLocaleString(undefined, { 
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 6 
-                      })}</div>
+                      <div className="font-medium">{formatCryptoPrice(priceTarget)}</div>
                     </div>
                     <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
                       <div>Distance to target:</div>
@@ -301,8 +290,8 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
                   <button
                     onClick={handleAddCoin}
                     disabled={!priceTarget || priceTarget <= 0 || isAdding}
-                    className={`flex-1 py-2 bg-purple-600 text-white rounded-lg transition-colors ${
-                      !priceTarget || priceTarget <= 0 || isAdding ? 'opacity-50 cursor-not-allowed' : 'hover:bg-purple-700'
+                    className={`flex-1 py-2 bg-teal-600 text-white rounded-lg transition-colors ${
+                      !priceTarget || priceTarget <= 0 || isAdding ? 'opacity-50 cursor-not-allowed' : 'hover:bg-teal-700'
                     }`}
                   >
                     {isAdding ? 'Adding...' : 'Add to Watchlist'}

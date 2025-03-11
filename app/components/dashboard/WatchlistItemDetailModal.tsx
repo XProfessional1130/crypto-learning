@@ -1,20 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useWatchlist, WatchlistItem } from '@/lib/hooks/useWatchlist';
-
-// Format cryptocurrency prices adaptively based on their value
-const formatCryptoPrice = (price: number): string => {
-  if (!price) return '$---';
-
-  if (price >= 1) {
-    return `$${Math.round(price).toLocaleString()}`;
-  } else if (price >= 0.01) {
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  } else if (price >= 0.0001) {
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
-  } else {
-    return `< $0.0001`;
-  }
-};
+import { formatCryptoPrice, formatPercentage } from '@/lib/utils/format';
 
 interface WatchlistItemDetailModalProps {
   isOpen: boolean;
@@ -121,7 +107,7 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
             <button
               className={`flex-1 py-3 text-center ${
                 tab === 'details' 
-                  ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400' 
+                  ? 'text-teal-600 dark:text-teal-400 border-b-2 border-teal-600 dark:border-teal-400' 
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
               onClick={() => setTab('details')}
@@ -131,7 +117,7 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
             <button
               className={`flex-1 py-3 text-center ${
                 tab === 'edit' 
-                  ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400' 
+                  ? 'text-teal-600 dark:text-teal-400 border-b-2 border-teal-600 dark:border-teal-400' 
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
               onClick={() => setTab('edit')}
@@ -154,7 +140,7 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
                       ? 'text-green-600 dark:text-green-400' 
                       : 'text-red-600 dark:text-red-400'
                   }`}>
-                    {localItem.change24h >= 0 ? '+' : ''}{localItem.change24h.toFixed(2)}% (24h)
+                    {formatPercentage(localItem.change24h)} (24h)
                   </div>
                 </div>
                 
@@ -169,7 +155,7 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
                         ? 'text-green-600 dark:text-green-400' 
                         : 'text-red-600 dark:text-red-400'
                     }`}>
-                      {targetPercentage >= 0 ? '+' : ''}{targetPercentage.toFixed(2)}% from current price
+                      {formatPercentage(targetPercentage)} from current price
                     </div>
                   </div>
                 )}
@@ -228,8 +214,8 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
                   <button
                     onClick={handleUpdateTarget}
                     disabled={priceTarget <= 0 || isProcessing}
-                    className={`flex-1 py-2 bg-purple-500 text-white rounded-lg transition-colors ${
-                      priceTarget <= 0 || isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-purple-600'
+                    className={`flex-1 py-2 bg-teal-500 text-white rounded-lg transition-colors ${
+                      priceTarget <= 0 || isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-teal-600'
                     }`}
                   >
                     {isProcessing ? 'Updating...' : 'Update Target'}

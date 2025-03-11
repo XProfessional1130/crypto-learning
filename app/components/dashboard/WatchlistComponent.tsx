@@ -3,21 +3,7 @@ import { useWatchlist, WatchlistItem } from '@/lib/hooks/useWatchlist';
 import { CoinData } from '@/types/portfolio';
 import WatchlistItemDetailModal from './WatchlistItemDetailModal';
 import AddToWatchlistModal from './AddToWatchlistModal';
-
-// Format cryptocurrency prices adaptively based on their value
-const formatCryptoPrice = (price: number): string => {
-  if (!price) return '$---';
-
-  if (price >= 1) {
-    return `$${Math.round(price).toLocaleString()}`;
-  } else if (price >= 0.01) {
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  } else if (price >= 0.0001) {
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
-  } else {
-    return `< $0.0001`;
-  }
-};
+import { formatCryptoPrice, formatPercentage } from '@/lib/utils/format';
 
 export default function WatchlistComponent() {
   const {
@@ -79,7 +65,7 @@ export default function WatchlistComponent() {
         <h2 className="text-xl font-bold">Watchlist</h2>
         <button 
           onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
         >
           Add Coin
         </button>
@@ -148,7 +134,7 @@ export default function WatchlistComponent() {
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
                           : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                       }`}>
-                        {item.change24h >= 0 ? '+' : ''}{item.change24h.toFixed(2)}%
+                        {formatPercentage(item.change24h)}
                       </span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-right font-medium">
@@ -161,7 +147,7 @@ export default function WatchlistComponent() {
                             ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
                             : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                         }`}>
-                          {targetPercentage >= 0 ? '+' : ''}{targetPercentage.toFixed(2)}%
+                          {formatPercentage(targetPercentage)}
                         </span>
                       ) : '—'}
                     </td>
