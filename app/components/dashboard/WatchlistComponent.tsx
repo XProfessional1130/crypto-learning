@@ -121,75 +121,77 @@ export default function WatchlistComponent() {
               <div 
                 key={item.id}
                 onClick={() => handleItemClick(item)}
-                className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-all border border-gray-200 dark:border-gray-700 w-full"
+                className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-all border border-gray-200 dark:border-gray-700 w-full"
               >
-                <div className="flex items-center mb-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 text-xs font-bold overflow-hidden">
-                    <img 
-                      src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
-                      alt={item.symbol}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent) {
-                          parent.innerHTML = item.symbol.substring(0, 3);
-                        }
-                      }}
-                    />
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-2 text-xs font-bold overflow-hidden">
+                      <img 
+                        src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
+                        alt={item.symbol}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            parent.innerHTML = item.symbol.substring(0, 3);
+                          }
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <div className="font-medium">{item.symbol}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{item.name}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-medium">{item.symbol}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{item.name}</div>
+
+                  <div className="flex items-end gap-3">
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Current</div>
+                      <div className="font-medium">{formatCryptoPrice(item.price)}</div>
+                    </div>
+                    
+                    {item.priceTarget && (
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Target</div>
+                        <div className="font-medium">{formatCryptoPrice(item.priceTarget)}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 text-base">
+                {item.priceTarget && (
                   <div>
-                    <div className="text-gray-500 dark:text-gray-400 text-sm mb-1">Current</div>
-                    <div className="font-medium text-lg">{formatCryptoPrice(item.price)}</div>
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Progress to target
+                      </div>
+                      <div className={`text-xs font-medium ${
+                        isTargetHigher ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                      }`}>
+                        {Math.round(progressPercentage)}%
+                      </div>
+                    </div>
+                    
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className={`h-2 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
+                        style={{ width: `${progressPercentage}%` }}
+                      ></div>
+                    </div>
+                    
+                    <div className="flex justify-end mt-1">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        isTargetHigher
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
+                          : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                      }`}>
+                        {formatPercentage(Math.abs(targetPercentage))} {isTargetHigher ? 'upside' : 'downside'}
+                      </span>
+                    </div>
                   </div>
-                  
-                  {item.priceTarget && (
-                    <div className="text-right">
-                      <div className="text-gray-500 dark:text-gray-400 text-sm mb-1">Target</div>
-                      <div className="font-medium text-lg">{formatCryptoPrice(item.priceTarget)}</div>
-                    </div>
-                  )}
-                  
-                  {item.priceTarget && (
-                    <div className="col-span-2 mt-2">
-                      <div className="flex justify-between items-center">
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          Progress to target
-                        </div>
-                        <div className={`text-sm font-medium ${
-                          isTargetHigher ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                        }`}>
-                          {Math.round(progressPercentage)}%
-                        </div>
-                      </div>
-                      
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden mt-1">
-                        <div 
-                          className={`h-2 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
-                          style={{ width: `${progressPercentage}%` }}
-                        ></div>
-                      </div>
-                      
-                      <div className="flex justify-end mt-2">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          isTargetHigher
-                            ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
-                            : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                        }`}>
-                          {formatPercentage(Math.abs(targetPercentage))} {isTargetHigher ? 'upside' : 'downside'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             );
           })}
