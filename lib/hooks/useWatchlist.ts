@@ -12,6 +12,7 @@ import { getMultipleCoinsData } from '@/lib/services/coinmarketcap';
 // Define watchlist item type
 export interface WatchlistItem {
   id: string;
+  coinId: string;  // Added coinId to track the CoinMarketCap ID
   symbol: string;
   name: string;
   price: number;
@@ -96,6 +97,7 @@ export function useWatchlist() {
         
         return {
           id: dbItem.id,
+          coinId: dbItem.coin_id,  // Store the coin_id from the database for CoinMarketCap images
           symbol: dbItem.symbol,
           name: dbItem.name,
           price: coinData?.priceUsd || 0,
@@ -120,7 +122,7 @@ export function useWatchlist() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, loading]);
 
   // Load watchlist when user changes
   useEffect(() => {
@@ -207,7 +209,7 @@ export function useWatchlist() {
 
   // Check if a coin is in the watchlist
   const isInWatchlist = (coinId: string): boolean => {
-    return watchlist.some(coin => coin.id === coinId);
+    return watchlist.some(coin => coin.coinId === coinId);
   };
   
   // Get target percentage difference

@@ -126,7 +126,7 @@ export default function WatchlistComponent() {
                 <div className="flex items-center mb-3">
                   <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-2 text-xs font-bold overflow-hidden">
                     <img 
-                      src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.id}.png`}
+                      src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
                       alt={item.symbol}
                       className="w-full h-full object-cover"
                       onError={(e) => {
