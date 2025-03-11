@@ -10,6 +10,8 @@ interface TeamAddToWatchlistModalProps {
 }
 
 export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }: TeamAddToWatchlistModalProps) {
+  console.log('TeamAddToWatchlistModal rendered with isOpen:', isOpen);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<CoinData[]>([]);
   const [selectedCoin, setSelectedCoin] = useState<CoinData | null>(null);
@@ -98,8 +100,12 @@ export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }
     handleSearch();
   };
   
-  if (!isOpen) return null;
+  if (!isOpen) {
+    console.log('TeamAddToWatchlistModal returning null because isOpen is false');
+    return null;
+  }
 
+  console.log('TeamAddToWatchlistModal rendering content');
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>

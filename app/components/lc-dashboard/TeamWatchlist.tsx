@@ -128,7 +128,11 @@ export default function TeamWatchlist({
         {isAdmin ? (
           <div className="mt-4">
             <button 
-              onClick={() => setShowAddToWatchlistModal(true)}
+              onClick={() => {
+                console.log('Empty state Add Asset button clicked');
+                setShowAddToWatchlistModal(true);
+                console.log('showAddToWatchlistModal set to:', true);
+              }}
               className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center"
             >
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -149,7 +153,11 @@ export default function TeamWatchlist({
       {isAdmin && (
         <div className="flex justify-end mb-4">
           <button 
-            onClick={() => setShowAddToWatchlistModal(true)}
+            onClick={() => {
+              console.log('Add Asset button clicked');
+              setShowAddToWatchlistModal(true);
+              console.log('showAddToWatchlistModal set to:', true);
+            }}
             className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center"
           >
             <PlusCircle className="mr-2 h-4 w-4" />
@@ -275,14 +283,12 @@ export default function TeamWatchlist({
         </p>
       </div>
 
-      {/* Add To Watchlist Modal - Only shown when admin clicks Add Asset button */}
-      {showAddToWatchlistModal && (
-        <TeamAddToWatchlistModal
-          isOpen={showAddToWatchlistModal}
-          onClose={() => setShowAddToWatchlistModal(false)}
-          onCoinAdded={handleAddToWatchlist}
-        />
-      )}
+      {/* Add To Watchlist Modal - always render but control visibility with isOpen */}
+      <TeamAddToWatchlistModal
+        isOpen={showAddToWatchlistModal}
+        onClose={() => setShowAddToWatchlistModal(false)}
+        onCoinAdded={handleAddToWatchlist}
+      />
 
       {/* Item Detail Modal - Only shown when admin clicks on an item */}
       {showItemDetailModal && selectedItem && (
