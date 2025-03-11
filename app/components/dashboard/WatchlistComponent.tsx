@@ -67,7 +67,7 @@ export default function WatchlistComponent() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 dark:border-blue-400"></div>
       </div>
     );
   }
@@ -75,9 +75,9 @@ export default function WatchlistComponent() {
   if (error) {
     return (
       <div className="text-center py-10">
-        <p className="text-red-500">{error}</p>
+        <p className="text-red-500 dark:text-red-400">{error}</p>
         <button 
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors"
           onClick={refreshWatchlist}
         >
           Try Again
@@ -89,10 +89,10 @@ export default function WatchlistComponent() {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">Watchlist</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Watchlist</h2>
         <button 
           onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
+          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-800 text-white rounded-lg transition-colors"
         >
           Add Coin
         </button>
@@ -103,13 +103,13 @@ export default function WatchlistComponent() {
           <p className="text-gray-500 dark:text-gray-400 mb-4">Your watchlist is empty</p>
           <button 
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-lg transition-colors"
           >
             Add your first coin
           </button>
         </div>
       ) : (
-        <div className="overflow-y-auto flex-grow space-y-4 w-full pr-1 max-h-[calc(100vh-24rem)]">
+        <div className="overflow-y-auto flex-grow space-y-4 w-full pr-1 max-h-[calc(100vh-24rem)] scrollbar-thin dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">
           {watchlist.map((item) => {
             const targetPercentage = getTargetPercentage(item);
             const isTargetHigher = item.priceTarget ? item.priceTarget > item.price : false;
@@ -121,7 +121,7 @@ export default function WatchlistComponent() {
               <div 
                 key={item.id}
                 onClick={() => handleItemClick(item)}
-                className="bg-gray-50 dark:bg-gray-750 rounded-lg p-3 cursor-pointer hover:shadow-md transition-all border border-gray-100 dark:border-gray-700 w-full"
+                className="bg-gray-50 dark:bg-gray-750 rounded-lg p-3 cursor-pointer hover:shadow-md dark:hover:shadow-black/30 transition-all border border-gray-100 dark:border-gray-700 w-full"
               >
                 <div className="flex items-center mb-3">
                   <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-2 text-xs font-bold overflow-hidden">
@@ -140,7 +140,7 @@ export default function WatchlistComponent() {
                     />
                   </div>
                   <div className="min-w-0 flex-shrink">
-                    <div className="text-base font-bold">{item.symbol}</div>
+                    <div className="text-base font-bold text-gray-900 dark:text-white">{item.symbol}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[100px]">{item.name}</div>
                   </div>
                 </div>
@@ -148,13 +148,13 @@ export default function WatchlistComponent() {
                 <div className="grid grid-cols-2 gap-2 w-full">
                   <div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">Current:</div>
-                    <div className="text-sm font-medium">{formatCryptoPrice(item.price)}</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatCryptoPrice(item.price)}</div>
                   </div>
                   
                   {item.priceTarget && (
                     <div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">Target:</div>
-                      <div className="text-sm font-medium">{formatCryptoPrice(item.priceTarget)}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{formatCryptoPrice(item.priceTarget)}</div>
                     </div>
                   )}
                   
@@ -163,7 +163,7 @@ export default function WatchlistComponent() {
                       <div className="flex justify-between items-center">
                         <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                           <span>Progress</span>
-                          <span className="text-xs text-gray-400">to target</span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">to target</span>
                         </div>
                         <div className={`text-xs font-bold ${
                           isTargetHigher ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
@@ -174,7 +174,7 @@ export default function WatchlistComponent() {
                       
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden mt-1">
                         <div 
-                          className={`h-2 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
+                          className={`h-2 rounded-full ${isTargetHigher ? 'bg-green-500 dark:bg-green-600' : 'bg-red-500 dark:bg-red-600'}`}
                           style={{ width: `${progressPercentage}%` }}
                         ></div>
                       </div>
@@ -182,8 +182,8 @@ export default function WatchlistComponent() {
                       <div className="flex justify-end mt-2">
                         <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                           isTargetHigher
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' 
+                            : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
                         }`}>
                           {formatPercentage(Math.abs(targetPercentage))} {isTargetHigher ? 'upside' : 'downside'}
                         </span>
