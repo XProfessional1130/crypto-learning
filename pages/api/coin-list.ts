@@ -1,25 +1,21 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { CoinData } from '@/types/portfolio';
+import { getClientIp } from '@/lib/utils/api-helpers';
+import { CacheService } from '@/lib/services/cache-service';
 
-type CoinListResponse = {
+// Define response type
+interface CoinListResponse {
   success: boolean;
-  data?: any[];
+  data?: CoinData[];
   error?: string;
 }
 
-// Simple in-memory store for rate limiting
-// In production, use Redis or similar for distributed rate limiting
-const RATE_LIMIT_WINDOW = 5 * 60 * 1000; // 5 minute window
-const MAX_REQUESTS_PER_WINDOW = 2; // Only 2 top list requests per 5 minutes
-const ipRequestCounts = new Map<string, { count: number; timestamp: number }>();
+// Rate limiting parameters
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute in milliseconds
+const MAX_REQUESTS_PER_WINDOW = 10;  // 10 requests per minute
 
-// Helper function to get client IP address
-const getClientIp = (req: NextApiRequest): string => {
-  const forwarded = req.headers['x-forwarded-for'];
-  const ip = forwarded 
-    ? (typeof forwarded === 'string' ? forwarded : forwarded[0])
-    : req.socket.remoteAddress || 'unknown';
-  return typeof ip === 'string' ? ip : 'unknown';
-};
+// Store request counts by IP
+const ipRequestCounts = new Map<string, { count: number; timestamp: number }>();
 
 export default async function handler(
   req: NextApiRequest,
@@ -57,18 +53,34 @@ export default async function handler(
   }
 
   try {
+    // Get limit from query params or default to 100
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
+    // Make sure limit is reasonable
+    const safeLimit = Math.min(Math.max(limit, 10), 200);
+    
+    // Create a cache key based on the limit
+    const cacheKey = `coin_list_${safeLimit}`;
+    
+    // Try to get from cache first - cache for 30 minutes (slightly higher than in-memory cache)
+    const cachedData = await CacheService.get<CoinData[]>(
+      cacheKey, 
+      CacheService.SOURCES.COIN_MARKET_CAP
+    );
+    
+    if (cachedData) {
+      console.log(`Serving coin list from database cache (limit: ${safeLimit})`);
+      return res.status(200).json({ success: true, data: cachedData });
+    }
+    
+    // Cache miss - fetch from CoinMarketCap API
+    console.log(`Cache miss for coin list (limit: ${safeLimit}), fetching from CoinMarketCap`);
+    
     // Get API key from environment variable
     const apiKey = process.env.CMC_API_KEY;
     
     if (!apiKey) {
       return res.status(500).json({ success: false, error: 'API key not configured' });
     }
-    
-    // Get limit from query params or default to 100
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
-    
-    // Make sure limit is reasonable
-    const safeLimit = Math.min(Math.max(limit, 10), 200);
     
     // Make request to CoinMarketCap
     const response = await fetch(`https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=${safeLimit}`, {
@@ -107,6 +119,14 @@ export default async function handler(
         slug: coin.slug
       };
     });
+    
+    // Store in database cache
+    await CacheService.set(
+      cacheKey, 
+      coinList, 
+      CacheService.SOURCES.COIN_MARKET_CAP,
+      30 // Cache for 30 minutes
+    );
     
     return res.status(200).json({ success: true, data: coinList });
   } catch (error) {
