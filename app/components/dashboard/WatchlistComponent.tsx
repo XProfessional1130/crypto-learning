@@ -18,18 +18,20 @@ export default function WatchlistComponent() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [forceRefresh, setForceRefresh] = useState(0);
-
-  // Force refresh the watchlist when component mounts and after adding a coin
+  
+  // Don't auto-refresh - this was causing too many API calls
+  // Only refresh on mount
   useEffect(() => {
+    // Initial data load
     refreshWatchlist();
-  }, [refreshWatchlist, forceRefresh]);
+    // Don't include refreshWatchlist in deps to prevent continuous refreshing
+  }, []);
 
   // Handler for when a coin is added to ensure UI updates
   const handleCoinAdded = () => {
     console.log("Coin added to watchlist, refreshing...");
-    // Increment to trigger the useEffect and force a refresh
-    setForceRefresh(prev => prev + 1);
+    // Manually refresh only when a coin is added
+    refreshWatchlist();
   };
 
   // Handler for opening the item detail modal
@@ -42,8 +44,8 @@ export default function WatchlistComponent() {
   const handleDetailModalClose = () => {
     setIsDetailModalOpen(false);
     setSelectedItem(null);
-    // Also refresh the watchlist when modal closes
-    setForceRefresh(prev => prev + 1);
+    // Refresh after modal closes to get updated data
+    refreshWatchlist();
   };
 
   // Calculate progress percentage toward target (for progress bar)
@@ -76,7 +78,7 @@ export default function WatchlistComponent() {
         <p className="text-red-500">{error}</p>
         <button 
           className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          onClick={() => setForceRefresh(prev => prev + 1)}
+          onClick={refreshWatchlist}
         >
           Try Again
         </button>

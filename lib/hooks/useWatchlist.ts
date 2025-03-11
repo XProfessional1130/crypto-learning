@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { CoinData } from '@/types/portfolio';
 import { useAuth } from '@/lib/auth-context';
 import { 
@@ -21,6 +21,10 @@ export interface WatchlistItem {
   createdAt?: string;
 }
 
+// Cache settings
+const REFRESH_COOLDOWN = 10000; // 10 seconds between API requests
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 /**
  * Hook to manage a user's coin watchlist
  */
@@ -29,8 +33,10 @@ export function useWatchlist() {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const lastRefreshRef = useRef<number>(0);
+  const watchlistCacheRef = useRef<{data: WatchlistItem[], timestamp: number} | null>(null);
 
-  // Fetch watchlist items from the database
+  // Fetch watchlist items from the database with rate limiting and caching
   const fetchWatchlist = useCallback(async () => {
     if (!user) {
       setWatchlist([]);
@@ -38,8 +44,34 @@ export function useWatchlist() {
       return;
     }
 
+    // Check if we're in the cooldown period to prevent spamming API
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshRef.current;
+    
+    // If we have cached data and either in cooldown or cache is still fresh
+    if (watchlistCacheRef.current) {
+      // If in cooldown or cache is still fresh, use cached data
+      if (timeSinceLastRefresh < REFRESH_COOLDOWN || 
+          (now - watchlistCacheRef.current.timestamp) < CACHE_DURATION) {
+        
+        // If we're in loading state, update it
+        if (loading) {
+          setWatchlist(watchlistCacheRef.current.data);
+          setLoading(false);
+          setError(null);
+        }
+        
+        // If we're in cooldown, don't proceed with fetch
+        if (timeSinceLastRefresh < REFRESH_COOLDOWN) {
+          console.log(`Skipping watchlist refresh (last refresh: ${timeSinceLastRefresh}ms ago)`);
+          return;
+        }
+      }
+    }
+
     setLoading(true);
     setError(null);
+    lastRefreshRef.current = now;
 
     try {
       // Fetch watchlist items from the database
@@ -47,6 +79,7 @@ export function useWatchlist() {
       
       if (watchlistItems.length === 0) {
         setWatchlist([]);
+        watchlistCacheRef.current = { data: [], timestamp: now };
         setLoading(false);
         return;
       }
@@ -73,10 +106,17 @@ export function useWatchlist() {
         };
       });
       
+      // Update state and cache
       setWatchlist(watchlistWithPrices);
+      watchlistCacheRef.current = { data: watchlistWithPrices, timestamp: now };
     } catch (err) {
       console.error('Error fetching watchlist:', err);
       setError('Failed to load watchlist. Please try again.');
+      
+      // If we have cached data, fall back to it
+      if (watchlistCacheRef.current) {
+        setWatchlist(watchlistCacheRef.current.data);
+      }
     } finally {
       setLoading(false);
     }
@@ -116,7 +156,14 @@ export function useWatchlist() {
     
     try {
       await removeFromWatchlistInDB(coinId);
-      setWatchlist(prev => prev.filter(coin => coin.id !== coinId));
+      setWatchlist(prev => {
+        const updated = prev.filter(coin => coin.id !== coinId);
+        // Update the cache
+        if (watchlistCacheRef.current) {
+          watchlistCacheRef.current.data = updated;
+        }
+        return updated;
+      });
     } catch (err) {
       console.error('Error removing from watchlist:', err);
       if (err instanceof Error) {
@@ -136,13 +183,18 @@ export function useWatchlist() {
     
     try {
       await updatePriceTargetInDB(coinId, newPriceTarget);
-      setWatchlist(prev => 
-        prev.map(item => 
+      setWatchlist(prev => {
+        const updated = prev.map(item => 
           item.id === coinId 
             ? { ...item, priceTarget: newPriceTarget } 
             : item
-        )
-      );
+        );
+        // Update the cache
+        if (watchlistCacheRef.current) {
+          watchlistCacheRef.current.data = updated;
+        }
+        return updated;
+      });
     } catch (err) {
       console.error('Error updating price target:', err);
       if (err instanceof Error) {
@@ -164,8 +216,17 @@ export function useWatchlist() {
     return ((coin.priceTarget - coin.price) / coin.price) * 100;
   };
 
-  // Refresh watchlist prices
+  // Refresh watchlist prices (with rate limiting)
   const refreshWatchlist = async () => {
+    // Check if we need to respect the cooldown
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshRef.current;
+    
+    if (timeSinceLastRefresh < REFRESH_COOLDOWN) {
+      console.log(`Refresh rate limited. Try again in ${Math.ceil((REFRESH_COOLDOWN - timeSinceLastRefresh)/1000)}s`);
+      return;
+    }
+    
     await fetchWatchlist();
   };
 
