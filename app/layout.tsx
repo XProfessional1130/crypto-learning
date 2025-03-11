@@ -13,6 +13,11 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: "LearningCrypto Platform",
   description: "Learn crypto the smart way",
+  icons: {
+    icon: '/logos/icon.png',
+    apple: '/logos/icon.png',
+    shortcut: '/logos/icon.png'
+  },
 };
 
 export default function RootLayout({
