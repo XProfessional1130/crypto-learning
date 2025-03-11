@@ -82,80 +82,72 @@ export default function WatchlistComponent() {
           </button>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead>
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Coin</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Price</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">24h Change</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Target Price</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Target %</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {watchlist.map((item) => {
-                const targetPercentage = getTargetPercentage(item);
-                return (
-                  <tr 
-                    key={item.id}
-                    onClick={() => handleItemClick(item)}
-                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
-                  >
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 overflow-hidden">
-                          <img 
-                            src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.id}.png`}
-                            alt={item.symbol}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              const parent = target.parentElement;
-                              if (parent) {
-                                parent.innerHTML = item.symbol.substring(0, 3);
-                              }
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <div className="font-medium">{item.symbol}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">{item.name}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-right font-medium">
-                      {formatCryptoPrice(item.price)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-right">
-                      <span className={`inline-block px-2 py-1 rounded-full text-sm font-medium ${
-                        item.change24h >= 0 
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {watchlist.map((item) => {
+            const targetPercentage = getTargetPercentage(item);
+            const isTargetHigher = item.priceTarget ? item.priceTarget > item.price : false;
+            
+            return (
+              <div 
+                key={item.id}
+                onClick={() => handleItemClick(item)}
+                className="bg-gray-50 dark:bg-gray-750 rounded-lg p-4 cursor-pointer hover:shadow-md transition-all border border-gray-100 dark:border-gray-700"
+              >
+                <div className="flex items-center mb-3">
+                  <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 overflow-hidden">
+                    <img 
+                      src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.id}.png`}
+                      alt={item.symbol}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = item.symbol.substring(0, 3);
+                        }
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <div className="font-medium">{item.symbol}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{item.name}</div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-between items-baseline mb-1">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Current:</div>
+                  <div className="font-medium">{formatCryptoPrice(item.price)}</div>
+                </div>
+                
+                {item.priceTarget && (
+                  <>
+                    <div className="flex justify-between items-baseline mb-1">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Target:</div>
+                      <div className="font-medium">{formatCryptoPrice(item.priceTarget)}</div>
+                    </div>
+                    
+                    <div className="mt-2 w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
+                      <div 
+                        className={`h-1.5 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
+                        style={{ width: `${Math.min(Math.abs(targetPercentage), 100)}%` }}
+                      ></div>
+                    </div>
+                    
+                    <div className="flex justify-end mt-1">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        isTargetHigher
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
                           : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                       }`}>
-                        {formatPercentage(item.change24h)}
+                        {formatPercentage(targetPercentage)}
                       </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-right font-medium">
-                      {item.priceTarget ? formatCryptoPrice(item.priceTarget) : '—'}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-right">
-                      {item.priceTarget ? (
-                        <span className={`inline-block px-2 py-1 rounded-full text-sm font-medium ${
-                          targetPercentage >= 0 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                        }`}>
-                          {formatPercentage(targetPercentage)}
-                        </span>
-                      ) : '—'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
