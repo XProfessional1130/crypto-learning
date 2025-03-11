@@ -71,10 +71,16 @@ const StatsCard = memo(({ title, value, icon = null, dominance = null, loading =
 StatsCard.displayName = 'StatsCard';
 
 // Memoized Portfolio Item component
-const PortfolioItem = memo(({ item, onItemClick }: {
+const PortfolioItem = memo(({ item, onItemClick, totalPortfolioValue }: {
   item: PortfolioItemWithPrice;
   onItemClick: (item: PortfolioItemWithPrice) => void;
+  totalPortfolioValue: number;
 }) => {
+  // Calculate percentage of total portfolio
+  const portfolioPercentage = totalPortfolioValue > 0 
+    ? (item.valueUsd / totalPortfolioValue) * 100 
+    : 0;
+
   return (
     <div
       onClick={() => onItemClick(item)}
@@ -103,9 +109,18 @@ const PortfolioItem = memo(({ item, onItemClick }: {
       </div>
       <div className="text-right">
         <p className="font-medium">${item.valueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-        <p className={`text-sm ${item.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-          {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(2)}%
-        </p>
+        <div className="flex items-center justify-end space-x-2">
+          <p className={`text-sm ${item.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(2)}%
+          </p>
+          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+            <svg className="w-3.5 h-3.5 mr-0.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12,2L4,6.5v11L12,22l8-4.5v-11L12,2z M12,4.311l6,3.375v8.627l-6,3.375l-6-3.375V7.686L12,4.311z" />
+              <path d="M12,6.5L7,9.25v5.5L12,17.5l5-2.75v-5.5L12,6.5z M12,8.122l3,1.65v3.456l-3,1.65l-3-1.65V9.772L12,8.122z" />
+            </svg>
+            {portfolioPercentage.toFixed(1)}%
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -293,7 +308,12 @@ export default function PortfolioDashboard() {
             ) : (
               <div className="overflow-y-auto max-h-[calc(100vh-24rem)] scrollbar-thin">
                 {sortedPortfolioItems.map((item) => (
-                  <PortfolioItem key={item.id} item={item} onItemClick={handleAssetClick} />
+                  <PortfolioItem 
+                    key={item.id} 
+                    item={item} 
+                    onItemClick={handleAssetClick} 
+                    totalPortfolioValue={portfolio?.totalValueUsd || 0} 
+                  />
                 ))}
               </div>
             )}
