@@ -1,12 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
 import { PortfolioItem, PortfolioItemWithPrice, PortfolioSummary } from '@/types/portfolio';
 import { getCoinData, getMultipleCoinsData, getBtcPrice } from './coinmarketcap';
+import supabase from './supabase-client';
 
 const PORTFOLIO_LIMIT = 30;
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function getUserPortfolio(userId: string): Promise<PortfolioSummary> {
   try {

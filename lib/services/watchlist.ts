@@ -1,13 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import { WatchlistItem } from '@/lib/hooks/useWatchlist';
 import { CoinData } from '@/types/portfolio';
-
-// Supabase configuration
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-// Create Supabase client
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import supabase from './supabase-client';
 
 export interface WatchlistDbItem {
   id: string;

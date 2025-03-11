@@ -1,10 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
-// Supabase client singleton
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-// Create a single client for the entire application
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
+// Export the shared supabase client
 export default supabase; 
