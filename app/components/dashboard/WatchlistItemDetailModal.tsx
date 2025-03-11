@@ -101,7 +101,7 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
             <div className="flex items-center">
               <div className="flex-shrink-0 h-12 w-12 relative mr-3">
                 <img 
-                  src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${localItem.id}.png`}
+                  src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${localItem.coinId}.png`}
                   alt={localItem.symbol}
                   className="rounded-full bg-white p-0.5 border border-gray-200 dark:border-gray-600 w-full h-full object-cover"
                   onError={(e) => {
@@ -154,7 +154,7 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
           <div className="p-6">
             {tab === 'details' ? (
               <div className="space-y-6">
-                <div className="bg-gray-50 dark:bg-gray-750 rounded-lg p-5 border border-gray-100 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-200 dark:border-gray-700">
                   <div className="flex justify-between items-baseline mb-3">
                     <div className="text-sm text-gray-500 dark:text-gray-400">Current Price</div>
                     <div className="text-2xl font-bold">
@@ -174,7 +174,7 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
                       <div className="mt-4">
                         <div className="flex justify-between items-center mb-2">
                           <div className="text-sm text-gray-500 dark:text-gray-400">Progress to target</div>
-                          <div className={`text-sm font-bold ${
+                          <div className={`text-sm font-medium ${
                             isTargetHigher ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                           }`}>
                             {Math.round(progressPercentage)}%
@@ -189,10 +189,10 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
                         </div>
                         
                         <div className="flex justify-end mt-3">
-                          <span className={`text-sm font-medium px-2 py-1 rounded-full ${
+                          <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
                             isTargetHigher
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
-                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
+                              : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                           }`}>
                             {formatPercentage(Math.abs(targetPercentage))} {isTargetHigher ? 'upside' : 'downside'}
                           </span>
@@ -202,7 +202,7 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
                   )}
                 </div>
                 
-                <div className="p-4 border border-gray-100 dark:border-gray-700 rounded-lg">
+                <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                   <div className="flex justify-between">
                     <span className="text-gray-500 dark:text-gray-400">Added on</span>
                     <span className="font-medium">
@@ -234,7 +234,7 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
                 </div>
                 
                 {priceTarget > 0 && (
-                  <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                     <div className="text-sm text-gray-600 dark:text-gray-300 mb-3">Target Analysis</div>
                     
                     <div className="flex justify-between items-center mb-2">
@@ -251,14 +251,14 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
                       <>
                         <div className="flex justify-between items-center mb-2">
                           <div className="text-sm">Progress to target</div>
-                          <div className={`text-sm font-bold ${
-                            priceTarget > localItem.price ? 'text-green-500' : 'text-red-500'
+                          <div className={`text-sm font-medium ${
+                            priceTarget > localItem.price ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                           }`}>
                             {Math.round(calculateProgressPercentage(localItem.price, priceTarget))}%
                           </div>
                         </div>
                         
-                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3 overflow-hidden">
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                           <div 
                             className={`h-3 rounded-full ${priceTarget > localItem.price ? 'bg-green-500' : 'bg-red-500'}`}
                             style={{ width: `${calculateProgressPercentage(localItem.price, priceTarget)}%` }}
@@ -266,8 +266,10 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
                         </div>
                         
                         <div className="flex justify-end mt-3">
-                          <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                            priceTarget > localItem.price ? 'text-green-500' : 'text-red-500'
+                          <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
+                            priceTarget > localItem.price 
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
+                              : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                           }`}>
                             {formatPercentage(Math.abs(((priceTarget - localItem.price) / localItem.price) * 100))} 
                             {priceTarget > localItem.price ? ' upside' : ' downside'}
@@ -282,8 +284,8 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
                   <button
                     onClick={handleUpdateTarget}
                     disabled={priceTarget <= 0 || isProcessing}
-                    className={`flex-1 py-2 bg-teal-500 text-white rounded-lg transition-colors ${
-                      priceTarget <= 0 || isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-teal-600'
+                    className={`flex-1 py-2 bg-teal-600 text-white rounded-lg transition-colors ${
+                      priceTarget <= 0 || isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-teal-700'
                     }`}
                   >
                     {isProcessing ? 'Updating...' : 'Update Target'}
@@ -292,8 +294,8 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
                   <button
                     onClick={handleRemoveItem}
                     disabled={isProcessing}
-                    className={`flex-1 py-2 bg-red-500 text-white rounded-lg transition-colors ${
-                      isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-600'
+                    className={`flex-1 py-2 bg-red-600 text-white rounded-lg transition-colors ${
+                      isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-700'
                     }`}
                   >
                     {isProcessing ? 'Removing...' : 'Remove Coin'}

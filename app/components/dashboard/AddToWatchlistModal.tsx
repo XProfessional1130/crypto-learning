@@ -143,7 +143,7 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
                         <button
                           key={coin.id}
                           onClick={() => handleSelectCoin(coin)}
-                          className={`w-full p-3 flex items-center rounded-lg transition-colors border-b border-gray-100 dark:border-gray-800 ${
+                          className={`w-full p-3 flex items-center rounded-lg transition-colors border-b border-gray-200 dark:border-gray-700 ${
                             alreadyInWatchlist 
                               ? 'opacity-60 bg-gray-50 dark:bg-gray-700 cursor-not-allowed' 
                               : 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'
@@ -190,7 +190,7 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
                             <div>
                               {formatCryptoPrice(coin.priceUsd)}
                             </div>
-                            <div className={`text-xs ${coin.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            <div className={`text-xs ${coin.priceChange24h >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                               {formatPercentage(coin.priceChange24h)}
                             </div>
                           </div>
@@ -231,8 +231,8 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
                     }}
                   />
                   <div>
-                    <div className="font-bold">{selectedCoin.symbol}</div>
-                    <div className="text-gray-500 dark:text-gray-400">{selectedCoin.name}</div>
+                    <div className="font-medium">{selectedCoin.symbol}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{selectedCoin.name}</div>
                   </div>
                   <div className="ml-auto font-medium">
                     {formatCryptoPrice(selectedCoin.priceUsd)}
@@ -249,49 +249,50 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
                     onChange={(e) => setPriceTarget(e.target.value ? parseFloat(e.target.value) : 0)}
                     min={0.000001}
                     step={selectedCoin.priceUsd < 1 ? 0.000001 : 0.01}
-                    placeholder="Enter your price target"
+                    placeholder="Enter target price"
                     className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
                 </div>
                 
                 {priceTarget > 0 && (
-                  <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg mb-4">
-                    <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Target Analysis</div>
-                    <div className="flex justify-between items-center">
-                      <div>Current price:</div>
-                      <div className="font-medium">{formatCryptoPrice(selectedCoin.priceUsd)}</div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div>Target price:</div>
-                      <div className="font-medium">{formatCryptoPrice(priceTarget)}</div>
-                    </div>
-                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                      <div>Distance to target:</div>
-                      <div className={`font-medium ${
-                        priceTarget > selectedCoin.priceUsd ? 'text-green-500' : 'text-red-500'
-                      }`}>
-                        {priceTarget > selectedCoin.priceUsd ? '+' : ''}
-                        {(((priceTarget - selectedCoin.priceUsd) / selectedCoin.priceUsd) * 100).toFixed(2)}%
+                  <div className="mb-6 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div className="text-sm font-medium mb-2">Target Analysis</div>
+                    
+                    {priceTarget !== selectedCoin.priceUsd && (
+                      <div className="text-sm">
+                        You're setting a price target that's 
+                        <span className={`font-bold ${
+                          priceTarget > selectedCoin.priceUsd 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {' '}
+                          {priceTarget > selectedCoin.priceUsd ? 'above' : 'below'}{' '}
+                        </span>
+                        the current price by{' '}
+                        <span className="font-bold">
+                          {formatPercentage(Math.abs(((priceTarget - selectedCoin.priceUsd) / selectedCoin.priceUsd) * 100))}
+                        </span>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
                 
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => {
-                      setSelectedCoin(null);
-                      setPriceTarget(0);
-                    }}
-                    className="flex-1 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
+                <div className="flex justify-between">
+                  <button 
+                    onClick={resetForm}
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
                   >
                     Back
                   </button>
-                  <button
+                  
+                  <button 
                     onClick={handleAddCoin}
-                    disabled={!priceTarget || priceTarget <= 0 || isAdding}
-                    className={`flex-1 py-2 bg-teal-600 text-white rounded-lg transition-colors ${
-                      !priceTarget || priceTarget <= 0 || isAdding ? 'opacity-50 cursor-not-allowed' : 'hover:bg-teal-700'
+                    disabled={priceTarget <= 0 || isAdding}
+                    className={`px-4 py-2 bg-teal-600 text-white rounded-lg ${
+                      priceTarget <= 0 || isAdding 
+                        ? 'opacity-50 cursor-not-allowed' 
+                        : 'hover:bg-teal-700'
                     }`}
                   >
                     {isAdding ? 'Adding...' : 'Add to Watchlist'}
