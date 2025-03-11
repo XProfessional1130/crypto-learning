@@ -47,7 +47,6 @@ export default function AssetDetailModal({ isOpen, onClose, asset }: AssetDetail
   const [amount, setAmount] = useState<number>(asset?.amount || 0);
   const [isEditing, setIsEditing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [tab, setTab] = useState<'details' | 'edit'>('details');
   const [localAsset, setLocalAsset] = useState<PortfolioItemWithPrice | null>(asset);
 
   // Update amount and local asset when asset changes
@@ -55,6 +54,7 @@ export default function AssetDetailModal({ isOpen, onClose, asset }: AssetDetail
     if (asset) {
       setAmount(asset.amount);
       setLocalAsset(asset);
+      setIsEditing(false);
     }
   }, [asset]);
   
@@ -78,9 +78,7 @@ export default function AssetDetailModal({ isOpen, onClose, asset }: AssetDetail
         
         // Refresh portfolio data in the background
         refreshPortfolio();
-        
         setIsEditing(false);
-        setTab('details');
       }
     } catch (error) {
       console.error('Error updating amount:', error);
@@ -113,7 +111,8 @@ export default function AssetDetailModal({ isOpen, onClose, asset }: AssetDetail
       
       <div className="relative min-h-screen flex items-center justify-center p-4">
         <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
-          <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+          {/* Header with Asset Info and Close Button */}
+          <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center">
               <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 overflow-hidden">
                 <img 
@@ -130,7 +129,16 @@ export default function AssetDetailModal({ isOpen, onClose, asset }: AssetDetail
                   }}
                 />
               </div>
-              <h2 className="text-xl font-semibold">{localAsset.coinName} ({localAsset.coinSymbol})</h2>
+              <div>
+                <h2 className="text-lg font-semibold">{localAsset.coinName} <span className="text-gray-500 text-sm">({localAsset.coinSymbol})</span></h2>
+                <div className={`text-sm ${
+                  localAsset.priceChange24h >= 0 
+                    ? 'text-green-600 dark:text-green-400' 
+                    : 'text-red-600 dark:text-red-400'
+                }`}>
+                  {formatCryptoPrice(localAsset.priceUsd)} <span>{localAsset.priceChange24h >= 0 ? '+' : ''}{localAsset.priceChange24h.toFixed(2)}% (24h)</span>
+                </div>
+              </div>
             </div>
             <button
               onClick={onClose}
@@ -142,81 +150,58 @@ export default function AssetDetailModal({ isOpen, onClose, asset }: AssetDetail
             </button>
           </div>
           
-          {/* Tabs */}
-          <div className="flex border-b border-gray-200 dark:border-gray-700">
-            <button
-              className={`flex-1 py-3 text-center ${
-                tab === 'details' 
-                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400' 
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-              onClick={() => setTab('details')}
-            >
-              Details
-            </button>
-            <button
-              className={`flex-1 py-3 text-center ${
-                tab === 'edit' 
-                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400' 
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-              onClick={() => setTab('edit')}
-            >
-              Edit/Remove
-            </button>
+          {/* Market Info Section - Always visible, generic information */}
+          <div className="px-4 py-3 bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-2 gap-4">
+              {localAsset.marketCap > 0 && (
+                <div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Market Cap</div>
+                  <div className="text-sm font-medium">
+                    {formatMarketCap(localAsset.marketCap)}
+                  </div>
+                </div>
+              )}
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Portfolio %</div>
+                <div className="text-sm font-medium">{localAsset.percentage.toFixed(2)}%</div>
+              </div>
+            </div>
           </div>
           
           {/* Content */}
-          <div className="p-6">
-            {tab === 'details' ? (
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Current Price</div>
-                  <div className="text-2xl font-bold">
-                    {formatCryptoPrice(localAsset.priceUsd)}
-                  </div>
-                  <div className={`text-sm font-medium ${
-                    localAsset.priceChange24h >= 0 
-                      ? 'text-green-600 dark:text-green-400' 
-                      : 'text-red-600 dark:text-red-400'
-                  }`}>
-                    {localAsset.priceChange24h >= 0 ? '+' : ''}{localAsset.priceChange24h.toFixed(2)}% (24h)
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
+          <div className="p-4 space-y-4">
+            {/* Your Holdings Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Your Holdings</h3>
+                <button 
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                >
+                  {isEditing ? 'Cancel' : 'Edit'}
+                </button>
+              </div>
+              
+              {!isEditing ? (
+                /* Display Mode */
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Amount</div>
-                    <div className="text-lg font-medium">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Amount</div>
+                    <div className="text-base font-medium">
                       {localAsset.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })}
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Value</div>
-                    <div className="text-lg font-medium">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Value</div>
+                    <div className="text-base font-medium">
                       {formatCryptoPrice(localAsset.valueUsd)}
                     </div>
                   </div>
                 </div>
-                
+              ) : (
+                /* Edit Mode */
                 <div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Portfolio %</div>
-                  <div className="text-lg font-medium">{localAsset.percentage.toFixed(2)}%</div>
-                </div>
-                
-                {localAsset.marketCap > 0 && (
-                  <div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Market Cap</div>
-                    <div className="text-lg font-medium">
-                      {formatMarketCap(localAsset.marketCap)}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Amount
                   </label>
                   <input
@@ -229,50 +214,50 @@ export default function AssetDetailModal({ isOpen, onClose, asset }: AssetDetail
                     min={0.000001}
                     step={0.000001}
                     placeholder="Enter amount"
-                    className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="w-full px-3 py-2 text-sm border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white mb-2"
                   />
-                </div>
-                
-                {amount > 0 && (
-                  <div className="text-sm">
-                    Value: {formatCryptoPrice(amount * localAsset.priceUsd)}
-                  </div>
-                )}
-                
-                <div className="flex gap-3">
+                  
+                  {amount > 0 && (
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                      Value: {formatCryptoPrice(amount * localAsset.priceUsd)}
+                    </div>
+                  )}
+                  
                   <button
                     onClick={handleUpdateAmount}
                     disabled={amount <= 0 || isProcessing}
-                    className={`flex-1 py-2 bg-blue-500 text-white rounded-lg transition-colors ${
+                    className={`w-full py-1.5 text-sm bg-blue-500 text-white rounded-lg transition-colors ${
                       amount <= 0 || isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'
                     }`}
                   >
                     {isProcessing ? 'Updating...' : 'Update Amount'}
                   </button>
                 </div>
-                
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Remove this asset from your portfolio?
-                  </p>
-                  <button
-                    onClick={handleDeleteAsset}
-                    disabled={isProcessing}
-                    className={`w-full py-2 bg-red-500 text-white rounded-lg transition-colors ${
-                      isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-600'
-                    }`}
-                  >
-                    {isProcessing ? 'Processing...' : 'Delete Asset'}
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
+            
+            {/* Delete Asset Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                Remove this asset from your portfolio?
+              </p>
+              <button
+                onClick={handleDeleteAsset}
+                disabled={isProcessing}
+                className={`w-full py-1.5 text-sm bg-red-500 text-white rounded-lg transition-colors ${
+                  isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-600'
+                }`}
+              >
+                {isProcessing ? 'Processing...' : 'Delete Asset'}
+              </button>
+            </div>
           </div>
           
-          <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+          {/* Footer */}
+          <div className="flex justify-end p-3 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="px-4 py-1.5 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               Close
             </button>
