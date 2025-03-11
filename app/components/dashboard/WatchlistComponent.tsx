@@ -37,6 +37,22 @@ export default function WatchlistComponent() {
     refreshWatchlist();
   };
 
+  // Calculate progress percentage toward target (for progress bar)
+  const calculateProgressPercentage = (currentPrice: number, targetPrice: number): number => {
+    if (!targetPrice || currentPrice === targetPrice) return 100;
+    
+    // If target is higher than current (we want price to go up)
+    if (targetPrice > currentPrice) {
+      // Calculate how far we've moved toward the target
+      return Math.min(100, Math.max(0, (currentPrice / targetPrice) * 100));
+    } 
+    // If target is lower than current (we want price to go down)
+    else {
+      // Calculate how far we've moved toward the target (reverse direction)
+      return Math.min(100, Math.max(0, (targetPrice / currentPrice) * 100));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -82,69 +98,85 @@ export default function WatchlistComponent() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {watchlist.map((item) => {
             const targetPercentage = getTargetPercentage(item);
             const isTargetHigher = item.priceTarget ? item.priceTarget > item.price : false;
+            const progressPercentage = item.priceTarget 
+              ? calculateProgressPercentage(item.price, item.priceTarget)
+              : 0;
             
             return (
               <div 
                 key={item.id}
                 onClick={() => handleItemClick(item)}
-                className="bg-gray-50 dark:bg-gray-750 rounded-lg p-4 cursor-pointer hover:shadow-md transition-all border border-gray-100 dark:border-gray-700"
+                className="bg-gray-50 dark:bg-gray-750 rounded-lg p-5 cursor-pointer hover:shadow-md transition-all border border-gray-100 dark:border-gray-700"
               >
-                <div className="flex items-center mb-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 overflow-hidden">
+                <div className="flex items-center mb-4">
+                  <div className="flex-shrink-0 h-12 w-12 relative mr-3">
                     <img 
                       src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.id}.png`}
                       alt={item.symbol}
-                      className="w-full h-full object-cover"
+                      className="rounded-full bg-white p-0.5 border border-gray-200 dark:border-gray-600 w-full h-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
                         const parent = target.parentElement;
                         if (parent) {
-                          parent.innerHTML = item.symbol.substring(0, 3);
+                          parent.innerHTML = `<div class="w-full h-full rounded-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold">${item.symbol.substring(0, 3)}</div>`;
                         }
                       }}
                     />
                   </div>
                   <div>
-                    <div className="font-medium">{item.symbol}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{item.name}</div>
+                    <div className="text-lg font-bold">{item.symbol}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[160px]">{item.name}</div>
                   </div>
                 </div>
                 
-                <div className="flex justify-between items-baseline mb-1">
-                  <div className="text-sm text-gray-500 dark:text-gray-400">Current:</div>
-                  <div className="font-medium">{formatCryptoPrice(item.price)}</div>
-                </div>
-                
-                {item.priceTarget && (
-                  <>
-                    <div className="flex justify-between items-baseline mb-1">
+                <div className="space-y-3 mt-3">
+                  <div className="flex justify-between items-baseline">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Current:</div>
+                    <div className="text-lg font-medium">{formatCryptoPrice(item.price)}</div>
+                  </div>
+                  
+                  {item.priceTarget && (
+                    <div className="flex justify-between items-baseline">
                       <div className="text-sm text-gray-500 dark:text-gray-400">Target:</div>
-                      <div className="font-medium">{formatCryptoPrice(item.priceTarget)}</div>
+                      <div className="text-lg font-medium">{formatCryptoPrice(item.priceTarget)}</div>
                     </div>
-                    
-                    <div className="mt-2 w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
-                      <div 
-                        className={`h-1.5 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
-                        style={{ width: `${Math.min(Math.abs(targetPercentage), 100)}%` }}
-                      ></div>
+                  )}
+                  
+                  {item.priceTarget && (
+                    <div className="mt-3">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Progress to target</div>
+                        <div className={`text-xs font-bold ${
+                          isTargetHigher ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {Math.round(progressPercentage)}%
+                        </div>
+                      </div>
+                      
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                        <div 
+                          className={`h-2.5 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
+                          style={{ width: `${progressPercentage}%` }}
+                        ></div>
+                      </div>
+                      
+                      <div className="flex justify-end mt-2">
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          isTargetHigher
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          {formatPercentage(Math.abs(targetPercentage))} {isTargetHigher ? 'upside' : 'downside'}
+                        </span>
+                      </div>
                     </div>
-                    
-                    <div className="flex justify-end mt-1">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        isTargetHigher
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
-                          : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                      }`}>
-                        {formatPercentage(targetPercentage)}
-                      </span>
-                    </div>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
             );
           })}

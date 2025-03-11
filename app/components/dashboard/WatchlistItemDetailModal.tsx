@@ -23,6 +23,22 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
     }
   }, [item]);
   
+  // Calculate progress percentage toward target (for progress bar)
+  const calculateProgressPercentage = (currentPrice: number, targetPrice: number): number => {
+    if (!targetPrice || currentPrice === targetPrice) return 100;
+    
+    // If target is higher than current (we want price to go up)
+    if (targetPrice > currentPrice) {
+      // Calculate how far we've moved toward the target
+      return Math.min(100, Math.max(0, (currentPrice / targetPrice) * 100));
+    } 
+    // If target is lower than current (we want price to go down)
+    else {
+      // Calculate how far we've moved toward the target (reverse direction)
+      return Math.min(100, Math.max(0, (targetPrice / currentPrice) * 100));
+    }
+  };
+  
   const handleUpdateTarget = async () => {
     if (!item || priceTarget <= 0) return;
     
@@ -70,6 +86,11 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
   // Check if target is higher than current price
   const isTargetHigher = localItem.priceTarget ? localItem.priceTarget > localItem.price : false;
   
+  // Calculate progress percentage
+  const progressPercentage = localItem.priceTarget 
+    ? calculateProgressPercentage(localItem.price, localItem.priceTarget)
+    : 0;
+  
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
@@ -78,17 +99,17 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
         <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
           <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center">
-              <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 overflow-hidden">
+              <div className="flex-shrink-0 h-12 w-12 relative mr-3">
                 <img 
                   src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${localItem.id}.png`}
                   alt={localItem.symbol}
-                  className="w-full h-full object-cover"
+                  className="rounded-full bg-white p-0.5 border border-gray-200 dark:border-gray-600 w-full h-full object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
                     const parent = target.parentElement;
                     if (parent) {
-                      parent.innerHTML = localItem.symbol.substring(0, 3);
+                      parent.innerHTML = `<div class="w-full h-full rounded-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold">${localItem.symbol.substring(0, 3)}</div>`;
                     }
                   }}
                 />
@@ -133,36 +154,51 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
           <div className="p-6">
             {tab === 'details' ? (
               <div className="space-y-6">
-                <div className="bg-gray-50 dark:bg-gray-750 rounded-lg p-4 border border-gray-100 dark:border-gray-700">
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Current Price</div>
-                  <div className="text-2xl font-bold">
-                    {formatCryptoPrice(localItem.price)}
+                <div className="bg-gray-50 dark:bg-gray-750 rounded-lg p-5 border border-gray-100 dark:border-gray-700">
+                  <div className="flex justify-between items-baseline mb-3">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Current Price</div>
+                    <div className="text-2xl font-bold">
+                      {formatCryptoPrice(localItem.price)}
+                    </div>
                   </div>
                   
                   {localItem.priceTarget && (
-                    <div className="mt-4">
-                      <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Your Price Target</div>
-                      <div className="text-2xl font-bold">
-                        {formatCryptoPrice(localItem.priceTarget)}
+                    <>
+                      <div className="flex justify-between items-baseline mb-3">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">Target Price</div>
+                        <div className="text-2xl font-bold">
+                          {formatCryptoPrice(localItem.priceTarget)}
+                        </div>
                       </div>
                       
-                      <div className="mt-3 w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
-                          style={{ width: `${Math.min(Math.abs(targetPercentage), 100)}%` }}
-                        ></div>
+                      <div className="mt-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="text-sm text-gray-500 dark:text-gray-400">Progress to target</div>
+                          <div className={`text-sm font-bold ${
+                            isTargetHigher ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                          }`}>
+                            {Math.round(progressPercentage)}%
+                          </div>
+                        </div>
+                        
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                          <div 
+                            className={`h-3 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
+                            style={{ width: `${progressPercentage}%` }}
+                          ></div>
+                        </div>
+                        
+                        <div className="flex justify-end mt-3">
+                          <span className={`text-sm font-medium px-2 py-1 rounded-full ${
+                            isTargetHigher
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {formatPercentage(Math.abs(targetPercentage))} {isTargetHigher ? 'upside' : 'downside'}
+                          </span>
+                        </div>
                       </div>
-                      
-                      <div className="flex justify-end mt-2">
-                        <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                          isTargetHigher
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                        }`}>
-                          {formatPercentage(targetPercentage)} from current price
-                        </span>
-                      </div>
-                    </div>
+                    </>
                   )}
                 </div>
                 
@@ -199,26 +235,46 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
                 
                 {priceTarget > 0 && (
                   <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Target Analysis</div>
-                    <div className="flex justify-between items-center">
+                    <div className="text-sm text-gray-600 dark:text-gray-300 mb-3">Target Analysis</div>
+                    
+                    <div className="flex justify-between items-center mb-2">
                       <div>Current price:</div>
                       <div className="font-medium">{formatCryptoPrice(localItem.price)}</div>
                     </div>
                     
-                    <div className="mt-3 w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full ${priceTarget > localItem.price ? 'bg-green-500' : 'bg-red-500'}`}
-                        style={{ width: `${Math.min(Math.abs(((priceTarget - localItem.price) / localItem.price) * 100), 100)}%` }}
-                      ></div>
+                    <div className="flex justify-between items-center mb-3">
+                      <div>Target price:</div>
+                      <div className="font-medium">{formatCryptoPrice(priceTarget)}</div>
                     </div>
                     
-                    <div className="flex justify-end mt-2">
-                      <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                        priceTarget > localItem.price ? 'text-green-500' : 'text-red-500'
-                      }`}>
-                        {formatPercentage(((priceTarget - localItem.price) / localItem.price) * 100)}
-                      </span>
-                    </div>
+                    {priceTarget !== localItem.price && (
+                      <>
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="text-sm">Progress to target</div>
+                          <div className={`text-sm font-bold ${
+                            priceTarget > localItem.price ? 'text-green-500' : 'text-red-500'
+                          }`}>
+                            {Math.round(calculateProgressPercentage(localItem.price, priceTarget))}%
+                          </div>
+                        </div>
+                        
+                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3 overflow-hidden">
+                          <div 
+                            className={`h-3 rounded-full ${priceTarget > localItem.price ? 'bg-green-500' : 'bg-red-500'}`}
+                            style={{ width: `${calculateProgressPercentage(localItem.price, priceTarget)}%` }}
+                          ></div>
+                        </div>
+                        
+                        <div className="flex justify-end mt-3">
+                          <span className={`text-sm font-medium px-2 py-1 rounded-full ${
+                            priceTarget > localItem.price ? 'text-green-500' : 'text-red-500'
+                          }`}>
+                            {formatPercentage(Math.abs(((priceTarget - localItem.price) / localItem.price) * 100))} 
+                            {priceTarget > localItem.price ? ' upside' : ' downside'}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
                 
