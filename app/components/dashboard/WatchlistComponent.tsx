@@ -87,7 +87,7 @@ export default function WatchlistComponent() {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 h-full">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Watchlist</h2>
         <button 
@@ -99,7 +99,7 @@ export default function WatchlistComponent() {
       </div>
 
       {watchlist.length === 0 ? (
-        <div className="text-center py-10">
+        <div className="text-center py-10 flex-grow">
           <p className="text-gray-500 dark:text-gray-400 mb-4">Your watchlist is empty</p>
           <button 
             onClick={() => setIsAddModalOpen(true)}
@@ -109,7 +109,7 @@ export default function WatchlistComponent() {
           </button>
         </div>
       ) : (
-        <div className="space-y-4 w-full overflow-hidden">
+        <div className="overflow-y-auto flex-grow space-y-4 w-full pr-1 max-h-[calc(100vh-24rem)]">
           {watchlist.map((item) => {
             const targetPercentage = getTargetPercentage(item);
             const isTargetHigher = item.priceTarget ? item.priceTarget > item.price : false;
