@@ -18,6 +18,7 @@ export interface CoinData {
   priceBtc: number;
   priceChange24h: number;
   marketCap: number;
+  volume24h?: number;      // 24h trading volume
   logoUrl?: string;
   chain?: string;          // Blockchain the token is on (ethereum, bsc, etc.)
   liquidity?: number;      // Liquidity in USD

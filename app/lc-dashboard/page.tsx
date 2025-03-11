@@ -4,12 +4,31 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTeamPortfolio } from '@/lib/hooks/useTeamPortfolio';
+import { useTeamWatchlist } from '@/lib/hooks/useTeamWatchlist';
+import { getBtcPrice, getEthPrice, getGlobalData, GlobalData } from '@/lib/services/coinmarketcap';
+import TeamPortfolio from '../components/lc-dashboard/TeamPortfolio';
+import TeamWatchlist from '../components/lc-dashboard/TeamWatchlist';
 
 export default function LCDashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('team-portfolio');
   const [isLoading, setIsLoading] = useState(true);
+  const [btcPrice, setBtcPrice] = useState<number | null>(null);
+  const [ethPrice, setEthPrice] = useState<number | null>(null);
+  const [globalData, setGlobalData] = useState<GlobalData | null>(null);
+
+  // Load team portfolio data
+  const { portfolio, loading: portfolioLoading, error: portfolioError } = useTeamPortfolio();
+  
+  // Load team watchlist data
+  const { 
+    watchlist, 
+    loading: watchlistLoading, 
+    error: watchlistError,
+    getTargetPercentage 
+  } = useTeamWatchlist();
 
   useEffect(() => {
     // Check if user is authenticated
@@ -18,12 +37,33 @@ export default function LCDashboard() {
     }
   }, [user, loading, router]);
 
+  // useEffect for loading prices and global data
   useEffect(() => {
-    // Simulate data loading
-    if (user) {
-      setTimeout(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch prices and global data in parallel
+        const [btcPriceData, ethPriceData, globalMarketData] = await Promise.all([
+          getBtcPrice(),
+          getEthPrice(),
+          getGlobalData()
+        ]);
+        
+        setBtcPrice(btcPriceData);
+        setEthPrice(ethPriceData);
+        setGlobalData(globalMarketData);
+      } catch (error) {
+        console.error('Error fetching crypto data:', error);
+      } finally {
         setIsLoading(false);
-      }, 1500);
+      }
+    };
+    
+    if (user) {
+      fetchData();
+      
+      // Set up refresh interval (5 minutes)
+      const intervalId = setInterval(fetchData, 5 * 60 * 1000);
+      return () => clearInterval(intervalId);
     }
   }, [user]);
 
@@ -45,147 +85,15 @@ export default function LCDashboard() {
               Our team's top picks and current market allocations. This portfolio is managed by our expert analysts and is updated regularly.
             </p>
             
-            {isLoading ? (
-              <div className="space-y-4">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-16 animate-pulse rounded bg-gray-200"></div>
-                ))}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Asset
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Allocation
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Current Price
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                        7d Change
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Target Price
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {/* Sample portfolio data */}
-                    <tr>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 flex-shrink-0 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold">
-                            BTC
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Bitcoin</div>
-                            <div className="text-sm text-gray-500">BTC</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                        45%
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                        $41,235
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-green-600">
-                        +3.5%
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                        $55,000
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 flex-shrink-0 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                            ETH
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Ethereum</div>
-                            <div className="text-sm text-gray-500">ETH</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                        30%
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                        $2,243
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-red-600">
-                        -1.2%
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                        $3,000
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 flex-shrink-0 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold">
-                            SOL
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Solana</div>
-                            <div className="text-sm text-gray-500">SOL</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                        15%
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                        $105.72
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-green-600">
-                        +8.4%
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                        $150
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 flex-shrink-0 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
-                            LINK
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Chainlink</div>
-                            <div className="text-sm text-gray-500">LINK</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                        10%
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                        $14.25
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-red-600">
-                        -2.1%
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                        $20
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-            
-            <div className="bg-indigo-50 p-4 rounded-lg mt-6">
-              <h3 className="text-lg font-medium text-indigo-800">Portfolio Analysis</h3>
-              <p className="text-indigo-600 mt-1">
-                Our team is currently overweight on Bitcoin and Solana due to strong technical signals and increasing institutional adoption. We expect a market correction in Q3 but remain bullish on the long-term outlook.
-              </p>
-            </div>
+            <TeamPortfolio 
+              portfolio={portfolio}
+              loading={portfolioLoading}
+              error={portfolioError}
+              isDataLoading={isLoading}
+              btcPrice={btcPrice}
+              ethPrice={ethPrice}
+              globalData={globalData}
+            />
           </div>
         );
       
@@ -197,112 +105,14 @@ export default function LCDashboard() {
               Promising altcoins with strong fundamentals and growth potential. These assets are on our radar for potential future inclusion in our portfolio.
             </p>
             
-            {isLoading ? (
-              <div className="space-y-4">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-16 animate-pulse rounded bg-gray-200"></div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {/* Sample altcoin cards */}
-                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold">
-                        ATOM
-                      </div>
-                      <div className="ml-3">
-                        <div className="text-lg font-medium text-gray-900">Cosmos</div>
-                        <div className="text-sm text-gray-500">ATOM</div>
-                      </div>
-                    </div>
-                    <div className="text-sm font-medium text-green-600">+12.4%</div>
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Current Price</span>
-                      <span className="text-sm font-medium text-gray-900">$10.23</span>
-                    </div>
-                    <div className="mt-1 flex justify-between">
-                      <span className="text-sm text-gray-500">Market Cap</span>
-                      <span className="text-sm font-medium text-gray-900">$3.8B</span>
-                    </div>
-                    <div className="mt-1 flex justify-between">
-                      <span className="text-sm text-gray-500">Volume (24h)</span>
-                      <span className="text-sm font-medium text-gray-900">$287M</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-sm text-gray-600">
-                    Cosmos ecosystem continues to show strong growth with new chain integrations.
-                  </div>
-                </div>
-                
-                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-bold">
-                        AVAX
-                      </div>
-                      <div className="ml-3">
-                        <div className="text-lg font-medium text-gray-900">Avalanche</div>
-                        <div className="text-sm text-gray-500">AVAX</div>
-                      </div>
-                    </div>
-                    <div className="text-sm font-medium text-green-600">+5.7%</div>
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Current Price</span>
-                      <span className="text-sm font-medium text-gray-900">$27.85</span>
-                    </div>
-                    <div className="mt-1 flex justify-between">
-                      <span className="text-sm text-gray-500">Market Cap</span>
-                      <span className="text-sm font-medium text-gray-900">$9.2B</span>
-                    </div>
-                    <div className="mt-1 flex justify-between">
-                      <span className="text-sm text-gray-500">Volume (24h)</span>
-                      <span className="text-sm font-medium text-gray-900">$412M</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-sm text-gray-600">
-                    Avalanche is gaining traction with institutional investors and DeFi users.
-                  </div>
-                </div>
-                
-                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 font-bold">
-                        MATIC
-                      </div>
-                      <div className="ml-3">
-                        <div className="text-lg font-medium text-gray-900">Polygon</div>
-                        <div className="text-sm text-gray-500">MATIC</div>
-                      </div>
-                    </div>
-                    <div className="text-sm font-medium text-red-600">-3.2%</div>
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Current Price</span>
-                      <span className="text-sm font-medium text-gray-900">$0.92</span>
-                    </div>
-                    <div className="mt-1 flex justify-between">
-                      <span className="text-sm text-gray-500">Market Cap</span>
-                      <span className="text-sm font-medium text-gray-900">$8.5B</span>
-                    </div>
-                    <div className="mt-1 flex justify-between">
-                      <span className="text-sm text-gray-500">Volume (24h)</span>
-                      <span className="text-sm font-medium text-gray-900">$356M</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-sm text-gray-600">
-                    Polygon's zkEVM solution is showing promise for Ethereum scaling.
-                  </div>
-                </div>
-              </div>
-            )}
+            <TeamWatchlist 
+              watchlist={watchlist}
+              loading={watchlistLoading}
+              error={watchlistError}
+              isDataLoading={isLoading}
+              globalData={globalData}
+              getTargetPercentage={getTargetPercentage}
+            />
           </div>
         );
       
