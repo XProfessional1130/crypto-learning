@@ -89,33 +89,50 @@ export function useWatchlist() {
 
   // Add a coin to watchlist
   const addToWatchlist = async (coin: CoinData, priceTarget: number) => {
-    if (!user) return;
+    if (!user) {
+      setError('You must be logged in to add coins to your watchlist');
+      return;
+    }
     
     try {
       await addToWatchlistInDB(coin, priceTarget);
       await fetchWatchlist(); // Refresh the watchlist
     } catch (err) {
       console.error('Error adding to watchlist:', err);
-      setError('Failed to add coin to watchlist');
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to add coin to watchlist');
+      }
     }
   };
 
   // Remove a coin from watchlist
   const removeFromWatchlist = async (coinId: string) => {
-    if (!user) return;
+    if (!user) {
+      setError('You must be logged in to remove coins from your watchlist');
+      return;
+    }
     
     try {
       await removeFromWatchlistInDB(coinId);
       setWatchlist(prev => prev.filter(coin => coin.id !== coinId));
     } catch (err) {
       console.error('Error removing from watchlist:', err);
-      setError('Failed to remove coin from watchlist');
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to remove coin from watchlist');
+      }
     }
   };
 
   // Update price target for a coin
   const updatePriceTarget = async (coinId: string, newPriceTarget: number) => {
-    if (!user) return;
+    if (!user) {
+      setError('You must be logged in to update your watchlist');
+      return;
+    }
     
     try {
       await updatePriceTargetInDB(coinId, newPriceTarget);
@@ -128,7 +145,11 @@ export function useWatchlist() {
       );
     } catch (err) {
       console.error('Error updating price target:', err);
-      setError('Failed to update price target');
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to update price target');
+      }
     }
   };
 

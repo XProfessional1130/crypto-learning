@@ -24,6 +24,14 @@ export interface WatchlistDbItem {
  * Fetch the user's watchlist items from Supabase
  */
 export async function fetchWatchlist(): Promise<WatchlistDbItem[]> {
+  // Get the current user session
+  const { data: sessionData } = await supabase.auth.getSession();
+  
+  if (!sessionData.session || !sessionData.session.user) {
+    // Return empty array if not logged in
+    return [];
+  }
+  
   const { data, error } = await supabase
     .from('watchlist')
     .select('*')
@@ -41,9 +49,19 @@ export async function fetchWatchlist(): Promise<WatchlistDbItem[]> {
  * Add a coin to the user's watchlist
  */
 export async function addToWatchlist(coin: CoinData, priceTarget: number): Promise<WatchlistDbItem> {
+  // Get the current user session
+  const { data: sessionData } = await supabase.auth.getSession();
+  
+  if (!sessionData.session || !sessionData.session.user) {
+    throw new Error('You must be logged in to add items to your watchlist');
+  }
+  
+  const userId = sessionData.session.user.id;
+  
   const { data, error } = await supabase
     .from('watchlist')
     .upsert({
+      user_id: userId,
       coin_id: coin.id,
       symbol: coin.symbol,
       name: coin.name,
@@ -67,6 +85,13 @@ export async function addToWatchlist(coin: CoinData, priceTarget: number): Promi
  * Update the price target for a watchlist item
  */
 export async function updatePriceTarget(itemId: string, priceTarget: number): Promise<WatchlistDbItem> {
+  // Get the current user session
+  const { data: sessionData } = await supabase.auth.getSession();
+  
+  if (!sessionData.session || !sessionData.session.user) {
+    throw new Error('You must be logged in to update your watchlist');
+  }
+  
   const { data, error } = await supabase
     .from('watchlist')
     .update({ price_target: priceTarget })
@@ -86,6 +111,13 @@ export async function updatePriceTarget(itemId: string, priceTarget: number): Pr
  * Remove a coin from the watchlist
  */
 export async function removeFromWatchlist(itemId: string): Promise<void> {
+  // Get the current user session
+  const { data: sessionData } = await supabase.auth.getSession();
+  
+  if (!sessionData.session || !sessionData.session.user) {
+    throw new Error('You must be logged in to remove items from your watchlist');
+  }
+  
   const { error } = await supabase
     .from('watchlist')
     .delete()
