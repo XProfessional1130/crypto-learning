@@ -74,7 +74,7 @@ export default async function handler(
     }
     
     // Make request to CoinMarketCap
-    const response = await fetch('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=100', {
+    const response = await fetch('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=200', {
       headers: {
         'X-CMC_PRO_API_KEY': apiKey,
         'Accept': 'application/json'

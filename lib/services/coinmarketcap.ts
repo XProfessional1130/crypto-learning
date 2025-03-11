@@ -79,7 +79,7 @@ export async function initCoinDataService(): Promise<void> {
 }
 
 /**
- * Prefetch the top 100 coins from CMC
+ * Prefetch the top 200 coins from CMC
  * This will be used for search results and portfolio data
  */
 export async function prefetchTopCoins(): Promise<CoinData[]> {
@@ -89,8 +89,8 @@ export async function prefetchTopCoins(): Promise<CoinData[]> {
   }
   
   try {
-    // Fetch top 100 coins
-    const response = await fetch(`${getBaseUrl()}/api/coin-list`);
+    // Fetch top 200 coins instead of default 100
+    const response = await fetch(`${getBaseUrl()}/api/coin-list?limit=200`);
     
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);
