@@ -38,7 +38,6 @@ export default function CryptoNews() {
       setAllNewsItems(data.newsItems);
       setNewsItems(data.newsItems);
       setCategories(['All', ...data.categories]);
-      console.log("News data:", data);
     } catch (err) {
       console.error('Error fetching news:', err);
       setError('Failed to load crypto news. Please try again later.');

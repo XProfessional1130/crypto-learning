@@ -53,11 +53,6 @@ export async function GET() {
     // Fetch RSS feed from CoinDesk
     const feed = await parser.parseURL('https://www.coindesk.com/arc/outboundfeeds/rss');
     
-    // For debugging - Log the first item structure
-    if (feed.items[0]) {
-      console.log('First item structure:', JSON.stringify(feed.items[0], null, 2));
-    }
-    
     // Extract categories from all items for our filter
     const extractedCategorySet = new Set<string>();
     
