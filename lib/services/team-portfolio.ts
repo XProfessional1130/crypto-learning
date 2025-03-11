@@ -2,16 +2,16 @@ import { PortfolioItemWithPrice, PortfolioSummary } from '@/types/portfolio';
 import { getMultipleCoinsData } from './coinmarketcap';
 import supabase from './supabase-client';
 
-// Use environment variable for the admin email with a fallback
-const TEAM_PORTFOLIO_EMAIL = process.env.NEXT_PUBLIC_TEAM_ADMIN_EMAIL || 'admin@learningcrypto.com';
+// Use the admin's UID directly instead of email lookup
+const TEAM_ADMIN_ID = process.env.NEXT_PUBLIC_TEAM_ADMIN_ID || '529cfde5-d8c3-4a6a-a9dc-5bb67fb039b5';
 
 /**
  * Fetch the team portfolio for the admin user
- * With a simplified approach that doesn't require SQL functions
+ * Using the admin's UID directly for efficient queries
  */
 export async function getTeamPortfolio(): Promise<PortfolioSummary> {
   try {
-    console.log(`Attempting to fetch team portfolio for ${TEAM_PORTFOLIO_EMAIL}`);
+    console.log(`Attempting to fetch team portfolio for admin with ID: ${TEAM_ADMIN_ID}`);
     
     // Check if user_portfolios table exists by making a small query
     const { data: tableCheckData, error: tableCheckError } = await supabase
@@ -29,81 +29,19 @@ export async function getTeamPortfolio(): Promise<PortfolioSummary> {
     
     console.log('Connected to user_portfolios table successfully');
     
-    // First try to get user ID from profiles table
-    let adminUserId: string | null = null;
-    
-    // Try the profiles table first (most likely to be accessible)
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', TEAM_PORTFOLIO_EMAIL)
-      .maybeSingle();
-      
-    if (!profileError && profileData?.id) {
-      adminUserId = profileData.id;
-      console.log(`Found admin user ID in profiles: ${adminUserId}`);
-    } else {
-      // Try with auth.users if we have access
-      try {
-        // Check if profiles might have user_id that maps to auth.users
-        const { data: userProfileData, error: userProfileError } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .eq('email', TEAM_PORTFOLIO_EMAIL)
-          .maybeSingle();
-          
-        if (!userProfileError && userProfileData?.user_id) {
-          adminUserId = userProfileData.user_id;
-          console.log(`Found admin user ID via profile.user_id: ${adminUserId}`);
-        }
-      } catch (authError) {
-        console.log('Unable to use auth admin API, likely insufficient permissions', authError);
-      }
-    }
-      
-    // If we found a user ID, query with it
-    if (adminUserId) {
-      const { data: portfolioItems, error } = await supabase
-        .from('user_portfolios')
-        .select('*')
-        .eq('user_id', adminUserId);
-        
-      if (error) {
-        console.error('Error fetching team portfolio items:', error);
-        return createEmptyPortfolio();
-      }
-      
-      return processPortfolioItems(portfolioItems || []);
-    }
-    
-    console.log('Could not find admin user ID, trying to fall back to email field in user_portfolios');
-    
-    // Last resort: check if the user_portfolios table has an email column we can filter on
-    try {
-      const { data: portfolioItems, error } = await supabase
-        .from('user_portfolios')
-        .select('*')
-        .eq('email', TEAM_PORTFOLIO_EMAIL);
-        
-      if (!error && portfolioItems && portfolioItems.length > 0) {
-        console.log(`Found portfolio items via email column: ${portfolioItems.length} items`);
-        return processPortfolioItems(portfolioItems);
-      }
-    } catch (emailError) {
-      console.log('Table does not have an email column or other error occurred', emailError);
-    }
-    
-    console.log('All attempts to find admin user failed, returning all portfolio items as fallback');
-    
-    // Final fallback: just get all items (not ideal, but better than nothing for demo purposes)
+    // Directly fetch portfolio items using the admin's UID
     const { data: portfolioItems, error } = await supabase
       .from('user_portfolios')
       .select('*')
-      .limit(10);  // Limit to avoid too much data
+      .eq('user_id', TEAM_ADMIN_ID);
       
     if (error) {
-      console.error('Error fetching fallback team portfolio items:', error);
+      console.error('Error fetching team portfolio items:', error);
       return createEmptyPortfolio();
+    }
+    
+    if (!portfolioItems || portfolioItems.length === 0) {
+      console.log('No portfolio items found for admin user. The user might not have added any assets yet.');
     }
     
     return processPortfolioItems(portfolioItems || []);

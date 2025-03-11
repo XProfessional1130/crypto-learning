@@ -2,16 +2,16 @@ import { WatchlistItem } from '@/lib/hooks/useWatchlist';
 import { getMultipleCoinsData } from './coinmarketcap';
 import supabase from './supabase-client';
 
-// Use environment variable for the admin email with a fallback
-const TEAM_ADMIN_EMAIL = process.env.NEXT_PUBLIC_TEAM_ADMIN_EMAIL || 'admin@learningcrypto.com';
+// Use the admin's UID directly instead of email lookup
+const TEAM_ADMIN_ID = process.env.NEXT_PUBLIC_TEAM_ADMIN_ID || '529cfde5-d8c3-4a6a-a9dc-5bb67fb039b5';
 
 /**
  * Fetch the team watchlist for the admin user
- * With a simplified approach that doesn't require SQL functions
+ * Using the admin's UID directly for efficient queries
  */
 export async function getTeamWatchlist(): Promise<{ items: WatchlistItem[] }> {
   try {
-    console.log(`Attempting to fetch team watchlist for ${TEAM_ADMIN_EMAIL}`);
+    console.log(`Attempting to fetch team watchlist for admin with ID: ${TEAM_ADMIN_ID}`);
     
     // Check if the watchlist table exists by making a small query
     const { data: tableCheckData, error: tableCheckError } = await supabase
@@ -29,81 +29,19 @@ export async function getTeamWatchlist(): Promise<{ items: WatchlistItem[] }> {
     
     console.log('Connected to watchlist table successfully');
     
-    // First try to get user ID from profiles table
-    let adminUserId: string | null = null;
-    
-    // Try the profiles table first (most likely to be accessible)
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', TEAM_ADMIN_EMAIL)
-      .maybeSingle();
-      
-    if (!profileError && profileData?.id) {
-      adminUserId = profileData.id;
-      console.log(`Found admin user ID in profiles: ${adminUserId}`);
-    } else {
-      // Try with any custom auth functions
-      try {
-        // Check if profiles might have user_id that maps to auth.users
-        const { data: userProfileData, error: userProfileError } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .eq('email', TEAM_ADMIN_EMAIL)
-          .maybeSingle();
-          
-        if (!userProfileError && userProfileData?.user_id) {
-          adminUserId = userProfileData.user_id;
-          console.log(`Found admin user ID via profile.user_id: ${adminUserId}`);
-        }
-      } catch (authError) {
-        console.log('Unable to find user ID from profiles', authError);
-      }
-    }
-      
-    // If we found a user ID, query with it
-    if (adminUserId) {
-      const { data: watchlistItems, error } = await supabase
-        .from('watchlist')
-        .select('*')
-        .eq('user_id', adminUserId);
-        
-      if (error) {
-        console.error('Error fetching team watchlist items:', error);
-        return { items: [] };
-      }
-      
-      return processWatchlistItems(watchlistItems || []);
-    }
-    
-    console.log('Could not find admin user ID, trying to fall back to email field in watchlist');
-    
-    // Last resort: check if the watchlist table has an email column we can filter on
-    try {
-      const { data: watchlistItems, error } = await supabase
-        .from('watchlist')
-        .select('*')
-        .eq('email', TEAM_ADMIN_EMAIL);
-        
-      if (!error && watchlistItems && watchlistItems.length > 0) {
-        console.log(`Found watchlist items via email column: ${watchlistItems.length} items`);
-        return processWatchlistItems(watchlistItems);
-      }
-    } catch (emailError) {
-      console.log('Table does not have an email column or other error occurred', emailError);
-    }
-    
-    console.log('All attempts to find admin user failed, returning all watchlist items as fallback');
-    
-    // Final fallback: just get all items (not ideal, but better than nothing for demo purposes)
+    // Directly fetch watchlist items using the admin's UID
     const { data: watchlistItems, error } = await supabase
       .from('watchlist')
       .select('*')
-      .limit(10);  // Limit to avoid too much data
+      .eq('user_id', TEAM_ADMIN_ID);
       
     if (error) {
-      console.error('Error fetching fallback team watchlist items:', error);
+      console.error('Error fetching team watchlist items:', error);
       return { items: [] };
+    }
+    
+    if (!watchlistItems || watchlistItems.length === 0) {
+      console.log('No watchlist items found for admin user. The user might not have added any assets yet.');
     }
     
     return processWatchlistItems(watchlistItems || []);
