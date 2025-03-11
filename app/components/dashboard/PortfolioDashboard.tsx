@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { usePortfolio } from '@/lib/hooks/usePortfolio';
 import { useAuth } from '@/lib/auth-context';
 import { useWatchlist, WatchlistItem } from '@/lib/hooks/useWatchlist';
@@ -29,6 +29,89 @@ const formatCryptoPrice = (price: number): string => {
   }
 };
 
+// Memoized Stats Card component
+const StatsCard = memo(({ title, value, icon = null, dominance = null, loading = false, valueClassName = '' }: {
+  title: string;
+  value: string;
+  icon?: React.ReactNode;
+  dominance?: number | null;
+  loading?: boolean;
+  valueClassName?: string;
+}) => {
+  return (
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+      <div className="flex items-center mb-2">
+        {icon && <div className="mr-2">{icon}</div>}
+        <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+      </div>
+      
+      {loading ? (
+        <div className="flex items-center h-9">
+          <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-8 w-24 rounded"></div>
+        </div>
+      ) : (
+        <>
+          <p className={`text-3xl font-bold ${valueClassName}`}>
+            {value}
+          </p>
+          {dominance !== null && (
+            <div className="mt-2 flex items-center">
+              <div className={`${title.includes('Bitcoin') ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'} text-xs px-2 py-0.5 rounded-full flex items-center`}>
+                <span className="font-medium">
+                  {dominance ? dominance.toFixed(1) : '---'}% Dominance
+                </span>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+});
+StatsCard.displayName = 'StatsCard';
+
+// Memoized Portfolio Item component
+const PortfolioItem = memo(({ item, onItemClick }: {
+  item: PortfolioItemWithPrice;
+  onItemClick: (item: PortfolioItemWithPrice) => void;
+}) => {
+  return (
+    <div
+      onClick={() => onItemClick(item)}
+      className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors cursor-pointer"
+    >
+      <div className="flex items-center">
+        <div className="w-8 h-8 mr-3 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold overflow-hidden">
+          <img
+            src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
+            alt={item.coinSymbol}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = item.coinSymbol.substring(0, 3);
+              }
+            }}
+          />
+        </div>
+        <div>
+          <p className="font-medium">{item.coinName}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{item.coinSymbol}</p>
+        </div>
+      </div>
+      <div className="text-right">
+        <p className="font-medium">${item.valueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        <p className={`text-sm ${item.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+          {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(2)}%
+        </p>
+      </div>
+    </div>
+  );
+});
+PortfolioItem.displayName = 'PortfolioItem';
+
 export default function PortfolioDashboard() {
   const { 
     portfolio, 
@@ -55,24 +138,24 @@ export default function PortfolioDashboard() {
   const [loadingPrices, setLoadingPrices] = useState(true);
   
   // Handler for when a coin is added to ensure UI updates
-  const handleCoinAdded = () => {
+  const handleCoinAdded = useCallback(() => {
     console.log("Coin added, refreshing portfolio...");
     refreshPortfolio();
-  };
+  }, [refreshPortfolio]);
 
   // Handler for opening the asset detail modal
-  const handleAssetClick = (asset: PortfolioItemWithPrice) => {
+  const handleAssetClick = useCallback((asset: PortfolioItemWithPrice) => {
     setSelectedAsset(asset);
     setIsAssetDetailModalOpen(true);
-  };
+  }, []);
   
   // Handler for closing the asset detail modal
-  const handleAssetDetailModalClose = () => {
+  const handleAssetDetailModalClose = useCallback(() => {
     setIsAssetDetailModalOpen(false);
     setSelectedAsset(null);
     // Refresh the portfolio data to ensure UI is updated
     refreshPortfolio();
-  };
+  }, [refreshPortfolio]);
   
   // Fetch BTC and ETH prices and global data
   useEffect(() => {
@@ -108,12 +191,12 @@ export default function PortfolioDashboard() {
   const error = portfolioError || watchlistError;
   
   // Create a sorted version of the portfolio items
-  const getSortedPortfolioItems = () => {
+  const sortedPortfolioItems = useMemo(() => {
     if (!portfolio || !portfolio.items) return [];
     
     // Return a new sorted array by valueUsd (descending)
     return [...portfolio.items].sort((a, b) => b.valueUsd - a.valueUsd);
-  };
+  }, [portfolio]);
   
   if (loading) {
     return (
@@ -148,88 +231,38 @@ export default function PortfolioDashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Portfolio Value Card */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Portfolio Value</p>
-          <p className="text-3xl font-bold">
-            ${portfolio?.totalValueUsd.toLocaleString(undefined, { 
-              minimumFractionDigits: 2, 
-              maximumFractionDigits: 2 
-            }) || '0.00'}
-          </p>
-        </div>
+        <StatsCard 
+          title="Portfolio Value" 
+          value={`$${portfolio?.totalValueUsd.toLocaleString(undefined, { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+          }) || '0.00'}`}
+        />
         
         {/* 24h Change Card */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">24h Change</p>
-          <p className={`text-3xl font-bold ${
-            (portfolio?.dailyChangePercentage || 0) >= 0 ? 'text-green-500' : 'text-red-500'
-          }`}>
-            {(portfolio?.dailyChangePercentage || 0) >= 0 ? '+' : ''}
-            {(portfolio?.dailyChangePercentage || 0).toFixed(2)}%
-          </p>
-        </div>
+        <StatsCard 
+          title="24h Change"
+          value={`${(portfolio?.dailyChangePercentage || 0) >= 0 ? '+' : ''}${(portfolio?.dailyChangePercentage || 0).toFixed(2)}%`}
+          valueClassName={(portfolio?.dailyChangePercentage || 0) >= 0 ? 'text-green-500' : 'text-red-500'}
+        />
         
         {/* Bitcoin Price Card */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
-          <div className="flex items-center mb-2">
-            <img 
-              src="https://s2.coinmarketcap.com/static/img/coins/64x64/1.png"
-              alt="Bitcoin"
-              className="w-5 h-5 mr-2"
-            />
-            <p className="text-sm text-gray-500 dark:text-gray-400">Bitcoin Price</p>
-          </div>
-          
-          {loadingPrices ? (
-            <div className="flex items-center h-9">
-              <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-8 w-24 rounded"></div>
-            </div>
-          ) : (
-            <>
-              <p className="text-3xl font-bold">
-                {formatCryptoPrice(btcPrice || 0)}
-              </p>
-              <div className="mt-2 flex items-center">
-                <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs px-2 py-0.5 rounded-full flex items-center">
-                  <span className="font-medium">
-                    {globalData?.btcDominance ? globalData.btcDominance.toFixed(1) : '---'}% Dominance
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        <StatsCard 
+          title="Bitcoin Price"
+          value={formatCryptoPrice(btcPrice || 0)}
+          icon={<img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1.png" alt="Bitcoin" className="w-5 h-5" />}
+          dominance={globalData?.btcDominance}
+          loading={loadingPrices}
+        />
         
         {/* Ethereum Price Card */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
-          <div className="flex items-center mb-2">
-            <img 
-              src="https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png"
-              alt="Ethereum"
-              className="w-5 h-5 mr-2"
-            />
-            <p className="text-sm text-gray-500 dark:text-gray-400">Ethereum Price</p>
-          </div>
-          
-          {loadingPrices ? (
-            <div className="flex items-center h-9">
-              <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-8 w-24 rounded"></div>
-            </div>
-          ) : (
-            <>
-              <p className="text-3xl font-bold">
-                {formatCryptoPrice(ethPrice || 0)}
-              </p>
-              <div className="mt-2 flex items-center">
-                <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full flex items-center">
-                  <span className="font-medium">
-                    {globalData?.ethDominance ? globalData.ethDominance.toFixed(1) : '---'}% Dominance
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        <StatsCard 
+          title="Ethereum Price"
+          value={formatCryptoPrice(ethPrice || 0)}
+          icon={<img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png" alt="Ethereum" className="w-5 h-5" />}
+          dominance={globalData?.ethDominance}
+          loading={loadingPrices}
+        />
       </div>
       
       {/* Main Content - Portfolio and Watchlist */}
@@ -247,180 +280,54 @@ export default function PortfolioDashboard() {
               </button>
             </div>
             
-            {(!portfolio || portfolio.items.length === 0) ? (
+            {(!portfolio || sortedPortfolioItems.length === 0) ? (
               <div className="text-center py-10">
-                <p className="text-lg mb-4">Your portfolio is empty</p>
+                <p className="text-lg mb-4">You don't have any assets yet</p>
                 <button 
-                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
                   onClick={() => setIsAddModalOpen(true)}
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
                 >
-                  Add Your First Coin
+                  Add your first asset
                 </button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                {/* Desktop Table - Hidden on mobile */}
-                <table className="min-w-full hidden md:table">
-                  <thead>
-                    <tr className="text-left text-gray-500 dark:text-gray-400 text-sm uppercase">
-                      <th className="pb-3">Asset</th>
-                      <th className="pb-3 text-right">Amount</th>
-                      <th className="pb-3 text-right">Price</th>
-                      <th className="pb-3 text-right">Value</th>
-                      <th className="pb-3 text-right">24h Change</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {getSortedPortfolioItems().map(item => (
-                      <tr 
-                        key={item.id} 
-                        className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                        onClick={() => handleAssetClick(item)}
-                      >
-                        <td className="py-4">
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 text-xs font-bold overflow-hidden">
-                              <img 
-                                src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
-                                alt={item.coinSymbol}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  const parent = target.parentElement;
-                                  if (parent) {
-                                    parent.innerHTML = item.coinSymbol.substring(0, 3);
-                                  }
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <div className="font-medium">{item.coinSymbol}</div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">{item.coinName}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 text-right">
-                          {item.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })}
-                        </td>
-                        <td className="py-4 text-right">
-                          {formatCryptoPrice(item.priceUsd)}
-                        </td>
-                        <td className="py-4 text-right">
-                          {formatCryptoPrice(item.valueUsd)}
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {item.percentage.toFixed(1)}%
-                          </div>
-                        </td>
-                        <td className="py-4 text-right">
-                          <span className={`${
-                            item.priceChange24h >= 0 
-                              ? 'text-green-600 dark:text-green-400' 
-                              : 'text-red-600 dark:text-red-400'
-                          }`}>
-                            {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(1)}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {/* Mobile Card Layout - Only shown on mobile */}
-                <div className="md:hidden space-y-4">
-                  {getSortedPortfolioItems().map(item => (
-                    <div 
-                      key={item.id} 
-                      className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm cursor-pointer"
-                      onClick={() => handleAssetClick(item)}
-                    >
-                      <div className="flex items-center mb-3">
-                        <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 text-xs font-bold overflow-hidden">
-                          <img 
-                            src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
-                            alt={item.coinSymbol}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              const parent = target.parentElement;
-                              if (parent) {
-                                parent.innerHTML = item.coinSymbol.substring(0, 3);
-                              }
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <div className="font-medium">{item.coinSymbol}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">{item.coinName}</div>
-                        </div>
-                        <div className="ml-auto flex items-center">
-                          <div className="text-right mr-4">
-                            <div className="text-xs text-gray-500 dark:text-gray-400">Price</div>
-                            <div className="font-medium">{formatCryptoPrice(item.priceUsd)}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">24H</div>
-                            <div className={`font-medium ${
-                              item.priceChange24h >= 0 
-                                ? 'text-green-600 dark:text-green-400' 
-                                : 'text-red-600 dark:text-red-400'
-                            }`}>
-                              {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(1)}%
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4 text-base">
-                        <div>
-                          <div className="text-gray-500 dark:text-gray-400 text-sm mb-1">Amount</div>
-                          <div className="font-medium text-lg">{item.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-gray-500 dark:text-gray-400 text-sm mb-1">Value</div>
-                          <div>
-                            <div className="font-medium text-lg">{formatCryptoPrice(item.valueUsd)}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              {item.percentage.toFixed(1)}%
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="overflow-y-auto max-h-[calc(100vh-24rem)] scrollbar-thin">
+                {sortedPortfolioItems.map((item) => (
+                  <PortfolioItem key={item.id} item={item} onItemClick={handleAssetClick} />
+                ))}
               </div>
             )}
           </div>
+          
+          {/* Recent News */}
+          <div className="mt-6">
+            <CryptoNews />
+          </div>
         </div>
         
-        {/* Right Column - Watchlist Section */}
-        <div className="lg:col-span-1">
+        {/* Watchlist Section - Takes up 1/3 of the space */}
+        <div className="h-full">
           <WatchlistComponent />
         </div>
       </div>
-      
-      {/* Latest Crypto News Section */}
-      <div className="mb-8">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-          <CryptoNews />
-        </div>
-      </div>
-      
-      {/* Add Coin Modal */}
-      <AddCoinModal 
-        isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)}
-        onCoinAdded={handleCoinAdded}
-      />
 
+      {/* Add Coin Modal */}
+      {isAddModalOpen && (
+        <AddCoinModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onCoinAdded={handleCoinAdded}
+        />
+      )}
+      
       {/* Asset Detail Modal */}
-      <AssetDetailModal 
-        isOpen={isAssetDetailModalOpen}
-        onClose={handleAssetDetailModalClose}
-        asset={selectedAsset}
-      />
+      {isAssetDetailModalOpen && selectedAsset && (
+        <AssetDetailModal
+          isOpen={isAssetDetailModalOpen}
+          onClose={handleAssetDetailModalClose}
+          asset={selectedAsset}
+        />
+      )}
     </div>
   );
 } 
