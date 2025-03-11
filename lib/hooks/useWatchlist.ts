@@ -272,124 +272,23 @@ export function useWatchlist() {
     };
   }, [fetchWatchlist]);
 
-  // Add a coin to watchlist
-  const addToWatchlist = async (coin: CoinData, priceTarget: number) => {
-    if (!user) {
-      setError('You must be logged in to add coins to your watchlist');
+  // Refresh watchlist prices (with improved rate limiting)
+  const refreshWatchlist = async (bypassRateLimit = false) => {
+    // Check if we've refreshed too recently
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshRef.current;
+    
+    // Enforce a stricter cooldown of 30 seconds minimum between refreshes
+    // unless bypassRateLimit is true
+    if (!bypassRateLimit && timeSinceLastRefresh < REFRESH_COOLDOWN) {
+      console.log(`Refresh rate limited. Skipping refresh, last refresh was ${Math.ceil(timeSinceLastRefresh/1000)}s ago`);
       return;
     }
     
-    try {
-      await addToWatchlistInDB(coin, priceTarget);
-      
-      // Force refreshing the watchlist to include the new coin
-      await fetchWatchlist(true);
-    } catch (err) {
-      console.error('Error adding to watchlist:', err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Failed to add coin to watchlist');
-      }
-    }
-  };
-
-  // Remove a coin from watchlist
-  const removeFromWatchlist = async (coinId: string) => {
-    if (!user) {
-      setError('You must be logged in to remove coins from your watchlist');
-      return;
-    }
+    // Update the last refresh time
+    lastRefreshRef.current = now;
     
-    try {
-      await removeFromWatchlistInDB(coinId);
-      
-      // Update the watchlist state optimistically
-      setWatchlist(prev => {
-        const updated = prev.filter(coin => coin.id !== coinId);
-        
-        // Update caches
-        if (localCacheRef.current) {
-          localCacheRef.current.data = updated;
-          localCacheRef.current.timestamp = Date.now();
-        }
-        if (user && globalCache.watchlistItems[user.id]) {
-          globalCache.watchlistItems[user.id].data = updated;
-          globalCache.watchlistItems[user.id].timestamp = Date.now();
-        }
-        
-        return updated;
-      });
-    } catch (err) {
-      console.error('Error removing from watchlist:', err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Failed to remove coin from watchlist');
-      }
-      
-      // If the operation failed, refresh to get correct data
-      fetchWatchlist(true);
-    }
-  };
-
-  // Update price target for a coin
-  const updatePriceTarget = async (coinId: string, newPriceTarget: number) => {
-    if (!user) {
-      setError('You must be logged in to update your watchlist');
-      return;
-    }
-    
-    try {
-      await updatePriceTargetInDB(coinId, newPriceTarget);
-      
-      // Update the watchlist state optimistically
-      setWatchlist(prev => {
-        const updated = prev.map(item => 
-          item.id === coinId 
-            ? { ...item, priceTarget: newPriceTarget } 
-            : item
-        );
-        
-        // Update caches
-        if (localCacheRef.current) {
-          localCacheRef.current.data = updated;
-          localCacheRef.current.timestamp = Date.now();
-        }
-        if (user && globalCache.watchlistItems[user.id]) {
-          globalCache.watchlistItems[user.id].data = updated;
-          globalCache.watchlistItems[user.id].timestamp = Date.now();
-        }
-        
-        return updated;
-      });
-    } catch (err) {
-      console.error('Error updating price target:', err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Failed to update price target');
-      }
-      
-      // If the operation failed, refresh to get correct data
-      fetchWatchlist(true);
-    }
-  };
-
-  // Check if a coin is in the watchlist
-  const isInWatchlist = (coinId: string): boolean => {
-    return watchlist.some(coin => coin.coinId === coinId);
-  };
-  
-  // Get target percentage difference
-  const getTargetPercentage = (coin: WatchlistItem): number => {
-    if (!coin.priceTarget || coin.price === 0) return 0;
-    return ((coin.priceTarget - coin.price) / coin.price) * 100;
-  };
-
-  // Refresh watchlist prices (with rate limiting)
-  const refreshWatchlist = async () => {
-    // Force refresh to bypass caching
+    // Force refresh with minimal caching
     await fetchWatchlist(true);
   };
   
@@ -428,24 +327,154 @@ export function useWatchlist() {
           };
         });
         
-        // Update caches
-        if (localCacheRef.current) {
-          localCacheRef.current.data = updated;
-          localCacheRef.current.timestamp = now;
+        return updated;
+      });
+    } catch (err) {
+      console.error('Error refreshing prices:', err);
+    }
+  };
+
+  const addToWatchlist = async (coin: CoinData, priceTarget: number) => {
+    if (!user) {
+      setError('You must be logged in to add coins to your watchlist');
+      return;
+    }
+    
+    try {
+      // Add to database
+      const newItem = await addToWatchlistInDB(coin, priceTarget);
+      
+      // Create a new watchlist item with the returned data
+      const watchlistItem: WatchlistItem = {
+        id: newItem.id || Date.now().toString(),
+        coinId: coin.id,
+        symbol: coin.symbol,
+        name: coin.name,
+        price: coin.priceUsd,
+        change24h: coin.priceChange24h,
+        icon: coin.symbol,
+        priceTarget: priceTarget
+      };
+      
+      // Update the state immediately
+      setWatchlist(prev => [...prev, watchlistItem]);
+      
+      // Reset last refresh time to allow immediate refresh
+      lastRefreshRef.current = 0;
+      
+      // Clear caches to ensure fresh data on next refresh
+      if (user && user.id) {
+        if (globalCache.watchlistItems[user.id]) {
+          globalCache.watchlistItems[user.id].timestamp = 0;
         }
-        if (user && globalCache.watchlistItems[user.id]) {
-          globalCache.watchlistItems[user.id].data = updated;
-          globalCache.watchlistItems[user.id].timestamp = now;
+        localCacheRef.current = null;
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Error adding to watchlist:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to add coin to watchlist');
+      }
+    }
+  };
+
+  // Remove a coin from watchlist
+  const removeFromWatchlist = async (coinId: string) => {
+    if (!user) {
+      setError('You must be logged in to remove coins from your watchlist');
+      return;
+    }
+    
+    try {
+      // Remove from database
+      await removeFromWatchlistInDB(coinId);
+      
+      // Update the state immediately
+      setWatchlist(prev => prev.filter(coin => coin.id !== coinId));
+      
+      // Reset last refresh time to allow immediate refresh
+      lastRefreshRef.current = 0;
+      
+      // Clear caches to ensure fresh data on next refresh
+      if (user && user.id) {
+        if (globalCache.watchlistItems[user.id]) {
+          globalCache.watchlistItems[user.id].timestamp = 0;
         }
-        
+        localCacheRef.current = null;
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Error removing from watchlist:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to remove coin from watchlist');
+      }
+      
+      // If the operation failed, refresh to get correct data
+      fetchWatchlist(true);
+      return false;
+    }
+  };
+
+  // Update price target for a coin
+  const updatePriceTarget = async (coinId: string, newPriceTarget: number) => {
+    if (!user) {
+      setError('You must be logged in to update your watchlist');
+      return;
+    }
+    
+    try {
+      await updatePriceTargetInDB(coinId, newPriceTarget);
+      
+      // Update the watchlist state optimistically
+      setWatchlist(prev => {
+        const updated = prev.map(item => 
+          item.id === coinId 
+            ? { ...item, priceTarget: newPriceTarget } 
+            : item
+        );
         return updated;
       });
       
-      console.log('Prices refreshed successfully');
+      // Reset last refresh time to allow immediate refresh
+      lastRefreshRef.current = 0;
+      
+      // Clear caches to ensure fresh data on next refresh
+      if (user && user.id) {
+        if (globalCache.watchlistItems[user.id]) {
+          globalCache.watchlistItems[user.id].timestamp = 0;
+        }
+        localCacheRef.current = null;
+      }
+      
+      return true;
     } catch (err) {
-      console.error('Error refreshing prices:', err);
-      // Don't set error state for price refreshes
+      console.error('Error updating price target:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to update price target');
+      }
+      
+      // If the operation failed, refresh to get correct data
+      fetchWatchlist(true);
     }
+  };
+
+  // Check if a coin is in the watchlist
+  const isInWatchlist = (coinId: string): boolean => {
+    return watchlist.some(coin => coin.coinId === coinId);
+  };
+  
+  // Get target percentage difference
+  const getTargetPercentage = (coin: WatchlistItem): number => {
+    if (!coin.priceTarget || coin.price === 0) return 0;
+    return ((coin.priceTarget - coin.price) / coin.price) * 100;
   };
 
   return {

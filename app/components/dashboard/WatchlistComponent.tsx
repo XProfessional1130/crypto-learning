@@ -6,6 +6,11 @@ import AddToWatchlistModal from './AddToWatchlistModal';
 import { formatCryptoPrice, formatPercentage } from '@/lib/utils/format';
 import Image from 'next/image';
 
+// Define props interface for WatchlistComponent
+interface WatchlistComponentProps {
+  onRefresh?: () => void;
+}
+
 // Memoized WatchlistItemCard component
 const WatchlistItemCard = memo(({ 
   item, 
@@ -115,7 +120,7 @@ const calculateProgressPercentage = (currentPrice: number, targetPrice: number):
   }
 };
 
-const WatchlistComponent = () => {
+const WatchlistComponent = ({ onRefresh }: WatchlistComponentProps) => {
   const {
     watchlist,
     loading,
@@ -137,8 +142,14 @@ const WatchlistComponent = () => {
 
   // Handler for when a coin is added to ensure UI updates
   const handleCoinAdded = useCallback(() => {
-    // Do nothing - the state is updated directly in useWatchlist
-  }, []);
+    // Call refreshWatchlist to update the UI, bypassing rate limits
+    refreshWatchlist(true);
+    
+    // Also call the parent's onRefresh if provided
+    if (onRefresh) {
+      onRefresh();
+    }
+  }, [refreshWatchlist, onRefresh]);
 
   // Handler for opening the item detail modal
   const handleItemClick = useCallback((item: WatchlistItem) => {
@@ -150,8 +161,9 @@ const WatchlistComponent = () => {
   const handleDetailModalClose = useCallback(() => {
     setIsDetailModalOpen(false);
     setSelectedItem(null);
-    // No need to refresh here
-  }, []);
+    // Force a refresh to ensure UI updates when the modal closes
+    refreshWatchlist(true);
+  }, [refreshWatchlist]);
   
   // Modal for adding coins - Only render when open
   const addCoinModal = isAddModalOpen ? (
@@ -178,7 +190,7 @@ const WatchlistComponent = () => {
         <p className="text-red-500">{error}</p>
         <button 
           className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-          onClick={refreshWatchlist}
+          onClick={() => refreshWatchlist(true)}
         >
           Try Again
         </button>
@@ -240,10 +252,11 @@ const WatchlistComponent = () => {
           isOpen={isDetailModalOpen}
           onClose={handleDetailModalClose}
           item={selectedItem}
+          onRefresh={onRefresh}
         />
       )}
     </div>
   );
 };
 
-export default memo(WatchlistComponent); 
+export default WatchlistComponent; 

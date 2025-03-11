@@ -20,7 +20,7 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
   const [searchError, setSearchError] = useState<string | null>(null);
   const [noResults, setNoResults] = useState(false);
   
-  const { addToWatchlist, isInWatchlist } = useWatchlist();
+  const { addToWatchlist, isInWatchlist, refreshWatchlist } = useWatchlist();
   
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -61,12 +61,18 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
     
     setIsAdding(true);
     try {
-      addToWatchlist(selectedCoin, priceTarget);
+      // Add to watchlist - this will update the UI directly without triggering refreshes
+      await addToWatchlist(selectedCoin, priceTarget);
       
+      // Force refresh to ensure UI updates, bypassing rate limits
+      await refreshWatchlist(true);
+      
+      // Call the onCoinAdded callback if provided
       if (onCoinAdded) {
         onCoinAdded();
       }
       
+      // Reset form and close modal
       resetForm();
       onClose();
     } catch (error) {

@@ -140,7 +140,8 @@ export default function PortfolioDashboard() {
   const {
     watchlist,
     loading: watchlistLoading,
-    error: watchlistError
+    error: watchlistError,
+    refreshWatchlist
   } = useWatchlist();
   
   const { user } = useAuth();
@@ -157,6 +158,12 @@ export default function PortfolioDashboard() {
     console.log("Coin added, refreshing portfolio...");
     refreshPortfolio();
   }, [refreshPortfolio]);
+
+  // Handler for when a watchlist item is added
+  const handleWatchlistRefresh = useCallback(() => {
+    console.log("Refreshing watchlist...");
+    refreshWatchlist();
+  }, [refreshWatchlist]);
 
   // Handler for opening the asset detail modal
   const handleAssetClick = useCallback((asset: PortfolioItemWithPrice) => {
@@ -327,7 +334,7 @@ export default function PortfolioDashboard() {
         
         {/* Watchlist Section - Takes up 1/3 of the space */}
         <div className="lg:col-span-1 h-auto">
-          <WatchlistComponent />
+          <WatchlistComponent onRefresh={handleWatchlistRefresh} />
         </div>
       </div>
 

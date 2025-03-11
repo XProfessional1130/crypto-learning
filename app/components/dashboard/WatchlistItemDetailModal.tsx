@@ -6,10 +6,11 @@ interface WatchlistItemDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   item: WatchlistItem | null;
+  onRefresh?: () => void;
 }
 
-export default function WatchlistItemDetailModal({ isOpen, onClose, item }: WatchlistItemDetailModalProps) {
-  const { updatePriceTarget, removeFromWatchlist, getTargetPercentage } = useWatchlist();
+export default function WatchlistItemDetailModal({ isOpen, onClose, item, onRefresh }: WatchlistItemDetailModalProps) {
+  const { updatePriceTarget, removeFromWatchlist, getTargetPercentage, refreshWatchlist } = useWatchlist();
   const [priceTarget, setPriceTarget] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [tab, setTab] = useState<'details' | 'edit'>('details');
@@ -46,6 +47,14 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
     try {
       await updatePriceTarget(item.id, priceTarget);
       
+      // Force refresh to ensure UI updates, bypassing rate limits
+      await refreshWatchlist(true);
+      
+      // Also call the parent's onRefresh if provided
+      if (onRefresh) {
+        onRefresh();
+      }
+      
       // Update the local item state with the new price target
       if (localItem) {
         setLocalItem({
@@ -67,7 +76,18 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item }: Watc
     
     setIsProcessing(true);
     try {
+      // Remove the item from watchlist
       await removeFromWatchlist(item.id);
+      
+      // Force refresh to ensure UI updates, bypassing rate limits
+      await refreshWatchlist(true);
+      
+      // Also call the parent's onRefresh if provided
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      // Close the modal
       onClose();
     } catch (error) {
       console.error('Error removing item from watchlist:', error);
