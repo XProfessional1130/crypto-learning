@@ -124,10 +124,20 @@ export default function WatchlistComponent() {
                 className="bg-gray-50 dark:bg-gray-750 rounded-lg p-3 cursor-pointer hover:shadow-md transition-all border border-gray-100 dark:border-gray-700 w-full"
               >
                 <div className="flex items-center mb-3">
-                  <div className="w-8 h-8 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center mr-2 overflow-hidden border border-gray-200 dark:border-gray-600">
-                    <div className="w-full h-full flex items-center justify-center text-gray-700 dark:text-gray-200 font-bold">
-                      {item.symbol.substring(0, 3)}
-                    </div>
+                  <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-2 text-xs font-bold overflow-hidden">
+                    <img 
+                      src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.id}.png`}
+                      alt={item.symbol}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = item.symbol.substring(0, 3);
+                        }
+                      }}
+                    />
                   </div>
                   <div className="min-w-0 flex-shrink">
                     <div className="text-base font-bold">{item.symbol}</div>
