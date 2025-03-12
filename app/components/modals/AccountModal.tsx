@@ -22,17 +22,11 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
       window.addEventListener('keydown', handleKeyDown);
       // Prevent scrolling when modal is open
       document.body.style.overflow = 'hidden';
-      
-      // Add a class to the body when modal is open
-      document.body.classList.add('modal-open');
     }
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
-      
-      // Remove the class when modal is closed
-      document.body.classList.remove('modal-open');
     };
   }, [isOpen, onClose]);
 
@@ -40,31 +34,12 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
 
   return (
     <>
-      {/* Full screen glass overlay - this will cover the entire application with a consistent effect */}
+      {/* Simple backdrop overlay with glass effect */}
       <div 
-        className="fixed inset-0 pointer-events-none z-40"
-        aria-hidden="true"
-      >
-        <div className="absolute inset-0 backdrop-blur-xl bg-white/15 dark:bg-black/20 shadow-lg"></div>
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-400/50 dark:via-white/20 to-transparent opacity-100"></div>
-          <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-400/40 dark:via-white/10 to-transparent"></div>
-          
-          {/* Glow spots similar to navigation */}
-          <div className="absolute -top-20 -left-20 w-40 h-40 bg-brand-300/20 dark:bg-brand-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute -top-10 right-20 w-60 h-60 bg-blue-300/10 dark:bg-blue-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-40 left-1/3 w-60 h-60 bg-purple-300/10 dark:bg-purple-500/10 rounded-full blur-3xl"></div>
-        </div>
-      </div>
-      
-      {/* Backdrop - clickable area to close the modal */}
-      <div 
-        className="fixed inset-0 z-50"
+        className="fixed inset-0 z-40 backdrop-blur-xl bg-white/15 dark:bg-black/20 shadow-lg"
         onClick={onClose}
         aria-hidden="true"
-      >
-        {/* This div is intentionally empty, it's just a clickable layer */}
-      </div>
+      />
       
       {/* Modal */}
       <div 

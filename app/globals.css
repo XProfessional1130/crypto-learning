@@ -257,8 +257,3 @@ html {
     }
   }
 }
-
-/* Add subtle transition for when modal is open */
-body.modal-open {
-  @apply transition-colors duration-300;
-}
