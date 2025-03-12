@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import Section from '../ui/Section';
 import Button from '../ui/Button';
 import Image from 'next/image';
@@ -9,23 +9,19 @@ export default function HeroSection() {
   const [isVisible, setIsVisible] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   
-  // Mock data for animated chart
-  const [chartData, setChartData] = useState<number[]>([]);
-  
-  useEffect(() => {
+  // Mock data for animated chart - memoized to prevent recalculation
+  const chartData = useMemo(() => {
     // Generate random data points for the animated chart
-    const generateData = () => {
-      const baseValue = 30 + Math.random() * 20;
-      return Array.from({ length: 24 }, (_, i) => {
-        // Create a somewhat realistic looking chart with trends
-        const trend = Math.sin(i / 3) * 15;
-        const noise = (Math.random() * 20) - 10;
-        return baseValue + trend + noise;
-      });
-    };
-    
-    setChartData(generateData());
-    
+    const baseValue = 30 + Math.random() * 20;
+    return Array.from({ length: 24 }, (_, i) => {
+      // Create a somewhat realistic looking chart with trends
+      const trend = Math.sin(i / 3) * 15;
+      const noise = (Math.random() * 20) - 10;
+      return baseValue + trend + noise;
+    });
+  }, []);
+  
+  useEffect(() => {    
     // Animate in after mount
     const timer = setTimeout(() => {
       setIsVisible(true);
@@ -41,14 +37,14 @@ export default function HeroSection() {
       className="relative overflow-visible nav-section-fix"
     >
       {/* Enhanced background elements with more dynamic animations - extended beyond boundaries */}
-      <div className="absolute inset-0 z-0 overflow-visible">
+      <div className="absolute inset-0 z-0 overflow-visible will-change-opacity">
         {/* Primary glow effects - extended reach and enhanced blur for seamless transitions */}
-        <div className="absolute top-[-35%] right-[10%] w-[900px] h-[900px] rounded-full bg-gradient-to-br from-brand-200/25 to-brand-300/5 dark:from-brand-700/15 dark:to-brand-900/5 blur-[150px] animate-pulse-slow"></div>
-        <div className="absolute bottom-[-40%] left-[5%] w-[800px] h-[800px] rounded-full bg-gradient-to-tr from-indigo-300/15 dark:from-indigo-700/15 to-blue-200/10 dark:to-blue-800/10 blur-[150px] animate-pulse-slow" style={{ animationDelay: '3s' }}></div>
+        <div className="absolute top-[-35%] right-[10%] w-[900px] h-[900px] rounded-full bg-gradient-to-br from-brand-200/25 to-brand-300/5 dark:from-brand-700/15 dark:to-brand-900/5 blur-[150px] animate-pulse-slow will-change-transform"></div>
+        <div className="absolute bottom-[-40%] left-[5%] w-[800px] h-[800px] rounded-full bg-gradient-to-tr from-indigo-300/15 dark:from-indigo-700/15 to-blue-200/10 dark:to-blue-800/10 blur-[150px] animate-pulse-slow will-change-transform" style={{ animationDelay: '3s' }}></div>
         
         {/* Secondary accent glows - extended and positioned for smooth transitions */}
-        <div className="absolute top-[20%] left-[30%] w-[450px] h-[450px] rounded-full bg-gradient-to-r from-teal-200/12 dark:from-teal-700/8 to-cyan-300/4 dark:to-cyan-800/4 blur-[100px] animate-pulse-slow" style={{ animationDelay: '1.5s' }}></div>
-        <div className="absolute bottom-[-5%] right-[25%] w-[400px] h-[400px] rounded-full bg-gradient-to-l from-green-200/8 dark:from-green-800/4 to-emerald-200/4 dark:to-emerald-900/4 blur-[80px] animate-pulse-slow" style={{ animationDelay: '4.5s' }}></div>
+        <div className="absolute top-[20%] left-[30%] w-[450px] h-[450px] rounded-full bg-gradient-to-r from-teal-200/12 dark:from-teal-700/8 to-cyan-300/4 dark:to-cyan-800/4 blur-[100px] animate-pulse-slow will-change-transform" style={{ animationDelay: '1.5s' }}></div>
+        <div className="absolute bottom-[-5%] right-[25%] w-[400px] h-[400px] rounded-full bg-gradient-to-l from-green-200/8 dark:from-green-800/4 to-emerald-200/4 dark:to-emerald-900/4 blur-[80px] animate-pulse-slow will-change-transform" style={{ animationDelay: '4.5s' }}></div>
         
         {/* Decorative elements with broader blur and better positioning for transitions */}
         <div className="absolute top-[15%] left-[15%] w-[2px] h-[250px] bg-gradient-to-b from-brand-300/30 via-brand-300/15 to-transparent blur-[4px] dark:from-brand-400/20 dark:via-brand-400/8"></div>
@@ -81,6 +77,7 @@ export default function HeroSection() {
                 viewBox="0 0 24 24" 
                 fill="none" 
                 xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
               >
                 <path d="M10.75 8.75L14.25 12L10.75 15.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M6.75 19.25H17.25C18.3546 19.25 19.25 18.3546 19.25 17.25V6.75C19.25 5.64543 18.3546 4.75 17.25 4.75H6.75C5.64543 4.75 4.75 5.64543 4.75 6.75V17.25C4.75 18.3546 5.64543 19.25 6.75 19.25Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -159,21 +156,21 @@ export default function HeroSection() {
                   <div className="flex justify-between items-center mb-4">
                     <div className="font-medium text-sm text-light-text-primary dark:text-dark-text-primary">BTC/USD</div>
                     <div className="text-sm text-green-500 font-medium flex items-center">
-                      <svg className="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <svg className="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <path d="M12 19V5M12 5L5 12M12 5L19 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       2.4%
                     </div>
                   </div>
                   
-                  {/* Animated chart */}
+                  {/* Animated chart - optimized rendering with will-change */}
                   <div className="w-full h-36 relative">
                     <div className="absolute bottom-0 inset-x-0 h-[1px] bg-white/20 dark:bg-white/10"></div>
                     <div className="h-full w-full flex items-end relative">
                       {chartData.map((value, i) => (
                         <div 
                           key={i} 
-                          className="flex-1 mx-0.5 transform transition-all duration-500 ease-out"
+                          className="flex-1 mx-0.5 transform transition-all duration-500 ease-out will-change-transform"
                           style={{ 
                             height: `${value}%`,
                             background: 'linear-gradient(to top, rgba(77, 181, 176, 0.8), rgba(77, 181, 176, 0.1))',
@@ -232,14 +229,14 @@ export default function HeroSection() {
             {/* Small floating UI elements */}
             <div className="absolute -right-8 top-1/3 w-20 h-20 rounded-lg neo-glass flex items-center justify-center transform rotate-12 animate-float" style={{ animationDelay: "1.5s" }}>
               <div className="w-10 h-10 rounded-full bg-gradient-to-r from-brand-primary to-brand-light flex items-center justify-center text-white">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
             </div>
             <div className="absolute -left-6 bottom-1/4 w-16 h-16 rounded-lg neo-glass flex items-center justify-center transform -rotate-12 animate-float" style={{ animationDelay: "2.2s" }}>
               <div className="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-white">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <path d="M12 4V20M12 4L18 10M12 4L6 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>

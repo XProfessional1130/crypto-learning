@@ -7,7 +7,7 @@ interface SectionProps {
   children: ReactNode;
   className?: string;
   background?: 'white' | 'light' | 'dark' | 'primary' | 'brand' | 'glass' | 'none';
-  spacing?: 'sm' | 'md' | 'lg' | 'xl';
+  spacing?: 'sm' | 'md' | 'lg' | 'xl' | 'none';
   containerMaxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
 }
 
@@ -31,6 +31,7 @@ export default function Section({
   
   // Spacing styles
   const spacingStyles = {
+    none: '',
     sm: 'py-8',
     md: 'py-12',
     lg: 'py-16 sm:py-24',

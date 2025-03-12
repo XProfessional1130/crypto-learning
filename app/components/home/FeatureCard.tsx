@@ -7,9 +7,11 @@ interface FeatureCardProps {
   title: string;
   description: string;
   icon: ReactNode;
+  delay?: number;
+  isVisible?: boolean;
 }
 
-export default function FeatureCard({ title, description, icon }: FeatureCardProps) {
+export default function FeatureCard({ title, description, icon, delay = 0, isVisible: parentIsVisible }: FeatureCardProps) {
   const [isVisible, setIsVisible] = useState(false);
   
   useEffect(() => {
@@ -20,9 +22,13 @@ export default function FeatureCard({ title, description, icon }: FeatureCardPro
     return () => clearTimeout(timer);
   }, []);
   
+  // Use parent visibility state if provided, otherwise use local state
+  const visibility = parentIsVisible !== undefined ? parentIsVisible : isVisible;
+  
   return (
     <div 
-      className={`group relative perspective-tilt transition-all duration-1000 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+      className={`group relative perspective-tilt transition-all duration-1000 transform ${visibility ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+      style={{ transitionDelay: `${delay}s` }}
     >
       {/* Enhanced glassmorphic card background with prismatic effects */}
       <div className="absolute inset-0 rounded-2xl neo-glass neo-glass-before backdrop-glow transform transition-all duration-500 group-hover:translate-y-[-6px] group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.18)] dark:group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)]"></div>

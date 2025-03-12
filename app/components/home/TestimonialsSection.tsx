@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import Section from '../ui/Section';
 import Testimonial from './Testimonial';
 
@@ -23,23 +24,49 @@ const testimonials = [
 ];
 
 export default function TestimonialsSection() {
-  return (
-    <Section background="light" className="bg-indigo-50">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-          What Our Members Say
-        </h2>
-      </div>
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef<HTMLDivElement>(null);
 
-      <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3">
-        {testimonials.map((testimonial, index) => (
-          <Testimonial
-            key={index}
-            name={testimonial.name}
-            role={testimonial.role}
-            content={testimonial.content}
-          />
-        ))}
+  useEffect(() => {
+    // Simple intersection observer to trigger animations when in view
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <Section background="none" className="relative">
+      <div ref={sectionRef} className={`max-w-4xl mx-auto ${isVisible ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000`}>
+        <div className="text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-light-text-primary dark:text-dark-text-primary sm:text-4xl">
+            What Our Members Say
+          </h2>
+        </div>
+
+        <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
+          {testimonials.map((testimonial, index) => (
+            <Testimonial
+              key={index}
+              name={testimonial.name}
+              role={testimonial.role}
+              content={testimonial.content}
+              isVisible={isVisible}
+              delay={index * 0.2}
+            />
+          ))}
+        </div>
       </div>
     </Section>
   );

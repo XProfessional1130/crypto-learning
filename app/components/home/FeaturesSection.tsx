@@ -58,98 +58,57 @@ export default function FeaturesSection() {
       observer.observe(sectionRef.current);
     }
 
-    return () => {
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, []);
 
   return (
-    <Section background="none" className="relative py-32 overflow-hidden">
-      {/* Enhanced atmospheric background elements */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        {/* Main background elements */}
-        <div className="absolute top-1/3 left-[-10%] w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-brand-100/10 to-brand-200/5 dark:from-brand-800/8 dark:to-brand-900/3 blur-[80px] animate-pulse-slow"></div>
-        <div className="absolute bottom-1/4 right-[-5%] w-[450px] h-[450px] rounded-full bg-gradient-to-bl from-indigo-100/8 to-blue-100/3 dark:from-indigo-900/5 dark:to-blue-900/3 blur-[100px] animate-pulse-slow" style={{ animationDelay: '2.5s' }}></div>
-        
-        {/* Decorative lines */}
-        <div className="absolute left-0 right-0 top-[15%] h-[1px] bg-gradient-to-r from-transparent via-brand-200/20 dark:via-brand-700/10 to-transparent"></div>
-        <div className="absolute left-0 right-0 bottom-[15%] h-[1px] bg-gradient-to-r from-transparent via-brand-200/10 dark:via-brand-700/5 to-transparent"></div>
-        
-        {/* Floating particles */}
-        <div className="absolute top-[20%] left-[15%] w-[6px] h-[6px] rounded-full bg-brand-200 dark:bg-brand-700 opacity-40 dark:opacity-30 animate-float" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-[60%] right-[20%] w-[8px] h-[8px] rounded-full bg-indigo-300 dark:bg-indigo-700 opacity-30 dark:opacity-20 animate-float" style={{ animationDelay: '0.5s' }}></div>
-        <div className="absolute bottom-[30%] left-[30%] w-[4px] h-[4px] rounded-full bg-cyan-300 dark:bg-cyan-700 opacity-40 dark:opacity-30 animate-float" style={{ animationDelay: '1.7s' }}></div>
-      </div>
+    <Section background="none" className="relative overflow-visible">
+      {/* Removed solid background for a seamless flow with global background */}
       
-      <div 
-        ref={sectionRef} 
-        className={`relative z-10 transition-all duration-1000 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
-      >
-        {/* Enhanced section header with sophisticated typography */}
-        <div className="text-center max-w-4xl mx-auto">
-          <div className="inline-flex items-center px-4 py-2 mb-6 rounded-full text-xs font-medium tracking-wider bg-light-bg-accent/50 dark:bg-dark-bg-accent/30 text-light-text-secondary dark:text-dark-text-secondary border border-white/20 dark:border-white/5 backdrop-blur-sm">
-            <div className="w-2 h-2 rounded-full bg-brand-400 dark:bg-brand-300 mr-2"></div>
+      <div ref={sectionRef} className={`max-w-4xl mx-auto ${isVisible ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000`}>
+        <div className="text-center">
+          {/* Feature badge with improved visibility */}
+          <div className="inline-flex items-center px-3 py-1.5 mb-6 rounded-full text-xs font-medium tracking-wider bg-gray-800/50 dark:bg-gray-700/60 text-gray-100 dark:text-gray-50 border border-teal-500/30 dark:border-teal-400/30 backdrop-blur-sm shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-teal-400 dark:bg-teal-300 mr-2 animate-pulse"></span>
             KEY PLATFORM FEATURES
           </div>
           
-          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl mb-4 relative">
-            <span className="relative inline-block">
-              <span className="absolute -inset-1 bg-brand-200/20 dark:bg-brand-700/20 rounded-lg blur-lg -z-10"></span>
-              <span className="text-light-text-primary dark:text-dark-text-primary relative z-10">Everything You Need to</span>
-            </span>
-            <br />
-            <span className="relative inline-block">
-              <span className="text-gradient-vibrant relative">
-                Succeed in Crypto
-                <div className="absolute -bottom-1 left-0 right-0 h-[3px] bg-gradient-to-r from-brand-primary via-brand-light to-transparent rounded-full"></div>
-              </span>
+          {/* Styled heading with two parts - brightened */}
+          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl mb-4">
+            <span className="block text-gray-800 dark:text-white">Everything You Need to</span>
+            <span className="relative block text-teal-500 dark:text-teal-300 mt-1 
+              text-shadow-glow inline-block pb-2">
+              Succeed in Crypto
+              <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-gradient-to-r from-teal-400 via-teal-300 to-cyan-400 dark:from-teal-300 dark:via-teal-200 dark:to-cyan-300 opacity-90"></span>
             </span>
           </h2>
           
-          <p className="mx-auto mt-6 max-w-2xl text-xl text-light-text-secondary dark:text-dark-text-secondary leading-relaxed backdrop-blur-sm">
-            Our comprehensive platform provides the tools and knowledge for both 
-            <span className="relative inline-block px-2 py-1 mx-1">
-              <span className="absolute inset-0 bg-brand-100/20 dark:bg-brand-800/20 rounded-lg -z-10"></span>
-              <span className="relative z-10 text-brand-700 dark:text-brand-300 font-medium">beginners</span>
-            </span> 
-            and 
-            <span className="relative inline-block px-2 py-1 mx-1">
-              <span className="absolute inset-0 bg-indigo-100/20 dark:bg-indigo-800/20 rounded-lg -z-10"></span>
-              <span className="relative z-10 text-indigo-700 dark:text-indigo-300 font-medium">experts</span>
+          {/* Styled paragraph with highlighted terms - improved contrast */}
+          <p className="mx-auto mt-6 max-w-2xl text-xl text-gray-600 dark:text-gray-300 leading-relaxed">
+            Our comprehensive platform provides the tools and knowledge for both
+            <span className="relative inline-block px-2 mx-1">
+              <span className="absolute inset-0 bg-teal-100/50 dark:bg-teal-800/40 rounded-lg -z-10 shadow-inner"></span>
+              <span className="relative z-10 text-teal-800 dark:text-teal-200 font-medium">beginners</span>
+            </span>
+            and
+            <span className="relative inline-block px-2 mx-1">
+              <span className="absolute inset-0 bg-indigo-100/50 dark:bg-indigo-800/40 rounded-lg -z-10 shadow-inner"></span>
+              <span className="relative z-10 text-indigo-800 dark:text-indigo-200 font-medium">experts</span>
             </span>.
           </p>
         </div>
 
-        {/* Animated staggered cards */}
-        <div className="mt-24 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3">
           {features.map((feature, index) => (
-            <div 
-              key={index} 
-              className="transition-all duration-1000" 
-              style={{ 
-                transitionDelay: isVisible ? `${index * 150}ms` : '0ms',
-              }}
-            >
-              <FeatureCard 
-                title={feature.title}
-                description={feature.description}
-                icon={feature.icon}
-              />
-            </div>
+            <FeatureCard
+              key={index}
+              icon={feature.icon}
+              title={feature.title}
+              description={feature.description}
+              delay={index * 0.2}
+              isVisible={isVisible}
+            />
           ))}
-        </div>
-        
-        {/* Decorative section footer */}
-        <div className="mt-24 text-center">
-          <div className="relative inline-block">
-            <div className="inline-flex rounded-full items-center px-4 py-3 backdrop-blur-md border border-white/20 dark:border-white/5 bg-white/10 dark:bg-dark-bg-accent/20 text-light-text-secondary dark:text-dark-text-secondary text-sm animate-float">
-              <svg className="w-4 h-4 mr-2 text-brand-400 dark:text-brand-300" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11.25 11.25L11.25 16.75M7.5 8.75V16.75M3.75 12.75V16.75M18.75 15.25V8.25M15 11.25V16.75M22.5 8.75V16.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span>Advanced analytics and data-driven insights at your fingertips</span>
-            </div>
-            <div className="absolute -inset-1 bg-white/5 dark:bg-white/5 blur rounded-full -z-10"></div>
-          </div>
         </div>
       </div>
     </Section>

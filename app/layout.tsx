@@ -11,8 +11,14 @@ import AppEnhancer from "./components/AppEnhancer";
 import GlobalStyles from "./components/GlobalStyles";
 import AuthTokenScript from "./components/AuthTokenScript";
 import BackgroundElements from "./components/BackgroundElements";
+import dynamic from 'next/dynamic';
 
 const inter = Inter({ subsets: ['latin'] })
+
+// Dynamically import the DataPrefetcher to prevent server-side rendering issues
+const DataPrefetcher = dynamic(() => import('./components/DataPrefetcher'), { 
+  ssr: false 
+});
 
 // Split metadata according to Next.js requirements
 export const metadata: Metadata = {
@@ -64,6 +70,7 @@ export default function RootLayout({
                 </main>
                 <Footer />
               </div>
+              <DataPrefetcher />
             </ThemeProvider>
           </AuthProvider>
         </QueryProvider>
