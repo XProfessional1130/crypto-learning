@@ -95,18 +95,16 @@ export default function Navigation() {
           </div>
 
           {/* Desktop navigation */}
-          <div className="hidden md:flex md:items-center md:space-x-1 px-2 py-1 rounded-full bg-white/10 dark:bg-white/5 backdrop-blur-md border border-gray-300/30 dark:border-white/5 shadow-sm relative">
+          <div className="hidden md:flex md:items-center md:space-x-1 px-2 py-1 rounded-full bg-white/10 dark:bg-white/5 backdrop-blur-md border border-gray-300/30 dark:border-white/5 shadow-sm">
             {visibleNavItems.map((item) => (
               <NavLink 
                 key={item.name}
                 href={item.href}
                 active={pathname === item.href}
-                className="px-3 py-1.5 text-sm font-medium rounded-full transition-colors duration-200 hover:bg-gray-200/40 dark:hover:bg-white/5"
+                className="px-3 py-1.5 text-sm font-medium rounded-full hover:bg-gray-200/40 dark:hover:bg-white/5"
                 activeClassName="text-brand-primary dark:text-brand-light font-medium"
               >
-                <span className="relative inline-flex items-center">
-                  {item.name}
-                </span>
+                {item.name}
               </NavLink>
             ))}
           </div>
@@ -143,7 +141,7 @@ export default function Navigation() {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden animate-fade-in-down">
+        <div className="md:hidden animate-fade-in">
           <div className="backdrop-blur-xl bg-white/15 dark:bg-black/20 border-t border-gray-300/40 dark:border-white/5 px-2 pb-3 pt-2 shadow-lg">
             <div className="space-y-1">
               {visibleNavItems.map((item) => (
@@ -154,10 +152,10 @@ export default function Navigation() {
                   onClick={() => {
                     setMobileMenuOpen(false);
                   }}
-                  className="block px-3 py-2.5 text-base font-medium rounded-lg transition-colors duration-200 hover:bg-gray-200/40 dark:hover:bg-white/5"
+                  className="block px-3 py-2.5 text-base font-medium rounded-lg hover:bg-gray-200/40 dark:hover:bg-white/5"
                   activeClassName="text-brand-primary dark:text-brand-light font-medium"
                 >
-                  <span className="relative z-10">{item.name}</span>
+                  {item.name}
                 </NavLink>
               ))}
             </div>
