@@ -27,9 +27,26 @@ export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  const [previousPath, setPreviousPath] = useState(pathname);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Get visible nav items based on auth state
   const visibleNavItems = navItems.filter(item => item.public || user);
+
+  // Track pathname changes for animations
+  useEffect(() => {
+    if (pathname !== previousPath) {
+      setIsTransitioning(true);
+      setPreviousPath(pathname);
+      
+      // Reset transition state after animation completes
+      const timer = setTimeout(() => {
+        setIsTransitioning(false);
+      }, 600); // Match this with animation duration
+      
+      return () => clearTimeout(timer);
+    }
+  }, [pathname, previousPath]);
 
   useEffect(() => {
     // Add scroll event listener to handle navbar appearance
@@ -95,23 +112,34 @@ export default function Navigation() {
           </div>
 
           {/* Desktop navigation */}
-          <div className="hidden md:flex md:items-center md:space-x-1 px-2 py-1 rounded-full bg-white/10 dark:bg-white/5 backdrop-blur-md border border-gray-300/30 dark:border-white/5 shadow-sm">
+          <div className="hidden md:flex md:items-center md:space-x-1 px-2 py-1 rounded-full bg-white/10 dark:bg-white/5 backdrop-blur-md border border-gray-300/30 dark:border-white/5 shadow-sm relative">
             {visibleNavItems.map((item) => (
               <NavLink 
                 key={item.name}
                 href={item.href}
                 active={pathname === item.href}
-                className="px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-300 hover:bg-white/20 dark:hover:bg-white/5"
-                activeClassName="bg-white/25 dark:bg-white/10 text-brand-primary dark:text-brand-light font-medium shadow-sm"
+                className="px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-300 hover:bg-gray-200/40 dark:hover:bg-white/5 group"
+                activeClassName="text-brand-primary dark:text-brand-light font-medium"
+                onClick={() => setPreviousPath(pathname)}
               >
                 <span className="relative inline-flex items-center">
                   {item.name}
-                  {pathname === item.href && (
-                    <span className="absolute -bottom-0.5 left-0 right-0 h-[2px] bg-gradient-to-r from-brand-primary/90 to-brand-light/90 rounded-full"></span>
-                  )}
+                  <span className={`absolute -bottom-0.5 left-0 right-0 h-[2px] bg-gradient-to-r from-brand-primary/90 to-brand-light/90 rounded-full transition-all duration-500 ease-in-out transform origin-left ${pathname === item.href ? 'scale-x-100' : 'scale-x-0'}`}></span>
                 </span>
+                
+                {/* Background highlight with animation */}
+                <span 
+                  className={`absolute inset-0 rounded-full transition-all duration-500 ease-in-out ${
+                    pathname === item.href 
+                      ? 'bg-gray-200/50 dark:bg-white/10 shadow-sm animate-softPulse' 
+                      : 'bg-transparent'
+                  }`}
+                ></span>
               </NavLink>
             ))}
+            
+            {/* Transition indicator - shows briefly during navigation */}
+            <div className={`absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-brand-primary/30 to-brand-light/30 transform origin-left transition-all duration-300 ${isTransitioning ? 'scale-x-100 opacity-100' : 'scale-x-0 opacity-0'}`}></div>
           </div>
 
           {/* Right side controls */}
@@ -154,11 +182,23 @@ export default function Navigation() {
                   key={item.name}
                   href={item.href}
                   active={pathname === item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2.5 text-base font-medium rounded-lg transition-all duration-200 hover:bg-gray-200/40 dark:hover:bg-white/5"
-                  activeClassName="bg-gray-200/50 dark:bg-white/10 text-brand-primary dark:text-brand-light font-medium shadow-sm"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setPreviousPath(pathname);
+                  }}
+                  className="block px-3 py-2.5 text-base font-medium rounded-lg transition-all duration-300 hover:bg-gray-200/40 dark:hover:bg-white/5 relative overflow-hidden"
+                  activeClassName="text-brand-primary dark:text-brand-light font-medium"
                 >
-                  {item.name}
+                  <span className="relative z-10">{item.name}</span>
+                  
+                  {/* Active background with animation */}
+                  <span 
+                    className={`absolute inset-0 transition-all duration-500 ease-in-out ${
+                      pathname === item.href 
+                        ? 'bg-gray-200/50 dark:bg-white/10 shadow-sm animate-softPulse' 
+                        : 'bg-transparent'
+                    }`}
+                  ></span>
                 </NavLink>
               ))}
             </div>
