@@ -36,14 +36,27 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+        className="fixed inset-0 backdrop-blur-lg bg-white/10 dark:bg-dark-bg-primary/30 z-50"
         onClick={onClose}
         aria-hidden="true"
-      />
+      >
+        {/* Glassmorphic effects for backdrop */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -left-40 w-80 h-80 bg-brand-300/10 dark:bg-brand-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/4 right-1/3 w-60 h-60 bg-blue-300/10 dark:bg-blue-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/3 left-1/4 w-40 h-40 bg-purple-300/10 dark:bg-purple-500/10 rounded-full blur-3xl"></div>
+        </div>
+      </div>
       
       {/* Modal */}
-      <div className="fixed inset-x-0 top-20 mx-auto max-w-md p-6 z-50 rounded-xl bg-white dark:bg-dark-bg-primary shadow-xl border border-gray-200 dark:border-white/10 animate-fade-in">
-        <div className="flex justify-between items-center mb-4">
+      <div className="fixed inset-x-0 top-20 mx-auto max-w-md p-6 z-50 rounded-xl bg-glass-white dark:bg-glass-dark shadow-glass border border-white/20 dark:border-white/10 backdrop-blur-md animate-fade-in">
+        {/* Subtle inner glow effect */}
+        <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent dark:from-white/5 dark:to-transparent"></div>
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 dark:via-white/20 to-transparent"></div>
+        </div>
+        
+        <div className="flex justify-between items-center mb-4 relative">
           <h2 className="text-xl font-semibold">Account Details</h2>
           <button
             onClick={onClose}
@@ -57,7 +70,7 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
         </div>
         
         {user && (
-          <div className="space-y-6">
+          <div className="space-y-6 relative">
             {/* User Info */}
             <div className="space-y-2">
               <div className="flex items-center space-x-3">
@@ -75,7 +88,7 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
             </div>
             
             {/* Subscription Info - Placeholder */}
-            <div className="p-4 bg-gray-100 dark:bg-dark-bg-accent/20 rounded-lg">
+            <div className="p-4 bg-white/50 dark:bg-dark-bg-accent/20 backdrop-blur-sm rounded-lg border border-gray-200/50 dark:border-white/5">
               <h3 className="font-medium mb-2">Subscription</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Your current plan</p>
               <div className="flex items-center justify-between">
@@ -92,7 +105,7 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
             </div>
             
             {/* Sign Out Button */}
-            <div className="pt-4 border-t border-gray-200 dark:border-white/10">
+            <div className="pt-4 border-t border-gray-200/50 dark:border-white/10">
               <Button
                 variant="glass"
                 size="md"
