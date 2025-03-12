@@ -20,11 +20,10 @@ export default function NavLink({
   className,
   activeClassName
 }: NavLinkProps) {
-  // Ensure client-side only state
+  // Client-side state
   const [mounted, setMounted] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Only enable client-side behavior after hydration
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -42,28 +41,27 @@ export default function NavLink({
       onMouseEnter={() => mounted && setIsHovered(true)}
       onMouseLeave={() => mounted && setIsHovered(false)}
     >
-      {/* Always render the same structure on server and client */}
-      {children}
+      <div className="relative">
+        {children}
+        
+        {/* The indicator is positioned relative to this div */}
+        {mounted && (
+          <div className="absolute bottom-[-6px] inset-x-0 flex justify-center">
+            <div className={`w-1 h-1 rounded-full ${
+              active 
+                ? 'bg-brand-primary dark:bg-brand-light'
+                : isHovered
+                  ? 'bg-gray-400/60 dark:bg-gray-400/40'
+                  : 'bg-transparent'
+            }`} />
+          </div>
+        )}
+      </div>
       
-      {/* Always render with conditional visibility rather than conditional rendering */}
-      <span 
-        className={`absolute -bottom-1 left-1/2 w-1 h-1 rounded-full transform -translate-x-1/2 ${
-          mounted && active 
-            ? 'bg-brand-primary dark:bg-brand-light' 
-            : mounted && !active && isHovered 
-              ? 'bg-gray-400/60 dark:bg-gray-400/40' 
-              : 'opacity-0'
-        }`}
-        aria-hidden="true"
-      />
-      
-      {/* Background always exists but is conditionally styled */}
-      <span 
-        className={`absolute inset-0 rounded-full -z-10 ${
-          active ? 'bg-gray-200/30 dark:bg-white/5' : ''
-        }`}
-        aria-hidden="true"
-      />
+      {/* Background highlight */}
+      {active && (
+        <span className="absolute inset-0 rounded-full bg-gray-200/30 dark:bg-white/5 -z-10" aria-hidden="true" />
+      )}
     </Link>
   );
 } 
