@@ -68,14 +68,14 @@ export default function Navigation() {
     <nav 
       className={`fixed inset-x-0 top-0 z-40 transition-all duration-500 ${
         scrolled 
-          ? 'backdrop-blur-xl bg-white/10 dark:bg-black/20 border-b border-white/20 dark:border-white/10 shadow-lg' 
-          : 'backdrop-blur-md bg-white/5 dark:bg-black/10 border-b border-transparent'
+          ? 'backdrop-blur-xl bg-white/15 dark:bg-black/20 border-b border-gray-300/40 dark:border-white/10 shadow-lg' 
+          : 'backdrop-blur-md bg-white/10 dark:bg-black/10 border-b border-gray-300/20 dark:border-transparent'
       }`}
     >
       {/* Glassmorphic effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/40 dark:via-white/20 to-transparent transition-opacity duration-500 ${scrolled ? 'opacity-100' : 'opacity-30'}`}></div>
-        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/30 dark:via-white/10 to-transparent"></div>
+        <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-400/50 dark:via-white/20 to-transparent transition-opacity duration-500 ${scrolled ? 'opacity-100' : 'opacity-30'}`}></div>
+        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-400/40 dark:via-white/10 to-transparent"></div>
         
         {/* Glow spots */}
         <div className="absolute -top-20 -left-20 w-40 h-40 bg-brand-300/20 dark:bg-brand-500/20 rounded-full blur-3xl"></div>
@@ -95,19 +95,19 @@ export default function Navigation() {
           </div>
 
           {/* Desktop navigation */}
-          <div className="hidden md:flex md:items-center md:space-x-1 px-2 py-1 rounded-full bg-white/5 dark:bg-white/5 backdrop-blur-md border border-white/10 dark:border-white/5 shadow-sm">
+          <div className="hidden md:flex md:items-center md:space-x-1 px-2 py-1 rounded-full bg-white/10 dark:bg-white/5 backdrop-blur-md border border-gray-300/30 dark:border-white/5 shadow-sm">
             {visibleNavItems.map((item) => (
               <NavLink 
                 key={item.name}
                 href={item.href}
                 active={pathname === item.href}
-                className="px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-300 hover:bg-white/10 dark:hover:bg-white/5"
-                activeClassName="bg-white/15 dark:bg-white/10 text-brand-primary dark:text-brand-light font-medium"
+                className="px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-300 hover:bg-white/20 dark:hover:bg-white/5"
+                activeClassName="bg-white/25 dark:bg-white/10 text-brand-primary dark:text-brand-light font-medium shadow-sm"
               >
                 <span className="relative inline-flex items-center">
                   {item.name}
                   {pathname === item.href && (
-                    <span className="absolute -bottom-0.5 left-0 right-0 h-[1.5px] bg-gradient-to-r from-brand-primary/70 to-brand-light/70 rounded-full"></span>
+                    <span className="absolute -bottom-0.5 left-0 right-0 h-[2px] bg-gradient-to-r from-brand-primary/90 to-brand-light/90 rounded-full"></span>
                   )}
                 </span>
               </NavLink>
@@ -147,7 +147,7 @@ export default function Navigation() {
       {/* Mobile menu */}
       {mobileMenuOpen && (
         <div className="md:hidden animate-fade-in-down">
-          <div className="backdrop-blur-xl bg-white/10 dark:bg-black/20 border-t border-white/10 dark:border-white/5 px-2 pb-3 pt-2 shadow-lg">
+          <div className="backdrop-blur-xl bg-white/15 dark:bg-black/20 border-t border-gray-300/40 dark:border-white/5 px-2 pb-3 pt-2 shadow-lg">
             <div className="space-y-1">
               {visibleNavItems.map((item) => (
                 <NavLink
@@ -155,14 +155,14 @@ export default function Navigation() {
                   href={item.href}
                   active={pathname === item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2.5 text-base font-medium rounded-lg transition-all duration-200 hover:bg-white/10 dark:hover:bg-white/5"
-                  activeClassName="bg-white/15 dark:bg-white/10 text-brand-primary dark:text-brand-light font-medium"
+                  className="block px-3 py-2.5 text-base font-medium rounded-lg transition-all duration-200 hover:bg-gray-200/40 dark:hover:bg-white/5"
+                  activeClassName="bg-gray-200/50 dark:bg-white/10 text-brand-primary dark:text-brand-light font-medium shadow-sm"
                 >
                   {item.name}
                 </NavLink>
               ))}
             </div>
-            <div className="mt-4 pt-4 border-t border-white/10 dark:border-white/5">
+            <div className="mt-4 pt-4 border-t border-gray-300/30 dark:border-white/5">
               <AuthButtons user={user} onSignOut={handleSignOut} mobile />
             </div>
           </div>

@@ -8,7 +8,7 @@ export default function ThemeToggle() {
   return (
     <button
       type="button"
-      className="relative rounded-full p-2 bg-white/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/10 dark:hover:bg-white/10 focus:outline-none transition-all duration-300 border border-white/10 dark:border-white/5"
+      className="relative rounded-full p-2 bg-gray-200/40 dark:bg-white/5 text-gray-600 dark:text-dark-text-secondary hover:bg-gray-200/60 dark:hover:bg-white/10 focus:outline-none transition-all duration-300 border border-gray-300/50 dark:border-white/5"
       onClick={toggleTheme}
     >
       <div className="absolute inset-0 rounded-full bg-gradient-to-br from-brand-200/0 to-brand-300/0 hover:from-brand-200/10 hover:to-brand-300/5 dark:hover:from-brand-700/10 dark:hover:to-brand-800/5 transition-colors duration-300"></div>

@@ -15,7 +15,7 @@ export default function AuthButtons({ user, onSignOut, mobile = false }: AuthBut
     return (
       <div className={mobile ? 'space-y-2' : 'flex items-center space-x-3'}>
         {!mobile && (
-          <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary px-2 py-1 rounded-md bg-white/5 dark:bg-white/5 border border-white/10 dark:border-white/5">
+          <span className="text-xs text-gray-600 dark:text-dark-text-secondary px-2 py-1 rounded-md bg-gray-200/40 dark:bg-white/5 border border-gray-300/50 dark:border-white/5">
             {user.email?.split('@')[0]}
           </span>
         )}
@@ -23,7 +23,7 @@ export default function AuthButtons({ user, onSignOut, mobile = false }: AuthBut
           variant="glass"
           size={mobile ? "md" : "sm"}
           onClick={onSignOut}
-          className={`${mobile ? 'w-full justify-start' : ''} bg-white/5 dark:bg-white/5 border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/10`}
+          className={`${mobile ? 'w-full justify-start' : ''} bg-gray-200/40 dark:bg-white/5 border-gray-300/50 dark:border-white/5 hover:bg-gray-200/60 dark:hover:bg-white/10`}
         >
           Sign out
         </Button>
@@ -37,7 +37,7 @@ export default function AuthButtons({ user, onSignOut, mobile = false }: AuthBut
         href="/auth/signin"
         variant="glass"
         size={mobile ? "md" : "sm"}
-        className={`${mobile ? 'w-full justify-start' : ''} bg-white/5 dark:bg-white/5 border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/10`}
+        className={`${mobile ? 'w-full justify-start' : ''} bg-gray-200/40 dark:bg-white/5 border-gray-300/50 dark:border-white/5 hover:bg-gray-200/60 dark:hover:bg-white/10`}
       >
         Sign in
       </Button>
@@ -45,7 +45,7 @@ export default function AuthButtons({ user, onSignOut, mobile = false }: AuthBut
         href="/auth/signin"
         variant="primary"
         size={mobile ? "md" : "sm"}
-        className={`${mobile ? 'w-full justify-start' : ''} shadow-sm shadow-brand-300/20 dark:shadow-brand-700/20`}
+        className={`${mobile ? 'w-full justify-start' : ''} shadow-sm shadow-brand-300/30 dark:shadow-brand-700/20`}
       >
         Sign up
       </Button>
