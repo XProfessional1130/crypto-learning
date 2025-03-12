@@ -22,11 +22,17 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
       window.addEventListener('keydown', handleKeyDown);
       // Prevent scrolling when modal is open
       document.body.style.overflow = 'hidden';
+      
+      // Add a class to the body when modal is open
+      document.body.classList.add('modal-open');
     }
     
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
+      
+      // Remove the class when modal is closed
+      document.body.classList.remove('modal-open');
     };
   }, [isOpen, onClose]);
 
@@ -34,22 +40,37 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Full screen glass overlay - this will cover the entire application with a consistent effect */}
       <div 
-        className="fixed inset-0 backdrop-blur-lg bg-white/10 dark:bg-dark-bg-primary/30 z-50"
-        onClick={onClose}
+        className="fixed inset-0 pointer-events-none z-40"
         aria-hidden="true"
       >
-        {/* Glassmorphic effects for backdrop */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -left-40 w-80 h-80 bg-brand-300/10 dark:bg-brand-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/4 right-1/3 w-60 h-60 bg-blue-300/10 dark:bg-blue-500/10 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-1/3 left-1/4 w-40 h-40 bg-purple-300/10 dark:bg-purple-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute inset-0 backdrop-blur-xl bg-white/15 dark:bg-black/20 shadow-lg"></div>
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-400/50 dark:via-white/20 to-transparent opacity-100"></div>
+          <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-400/40 dark:via-white/10 to-transparent"></div>
+          
+          {/* Glow spots similar to navigation */}
+          <div className="absolute -top-20 -left-20 w-40 h-40 bg-brand-300/20 dark:bg-brand-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute -top-10 right-20 w-60 h-60 bg-blue-300/10 dark:bg-blue-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-40 left-1/3 w-60 h-60 bg-purple-300/10 dark:bg-purple-500/10 rounded-full blur-3xl"></div>
         </div>
       </div>
       
+      {/* Backdrop - clickable area to close the modal */}
+      <div 
+        className="fixed inset-0 z-50"
+        onClick={onClose}
+        aria-hidden="true"
+      >
+        {/* This div is intentionally empty, it's just a clickable layer */}
+      </div>
+      
       {/* Modal */}
-      <div className="fixed inset-x-0 top-20 mx-auto max-w-md p-6 z-50 rounded-xl bg-glass-white dark:bg-glass-dark shadow-glass border border-white/20 dark:border-white/10 backdrop-blur-md animate-fade-in">
+      <div 
+        className="fixed inset-x-0 top-20 mx-auto max-w-md p-6 z-50 rounded-xl bg-glass-white dark:bg-glass-dark shadow-glass border border-white/20 dark:border-white/10 backdrop-blur-md animate-fade-in"
+        onClick={(e) => e.stopPropagation()} // Prevent clicks on the modal from closing it
+      >
         {/* Subtle inner glow effect */}
         <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent dark:from-white/5 dark:to-transparent"></div>
