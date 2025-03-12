@@ -33,6 +33,15 @@ export default function NavLink({
   const activeClasses = activeClassName || 'text-brand-primary dark:text-brand-light font-medium';
   const inactiveClasses = 'text-gray-700 dark:text-dark-text-primary hover:text-brand-primary dark:hover:text-brand-light';
   
+  // Determine indicator color - always render the element but change the color based on state
+  const indicatorColor = mounted ? (
+    active 
+      ? 'bg-brand-primary dark:bg-brand-light'
+      : isHovered
+        ? 'bg-gray-400/60 dark:bg-gray-400/40'
+        : 'bg-transparent'
+  ) : 'bg-transparent'; // Initially transparent on server
+  
   return (
     <Link 
       href={href} 
@@ -44,24 +53,17 @@ export default function NavLink({
       <div className="relative">
         {children}
         
-        {/* The indicator is positioned relative to this div */}
-        {mounted && (
-          <div className="absolute bottom-[-6px] inset-x-0 flex justify-center">
-            <div className={`w-1 h-1 rounded-full ${
-              active 
-                ? 'bg-brand-primary dark:bg-brand-light'
-                : isHovered
-                  ? 'bg-gray-400/60 dark:bg-gray-400/40'
-                  : 'bg-transparent'
-            }`} />
-          </div>
-        )}
+        {/* Always render the indicator, but conditionally apply colors */}
+        <div className="absolute bottom-[-6px] inset-x-0 flex justify-center">
+          <div className={`w-1 h-1 rounded-full ${indicatorColor}`} aria-hidden="true" />
+        </div>
       </div>
       
-      {/* Background highlight */}
-      {active && (
-        <span className="absolute inset-0 rounded-full bg-gray-200/30 dark:bg-white/5 -z-10" aria-hidden="true" />
-      )}
+      {/* Always render the background highlight, but conditionally apply visibility */}
+      <span 
+        className={`absolute inset-0 rounded-full -z-10 ${active ? 'bg-gray-200/30 dark:bg-white/5' : 'bg-transparent'}`} 
+        aria-hidden="true" 
+      />
     </Link>
   );
 } 
