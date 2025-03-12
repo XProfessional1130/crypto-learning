@@ -22,6 +22,7 @@ export default function Chat() {
   const [isTyping, setIsTyping] = useState(false);
   const [activePersonality, setActivePersonality] = useState<'tobo' | 'heido'>('tobo');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const initialRenderRef = useRef(true);
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -29,6 +30,11 @@ export default function Chat() {
   };
 
   useEffect(() => {
+    // Only scroll if it's not the initial render
+    if (initialRenderRef.current) {
+      initialRenderRef.current = false;
+      return;
+    }
     scrollToBottom();
   }, [messages]);
 
