@@ -70,6 +70,7 @@ module.exports = {
         'softPulse': 'softPulse 3s ease-in-out infinite',
         'fade-in-down': 'fade-in-down 0.5s ease-out',
         'blur-in': 'blur-in 0.5s ease-out',
+        'ripple-fade': 'ripple-fade 0.6s ease-out forwards',
       },
       keyframes: {
         'fade-in': {
@@ -91,6 +92,10 @@ module.exports = {
         'blur-in': {
           '0%': { filter: 'blur(5px)', opacity: '0' },
           '100%': { filter: 'blur(0)', opacity: '1' },
+        },
+        'ripple-fade': {
+          '0%': { transform: 'scale(0)', opacity: '0.5' },
+          '100%': { transform: 'scale(4)', opacity: '0' },
         },
       },
       backdropBlur: {

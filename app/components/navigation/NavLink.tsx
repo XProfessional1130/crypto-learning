@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useRef, useEffect } from 'react';
 
 interface NavLinkProps {
   children: ReactNode;
@@ -21,56 +21,72 @@ export default function NavLink({
   activeClassName
 }: NavLinkProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [rippleActive, setRippleActive] = useState(false);
+  const [ripplePosition, setRipplePosition] = useState({ x: 0, y: 0 });
+  const linkRef = useRef<HTMLAnchorElement>(null);
+  
+  // Clean up ripple effect after animation completes
+  useEffect(() => {
+    if (rippleActive) {
+      const timer = setTimeout(() => {
+        setRippleActive(false);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [rippleActive]);
 
   const baseClasses = className || 'relative inline-flex items-center px-3 py-1.5 text-sm font-medium transition-all duration-300 rounded-full hover:bg-gray-200/40 dark:hover:bg-white/5';
   
-  const activeClasses = activeClassName || 'bg-gray-200/50 dark:bg-white/10 text-brand-primary dark:text-brand-light font-medium shadow-sm';
+  const activeClasses = activeClassName || 'text-brand-primary dark:text-brand-light font-medium';
   const inactiveClasses = 'text-gray-700 dark:text-dark-text-primary hover:text-brand-primary dark:hover:text-brand-light';
   
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // Get position for ripple
+    if (linkRef.current) {
+      const rect = linkRef.current.getBoundingClientRect();
+      setRipplePosition({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      });
+      setRippleActive(true);
+    }
+    
+    if (onClick) onClick();
+  };
+
   return (
     <Link 
+      ref={linkRef}
       href={href} 
-      className={`${baseClasses} ${active ? activeClasses : inactiveClasses}`}
-      onClick={(e) => {
-        // Add a tiny ripple effect
-        const target = e.currentTarget;
-        const circle = document.createElement('span');
-        const diameter = Math.max(target.clientWidth, target.clientHeight);
-        
-        circle.style.width = circle.style.height = `${diameter}px`;
-        circle.style.position = 'absolute';
-        circle.style.borderRadius = '50%';
-        circle.style.transform = 'scale(0)';
-        circle.style.backgroundColor = 'rgba(255, 255, 255, 0.4)';
-        circle.style.pointerEvents = 'none';
-        circle.style.transition = 'all 0.5s ease-out';
-        
-        const rect = target.getBoundingClientRect();
-        circle.style.left = `${e.clientX - rect.left - diameter / 2}px`;
-        circle.style.top = `${e.clientY - rect.top - diameter / 2}px`;
-        
-        target.appendChild(circle);
-        
-        requestAnimationFrame(() => {
-          circle.style.transform = 'scale(1)';
-          circle.style.opacity = '0';
-          
-          setTimeout(() => {
-            circle.remove();
-          }, 500);
-        });
-        
-        if (onClick) onClick();
-      }}
+      className={`${baseClasses} ${active ? activeClasses : inactiveClasses} z-10`}
+      onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {children}
       
+      {/* Active background highlight with animation - using React state instead of DOM manipulation */}
+      {active && (
+        <span className="absolute inset-0 rounded-full bg-gray-200/50 dark:bg-white/10 shadow-sm animate-softPulse z-0"></span>
+      )}
+      
+      {/* Ripple effect - controlled by React state */}
+      {rippleActive && (
+        <span 
+          className="absolute rounded-full bg-white/30 pointer-events-none animate-ripple-fade z-0"
+          style={{
+            left: ripplePosition.x - 50 + 'px',
+            top: ripplePosition.y - 50 + 'px',
+            width: '100px',
+            height: '100px',
+          }}
+        />
+      )}
+      
       {/* Hover indicator animation - shows only when not active */}
       {!active && (
         <span 
-          className={`absolute bottom-0 left-1/2 right-1/2 h-0.5 bg-brand-primary/30 dark:bg-brand-light/30 rounded-full transform transition-all duration-300 ${
+          className={`absolute bottom-0 left-1/2 right-1/2 h-0.5 bg-brand-primary/30 dark:bg-brand-light/30 rounded-full transform transition-all duration-300 z-0 ${
             isHovered ? 'w-1/2 left-1/4 right-1/4' : 'w-0'
           }`}
         ></span>

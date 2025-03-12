@@ -118,23 +118,16 @@ export default function Navigation() {
                 key={item.name}
                 href={item.href}
                 active={pathname === item.href}
-                className="px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-300 hover:bg-gray-200/40 dark:hover:bg-white/5 group"
+                className="px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-300 hover:bg-gray-200/40 dark:hover:bg-white/5 group relative"
                 activeClassName="text-brand-primary dark:text-brand-light font-medium"
                 onClick={() => setPreviousPath(pathname)}
               >
-                <span className="relative inline-flex items-center">
+                <span className="relative inline-flex items-center z-10">
                   {item.name}
-                  <span className={`absolute -bottom-0.5 left-0 right-0 h-[2px] bg-gradient-to-r from-brand-primary/90 to-brand-light/90 rounded-full transition-all duration-500 ease-in-out transform origin-left ${pathname === item.href ? 'scale-x-100' : 'scale-x-0'}`}></span>
+                  {pathname === item.href && (
+                    <span className="absolute -bottom-0.5 left-0 right-0 h-[2px] bg-gradient-to-r from-brand-primary/90 to-brand-light/90 rounded-full"></span>
+                  )}
                 </span>
-                
-                {/* Background highlight with animation */}
-                <span 
-                  className={`absolute inset-0 rounded-full transition-all duration-500 ease-in-out ${
-                    pathname === item.href 
-                      ? 'bg-gray-200/50 dark:bg-white/10 shadow-sm animate-softPulse' 
-                      : 'bg-transparent'
-                  }`}
-                ></span>
               </NavLink>
             ))}
             
@@ -190,15 +183,6 @@ export default function Navigation() {
                   activeClassName="text-brand-primary dark:text-brand-light font-medium"
                 >
                   <span className="relative z-10">{item.name}</span>
-                  
-                  {/* Active background with animation */}
-                  <span 
-                    className={`absolute inset-0 transition-all duration-500 ease-in-out ${
-                      pathname === item.href 
-                        ? 'bg-gray-200/50 dark:bg-white/10 shadow-sm animate-softPulse' 
-                        : 'bg-transparent'
-                    }`}
-                  ></span>
                 </NavLink>
               ))}
             </div>
