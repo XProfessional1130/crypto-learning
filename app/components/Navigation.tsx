@@ -27,26 +27,9 @@ export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
-  const [previousPath, setPreviousPath] = useState(pathname);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Get visible nav items based on auth state
   const visibleNavItems = navItems.filter(item => item.public || user);
-
-  // Track pathname changes for animations
-  useEffect(() => {
-    if (pathname !== previousPath) {
-      setIsTransitioning(true);
-      setPreviousPath(pathname);
-      
-      // Reset transition state after animation completes
-      const timer = setTimeout(() => {
-        setIsTransitioning(false);
-      }, 600); // Match this with animation duration
-      
-      return () => clearTimeout(timer);
-    }
-  }, [pathname, previousPath]);
 
   useEffect(() => {
     // Add scroll event listener to handle navbar appearance
@@ -118,21 +101,14 @@ export default function Navigation() {
                 key={item.name}
                 href={item.href}
                 active={pathname === item.href}
-                className="px-3 py-1.5 text-sm font-medium rounded-full transition-all duration-300 hover:bg-gray-200/40 dark:hover:bg-white/5 group relative"
+                className="px-3 py-1.5 text-sm font-medium rounded-full transition-colors duration-200 hover:bg-gray-200/40 dark:hover:bg-white/5"
                 activeClassName="text-brand-primary dark:text-brand-light font-medium"
-                onClick={() => setPreviousPath(pathname)}
               >
-                <span className="relative inline-flex items-center z-10">
+                <span className="relative inline-flex items-center">
                   {item.name}
-                  {pathname === item.href && (
-                    <span className="absolute -bottom-0.5 left-0 right-0 h-[2px] bg-gradient-to-r from-brand-primary/90 to-brand-light/90 rounded-full"></span>
-                  )}
                 </span>
               </NavLink>
             ))}
-            
-            {/* Transition indicator - shows briefly during navigation */}
-            <div className={`absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-brand-primary/30 to-brand-light/30 transform origin-left transition-all duration-300 ${isTransitioning ? 'scale-x-100 opacity-100' : 'scale-x-0 opacity-0'}`}></div>
           </div>
 
           {/* Right side controls */}
@@ -177,9 +153,8 @@ export default function Navigation() {
                   active={pathname === item.href}
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    setPreviousPath(pathname);
                   }}
-                  className="block px-3 py-2.5 text-base font-medium rounded-lg transition-all duration-300 hover:bg-gray-200/40 dark:hover:bg-white/5 relative overflow-hidden"
+                  className="block px-3 py-2.5 text-base font-medium rounded-lg transition-colors duration-200 hover:bg-gray-200/40 dark:hover:bg-white/5"
                   activeClassName="text-brand-primary dark:text-brand-light font-medium"
                 >
                   <span className="relative z-10">{item.name}</span>

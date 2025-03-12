@@ -67,10 +67,7 @@ module.exports = {
         'fade-in': 'fade-in 0.5s ease-out',
         'slide-in': 'slide-in 0.5s ease-out',
         'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'softPulse': 'softPulse 3s ease-in-out infinite',
-        'fade-in-down': 'fade-in-down 0.5s ease-out',
-        'blur-in': 'blur-in 0.5s ease-out',
-        'ripple-fade': 'ripple-fade 0.6s ease-out forwards',
+        'fadeIn': 'fadeIn 0.2s ease-in-out forwards',
       },
       keyframes: {
         'fade-in': {
@@ -81,21 +78,9 @@ module.exports = {
           '0%': { transform: 'translateY(10px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
-        'softPulse': {
-          '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.85' },
-        },
-        'fade-in-down': {
-          '0%': { transform: 'translateY(-10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        'blur-in': {
-          '0%': { filter: 'blur(5px)', opacity: '0' },
-          '100%': { filter: 'blur(0)', opacity: '1' },
-        },
-        'ripple-fade': {
-          '0%': { transform: 'scale(0)', opacity: '0.5' },
-          '100%': { transform: 'scale(4)', opacity: '0' },
+        'fadeIn': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
         },
       },
       backdropBlur: {
