@@ -36,34 +36,33 @@ export default function HeroSection() {
 
   return (
     <Section 
-      background="none" 
-      className="py-24 pt-28 pb-32 relative overflow-hidden"
+      background="none"
+      spacing="none"
+      className="relative overflow-visible nav-section-fix"
     >
-      {/* Enhanced background elements with more dynamic animations */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        {/* Primary glow effects */}
-        <div className="absolute top-[-20%] right-[10%] w-[800px] h-[800px] rounded-full bg-gradient-to-br from-brand-200/30 to-brand-300/5 dark:from-brand-700/20 dark:to-brand-900/5 blur-[120px] animate-pulse-slow"></div>
-        <div className="absolute bottom-[-30%] left-[5%] w-[700px] h-[700px] rounded-full bg-gradient-to-tr from-indigo-300/15 dark:from-indigo-700/15 to-blue-200/10 dark:to-blue-800/10 blur-[100px] animate-pulse-slow" style={{ animationDelay: '3s' }}></div>
+      {/* Enhanced background elements with more dynamic animations - extended beyond boundaries */}
+      <div className="absolute inset-0 z-0 overflow-visible">
+        {/* Primary glow effects - extended reach and enhanced blur for seamless transitions */}
+        <div className="absolute top-[-35%] right-[10%] w-[900px] h-[900px] rounded-full bg-gradient-to-br from-brand-200/25 to-brand-300/5 dark:from-brand-700/15 dark:to-brand-900/5 blur-[150px] animate-pulse-slow"></div>
+        <div className="absolute bottom-[-40%] left-[5%] w-[800px] h-[800px] rounded-full bg-gradient-to-tr from-indigo-300/15 dark:from-indigo-700/15 to-blue-200/10 dark:to-blue-800/10 blur-[150px] animate-pulse-slow" style={{ animationDelay: '3s' }}></div>
         
-        {/* Secondary accent glows */}
-        <div className="absolute top-[20%] left-[30%] w-[400px] h-[400px] rounded-full bg-gradient-to-r from-teal-200/15 dark:from-teal-700/10 to-cyan-300/5 dark:to-cyan-800/5 blur-[80px] animate-pulse-slow" style={{ animationDelay: '1.5s' }}></div>
-        <div className="absolute bottom-[15%] right-[25%] w-[350px] h-[350px] rounded-full bg-gradient-to-l from-green-200/10 dark:from-green-800/5 to-emerald-200/5 dark:to-emerald-900/5 blur-[60px] animate-pulse-slow" style={{ animationDelay: '4.5s' }}></div>
+        {/* Secondary accent glows - extended and positioned for smooth transitions */}
+        <div className="absolute top-[20%] left-[30%] w-[450px] h-[450px] rounded-full bg-gradient-to-r from-teal-200/12 dark:from-teal-700/8 to-cyan-300/4 dark:to-cyan-800/4 blur-[100px] animate-pulse-slow" style={{ animationDelay: '1.5s' }}></div>
+        <div className="absolute bottom-[-5%] right-[25%] w-[400px] h-[400px] rounded-full bg-gradient-to-l from-green-200/8 dark:from-green-800/4 to-emerald-200/4 dark:to-emerald-900/4 blur-[80px] animate-pulse-slow" style={{ animationDelay: '4.5s' }}></div>
         
-        {/* Decorative elements */}
-        <div className="absolute top-[15%] left-[15%] w-[2px] h-[200px] bg-gradient-to-b from-brand-300/50 to-transparent blur-[2px] dark:from-brand-400/30"></div>
-        <div className="absolute top-[10%] left-[45%] w-[1px] h-[150px] bg-gradient-to-b from-brand-200/40 to-transparent blur-[1px] dark:from-brand-300/25"></div>
-        <div className="absolute top-[8%] right-[25%] w-[1.5px] h-[180px] bg-gradient-to-b from-brand-300/40 to-transparent blur-[1.5px] dark:from-brand-400/20"></div>
+        {/* Decorative elements with broader blur and better positioning for transitions */}
+        <div className="absolute top-[15%] left-[15%] w-[2px] h-[250px] bg-gradient-to-b from-brand-300/30 via-brand-300/15 to-transparent blur-[4px] dark:from-brand-400/20 dark:via-brand-400/8"></div>
+        <div className="absolute top-[10%] left-[45%] w-[1px] h-[200px] bg-gradient-to-b from-brand-200/25 via-brand-200/12 to-transparent blur-[3px] dark:from-brand-300/15 dark:via-brand-300/8"></div>
+        <div className="absolute top-[8%] right-[25%] w-[1.5px] h-[220px] bg-gradient-to-b from-brand-300/25 via-brand-300/12 to-transparent blur-[3.5px] dark:from-brand-400/12 dark:via-brand-400/6"></div>
         
-        {/* Subtle particle effect dots */}
-        <div className="absolute top-[25%] left-[20%] w-[6px] h-[6px] rounded-full bg-brand-300 dark:bg-brand-400 opacity-40 dark:opacity-30 animate-pulse"></div>
-        <div className="absolute top-[40%] right-[15%] w-[8px] h-[8px] rounded-full bg-brand-400 dark:bg-brand-500 opacity-30 dark:opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute bottom-[35%] left-[40%] w-[5px] h-[5px] rounded-full bg-indigo-400 dark:bg-indigo-500 opacity-25 dark:opacity-15 animate-pulse" style={{ animationDelay: '3s' }}></div>
+        {/* Special boundary element for bottom transition */}
+        <div className="absolute bottom-[-10%] left-[40%] w-[600px] h-[300px] rounded-[100%] bg-gradient-to-b from-brand-200/5 to-transparent blur-[80px] dark:from-brand-700/5 pointer-events-none"></div>
       </div>
       
-      <div ref={heroRef} className={`grid grid-cols-1 gap-16 md:grid-cols-2 md:gap-20 relative z-10 transition-all duration-1000 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+      <div ref={heroRef} className={`grid grid-cols-1 gap-16 md:grid-cols-2 md:gap-20 relative z-10 transition-all duration-1000 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'} mt-8 pt-4`}>
         {/* Left content with enhanced typography and animations */}
-        <div className="flex flex-col justify-center">
-          <div className="inline-flex items-center px-3 py-1.5 mb-6 rounded-full text-xs font-medium tracking-wider bg-brand-100/30 dark:bg-brand-800/30 text-brand-700 dark:text-brand-300 border border-brand-200/50 dark:border-brand-700/50 backdrop-blur-sm shadow-sm">
+        <div className="flex flex-col justify-center mt-0">
+          <div className="inline-flex items-center px-3 py-1.5 mb-2 rounded-full text-xs font-medium tracking-wider bg-brand-100/30 dark:bg-brand-800/30 text-brand-700 dark:text-brand-300 border border-brand-200/50 dark:border-brand-700/50 backdrop-blur-sm shadow-sm">
             <span className="w-2 h-2 rounded-full bg-brand-500 dark:bg-brand-400 mr-2 animate-pulse"></span>
             NEXT GENERATION CRYPTO LEARNING
           </div>

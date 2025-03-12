@@ -173,7 +173,7 @@ html {
   }
 
   .text-shadow-glow {
-    text-shadow: 0 0 5px rgba(77, 181, 176, 0.5);
+    text-shadow: 0 0 8px rgba(77, 181, 176, 0.7), 0 0 20px rgba(77, 181, 176, 0.3);
   }
 
   .glass-effect {
@@ -255,5 +255,84 @@ html {
     75% {
       transform: translateY(-5px) translateX(-3px);
     }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .animate-float-slow {
+    animation: float-slow 8s ease-in-out infinite;
+  }
+  
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+  
+  @keyframes float-slow {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  /* Improved section transitions */
+  .section-connectors {
+    isolation: isolate;
+  }
+  
+  .section-connector {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    margin-top: -4rem; /* Increase overlap for better blending */
+    height: 8rem; /* Taller gradient area for smoother transition */
+    mask-image: linear-gradient(to bottom, transparent, black 40%, black 60%, transparent);
+  }
+  
+  /* Fix for navigation spacing */
+  .nav-section-fix {
+    margin-top: -8px !important;
+    padding-top: 16px !important;
+    position: relative;
+    top: -0.75rem;
+    z-index: 10;
+  }
+  
+  /* Allow glowing elements to overflow their containers without being clipped */
+  .glow-overflow {
+    overflow: visible !important;
+    isolation: isolate;
+  }
+  
+  /* Add this class to sections that need seamless transitions */
+  .seamless-section {
+    position: relative;
+    overflow: visible !important;
+  }
+  
+  /* Special treatment for glowing elements near section boundaries */
+  .boundary-glow {
+    position: relative;
+    z-index: 5; /* Higher than regular content but below connectors */
+    overflow: visible;
+    transform: translateZ(0);
+  }
+  
+  .boundary-glow::before {
+    content: '';
+    position: absolute;
+    inset: -100%;
+    background: inherit;
+    filter: blur(var(--blur-amount, 40px));
+    opacity: var(--glow-opacity, 0.15);
+    z-index: -1;
+    pointer-events: none;
   }
 }
