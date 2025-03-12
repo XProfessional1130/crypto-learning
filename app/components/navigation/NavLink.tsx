@@ -20,15 +20,15 @@ export default function NavLink({
   className,
   activeClassName
 }: NavLinkProps) {
-  const baseClasses = className || 'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-all duration-200';
-  const activeClasses = active 
-    ? (activeClassName || 'border-brand-primary nav-link-active') 
-    : 'border-transparent nav-link hover:border-brand-primary/30';
+  const baseClasses = className || 'relative inline-flex items-center px-3 py-1.5 text-sm font-medium transition-all duration-300 rounded-full hover:bg-white/10 dark:hover:bg-white/5';
+  
+  const activeClasses = activeClassName || 'bg-white/15 dark:bg-white/10 text-brand-primary dark:text-brand-light font-medium';
+  const inactiveClasses = 'text-light-text-primary dark:text-dark-text-primary hover:text-brand-primary dark:hover:text-brand-light';
   
   return (
     <Link 
       href={href} 
-      className={`${baseClasses} ${active ? activeClasses : ''}`}
+      className={`${baseClasses} ${active ? activeClasses : inactiveClasses}`}
       onClick={onClick}
     >
       {children}

@@ -8,12 +8,14 @@ export default function ThemeToggle() {
   return (
     <button
       type="button"
-      className="rounded-full p-2 text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/10 dark:hover:bg-dark-bg-accent/30 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all duration-200"
+      className="relative rounded-full p-2 bg-white/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/10 dark:hover:bg-white/10 focus:outline-none transition-all duration-300 border border-white/10 dark:border-white/5"
       onClick={toggleTheme}
     >
+      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-brand-200/0 to-brand-300/0 hover:from-brand-200/10 hover:to-brand-300/5 dark:hover:from-brand-700/10 dark:hover:to-brand-800/5 transition-colors duration-300"></div>
+      
       <span className="sr-only">Toggle theme</span>
       {theme === 'dark' ? (
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -21,7 +23,7 @@ export default function ThemeToggle() {
           />
         </svg>
       ) : (
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"

@@ -13,15 +13,17 @@ interface AuthButtonsProps {
 export default function AuthButtons({ user, onSignOut, mobile = false }: AuthButtonsProps) {
   if (user) {
     return (
-      <div className={mobile ? 'space-y-2' : 'flex items-center space-x-4'}>
-        <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-          {user.email}
-        </span>
+      <div className={mobile ? 'space-y-2' : 'flex items-center space-x-3'}>
+        {!mobile && (
+          <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary px-2 py-1 rounded-md bg-white/5 dark:bg-white/5 border border-white/10 dark:border-white/5">
+            {user.email?.split('@')[0]}
+          </span>
+        )}
         <Button
-          variant="ghost"
+          variant="glass"
           size={mobile ? "md" : "sm"}
           onClick={onSignOut}
-          className={mobile ? 'w-full justify-start' : ''}
+          className={`${mobile ? 'w-full justify-start' : ''} bg-white/5 dark:bg-white/5 border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/10`}
         >
           Sign out
         </Button>
@@ -30,20 +32,20 @@ export default function AuthButtons({ user, onSignOut, mobile = false }: AuthBut
   }
 
   return (
-    <div className={mobile ? 'space-y-2' : 'flex items-center space-x-4'}>
+    <div className={mobile ? 'space-y-2' : 'flex items-center space-x-3'}>
       <Button
         href="/auth/signin"
-        variant="ghost"
+        variant="glass"
         size={mobile ? "md" : "sm"}
-        className={mobile ? 'w-full justify-start' : ''}
+        className={`${mobile ? 'w-full justify-start' : ''} bg-white/5 dark:bg-white/5 border-white/10 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/10`}
       >
         Sign in
       </Button>
       <Button
         href="/auth/signin"
-        variant="glass"
+        variant="primary"
         size={mobile ? "md" : "sm"}
-        className={mobile ? 'w-full justify-start' : ''}
+        className={`${mobile ? 'w-full justify-start' : ''} shadow-sm shadow-brand-300/20 dark:shadow-brand-700/20`}
       >
         Sign up
       </Button>
