@@ -101,7 +101,7 @@ export default function Navigation() {
                 key={item.name}
                 href={item.href}
                 active={pathname === item.href}
-                className="px-3 py-1.5 text-sm font-medium rounded-full hover:bg-gray-200/40 dark:hover:bg-white/5"
+                className="px-3 py-1.5 text-sm font-medium rounded-full hover:bg-gray-200/40 dark:hover:bg-white/5 flex items-center"
                 activeClassName="text-brand-primary dark:text-brand-light font-medium"
               >
                 {item.name}
@@ -152,7 +152,7 @@ export default function Navigation() {
                   onClick={() => {
                     setMobileMenuOpen(false);
                   }}
-                  className="block px-3 py-2.5 text-base font-medium rounded-lg hover:bg-gray-200/40 dark:hover:bg-white/5"
+                  className="block w-full px-3 py-2.5 text-base font-medium rounded-lg hover:bg-gray-200/40 dark:hover:bg-white/5"
                   activeClassName="text-brand-primary dark:text-brand-light font-medium"
                 >
                   {item.name}

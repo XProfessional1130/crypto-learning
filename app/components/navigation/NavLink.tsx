@@ -20,16 +20,16 @@ export default function NavLink({
   className,
   activeClassName
 }: NavLinkProps) {
-  // Use useEffect for client-side only behaviors to prevent hydration mismatches
+  // Ensure client-side only state
   const [mounted, setMounted] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Only enable hover effects after initial client render to prevent hydration mismatch
+  // Only enable client-side behavior after hydration
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const baseClasses = className || 'relative flex items-center px-3 py-1.5 text-sm font-medium transition-colors duration-200 rounded-full hover:bg-gray-200/40 dark:hover:bg-white/5';
+  const baseClasses = className || 'relative px-3 py-1.5 text-sm font-medium transition-colors duration-200 rounded-full hover:bg-gray-200/40 dark:hover:bg-white/5';
   
   const activeClasses = activeClassName || 'text-brand-primary dark:text-brand-light font-medium';
   const inactiveClasses = 'text-gray-700 dark:text-dark-text-primary hover:text-brand-primary dark:hover:text-brand-light';
@@ -42,23 +42,28 @@ export default function NavLink({
       onMouseEnter={() => mounted && setIsHovered(true)}
       onMouseLeave={() => mounted && setIsHovered(false)}
     >
-      <div className="relative z-10">
-        {children}
-        
-        {/* Only render these elements after hydration to prevent mismatch */}
-        {mounted && active && (
-          <span className="absolute -bottom-1 left-1/2 w-1 h-1 bg-brand-primary dark:bg-brand-light rounded-full transform -translate-x-1/2"></span>
-        )}
-        
-        {mounted && !active && isHovered && (
-          <span className="absolute -bottom-1 left-1/2 w-1 h-1 bg-gray-400/60 dark:bg-gray-400/40 rounded-full transform -translate-x-1/2"></span>
-        )}
-      </div>
+      {/* Always render the same structure on server and client */}
+      {children}
       
-      {/* Background highlight - server/client safe, no animation or state dependency */}
-      {active && (
-        <span className="absolute inset-0 rounded-full bg-gray-200/30 dark:bg-white/5 -z-10"></span>
-      )}
+      {/* Always render with conditional visibility rather than conditional rendering */}
+      <span 
+        className={`absolute -bottom-1 left-1/2 w-1 h-1 rounded-full transform -translate-x-1/2 ${
+          mounted && active 
+            ? 'bg-brand-primary dark:bg-brand-light' 
+            : mounted && !active && isHovered 
+              ? 'bg-gray-400/60 dark:bg-gray-400/40' 
+              : 'opacity-0'
+        }`}
+        aria-hidden="true"
+      />
+      
+      {/* Background always exists but is conditionally styled */}
+      <span 
+        className={`absolute inset-0 rounded-full -z-10 ${
+          active ? 'bg-gray-200/30 dark:bg-white/5' : ''
+        }`}
+        aria-hidden="true"
+      />
     </Link>
   );
 } 
