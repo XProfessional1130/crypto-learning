@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useCallback } from 'react';
 
 interface NavLinkProps {
   children: ReactNode;
@@ -42,13 +42,26 @@ export default function NavLink({
         : 'bg-transparent'
   ) : 'bg-transparent'; // Initially transparent on server
   
+  // Handlers defined with useCallback to avoid recreation on each render
+  const handleMouseEnter = useCallback(() => {
+    if (mounted) setIsHovered(true);
+  }, [mounted]);
+  
+  const handleMouseLeave = useCallback(() => {
+    if (mounted) setIsHovered(false);
+  }, [mounted]);
+  
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    if (onClick) onClick();
+  }, [onClick]);
+  
   return (
     <Link 
       href={href} 
       className={`${baseClasses} ${active ? activeClasses : inactiveClasses}`}
-      onClick={onClick}
-      onMouseEnter={() => mounted && setIsHovered(true)}
-      onMouseLeave={() => mounted && setIsHovered(false)}
+      onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div className="relative">
         {children}

@@ -43,21 +43,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="smooth-scroll">
-      <head>
-        {/* Script tags in <head> should be defined at build time for static generation */}
-      </head>
       <body className={`${inter.className} h-full antialiased`}>
-        {/* Auth token detection */}
-        <AuthTokenScript />
-        {/* App enhancements for professional UX */}
-        <AppEnhancer />
-        {/* Client-side only styles */}
-        <GlobalStyles />
-        <CoinDataInitializer />
+        {/* Initialize providers first - they handle their own client/server logic */}
         <QueryProvider>
           <AuthProvider>
             <ThemeProvider>
-              {/* Enhanced background elements */}
+              {/* Client components for enhancements - moved inside providers to ensure proper hydration */}
+              <AppEnhancer />
+              <GlobalStyles />
+              <AuthTokenScript />
+              <CoinDataInitializer />
+              
+              {/* Background elements - more isolated now */}
               <BackgroundElements />
 
               <div className="min-h-screen flex flex-col relative z-0 pt-20">

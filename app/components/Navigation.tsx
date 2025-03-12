@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { usePathname } from 'next/navigation';
 import NavLink from './navigation/NavLink';
-import MobileMenu from './navigation/MobileMenu';
 import AuthButtons from './navigation/AuthButtons';
 import ThemeToggle from './ThemeToggle';
 import ThemeLogo from './ThemeLogo';
@@ -23,16 +22,25 @@ const navItems = [
 ];
 
 export default function Navigation() {
+  // Always initialize with the same state values on both server and client
   const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+
+  // Mark as mounted to enable client-side behaviors
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Get visible nav items based on auth state
   const visibleNavItems = navItems.filter(item => item.public || user);
 
+  // Handle scroll events only after mounting to avoid hydration issues
   useEffect(() => {
-    // Add scroll event listener to handle navbar appearance
+    if (!mounted) return;
+    
     const handleScroll = () => {
       const isScrolled = window.scrollY > 20;
       if (isScrolled !== scrolled) {
@@ -40,11 +48,14 @@ export default function Navigation() {
       }
     };
 
+    // Initial scroll position check
+    handleScroll();
+    
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [scrolled]);
+  }, [scrolled, mounted]);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     try {
       // Direct call to supabase signOut for more reliability
       await supabase.auth.signOut();
@@ -58,11 +69,11 @@ export default function Navigation() {
       // Fallback - attempt force reload even if error
       window.location.href = '/';
     }
-  };
+  }, []);
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
+  const toggleMobileMenu = useCallback(() => {
+    setMobileMenuOpen(prev => !prev);
+  }, []);
 
   return (
     <nav 
@@ -123,48 +134,55 @@ export default function Navigation() {
               type="button"
               className="inline-flex md:hidden items-center justify-center rounded-full p-2 text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/10 dark:hover:bg-white/5 focus:outline-none"
               onClick={toggleMobileMenu}
+              aria-expanded={mobileMenuOpen}
             >
               <span className="sr-only">Open main menu</span>
-              {mobileMenuOpen ? (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                </svg>
-              )}
+              <svg 
+                className="h-6 w-6" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                strokeWidth={1.5} 
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  d={mobileMenuOpen 
+                    ? "M6 18L18 6M6 6l12 12" 
+                    : "M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+                  } 
+                />
+              </svg>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden animate-fade-in">
-          <div className="backdrop-blur-xl bg-white/15 dark:bg-black/20 border-t border-gray-300/40 dark:border-white/5 px-2 pb-3 pt-2 shadow-lg">
-            <div className="space-y-1">
-              {visibleNavItems.map((item) => (
-                <NavLink
-                  key={item.name}
-                  href={item.href}
-                  active={pathname === item.href}
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                  }}
-                  className="block w-full px-3 py-2.5 text-base font-medium rounded-lg hover:bg-gray-200/40 dark:hover:bg-white/5"
-                  activeClassName="text-brand-primary dark:text-brand-light font-medium"
-                >
-                  {item.name}
-                </NavLink>
-              ))}
-            </div>
-            <div className="mt-4 pt-4 border-t border-gray-300/30 dark:border-white/5">
-              <AuthButtons user={user} onSignOut={handleSignOut} mobile />
-            </div>
+      {/* Mobile menu - always rendered but visibility controlled by CSS */}
+      <div className={`md:hidden ${mobileMenuOpen ? 'block' : 'hidden'} animate-fade-in`}>
+        <div className="backdrop-blur-xl bg-white/15 dark:bg-black/20 border-t border-gray-300/40 dark:border-white/5 px-2 pb-3 pt-2 shadow-lg">
+          <div className="space-y-1">
+            {visibleNavItems.map((item) => (
+              <NavLink
+                key={item.name}
+                href={item.href}
+                active={pathname === item.href}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                }}
+                className="block w-full px-3 py-2.5 text-base font-medium rounded-lg hover:bg-gray-200/40 dark:hover:bg-white/5"
+                activeClassName="text-brand-primary dark:text-brand-light font-medium"
+              >
+                {item.name}
+              </NavLink>
+            ))}
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-300/30 dark:border-white/5">
+            <AuthButtons user={user} onSignOut={handleSignOut} mobile />
           </div>
         </div>
-      )}
+      </div>
     </nav>
   );
 } 
