@@ -231,9 +231,9 @@ export default function Discounts() {
                   href={discount.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full btn btn-primary text-center text-white hover:shadow-[0_0_15px_rgba(77,181,176,0.5)] transition-all duration-300"
+                  className="block w-full rounded-lg bg-brand-primary hover:bg-brand-dark text-white text-center px-4 py-2 font-medium transition-all duration-300 hover:shadow-[0_0_15px_rgba(77,181,176,0.5)]"
                 >
-                  <span className="relative z-10">Get Discount</span>
+                  Get Discount
                 </a>
                 <p className="mt-2 text-center text-xs text-light-text-secondary dark:text-dark-text-secondary">
                   {discount.expires_at ? `Valid until ${formatDate(discount.expires_at)}` : 'No expiration date'}
@@ -250,9 +250,9 @@ export default function Discounts() {
           </p>
           <button
             onClick={() => {setSelectedCategory('All'); setSearchTerm('');}}
-            className="mt-4 btn btn-primary text-center text-white hover:shadow-[0_0_15px_rgba(77,181,176,0.5)] transition-all duration-300"
+            className="mt-4 rounded-lg bg-brand-primary hover:bg-brand-dark text-white text-center px-4 py-2 font-medium transition-all duration-300 hover:shadow-[0_0_15px_rgba(77,181,176,0.5)]"
           >
-            <span className="relative z-10">View All Discounts</span>
+            View All Discounts
           </button>
         </div>
       )}
@@ -270,7 +270,7 @@ export default function Discounts() {
           </p>
           <Link
             href="/auth/signin"
-            className="mt-6 btn btn-secondary hover:shadow-[0_0_15px_rgba(77,181,176,0.5)] transition-all duration-300"
+            className="mt-6 inline-block rounded-lg bg-white/70 dark:bg-dark-bg-accent/30 border border-white/10 dark:border-dark-bg-accent/20 text-light-text-primary dark:text-dark-text-primary hover:bg-white/80 dark:hover:bg-dark-bg-accent/50 px-6 py-3 font-medium transition-all duration-300 hover:shadow-[0_0_15px_rgba(77,181,176,0.5)]"
           >
             Join Referral Program
           </Link>
