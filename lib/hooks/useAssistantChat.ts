@@ -239,6 +239,7 @@ export function useAssistantChat({
     eventSourceRef.current = eventSource;
     
     let partialContent = '';
+    let isDone = false;
     
     // Setup event handlers
     eventSource.onmessage = (event) => {
@@ -250,6 +251,8 @@ export function useAssistantChat({
           case 'streaming':
             // Add the new content chunk
             partialContent += data.content;
+            // Track if this is the last chunk
+            isDone = data.done;
             
             // Update the message with the current content
             setMessages(prevMessages => {
@@ -261,27 +264,35 @@ export function useAssistantChat({
               });
             });
             
-            if (data.done) {
-              // Clean up when streaming is done
-              eventSource.close();
-              eventSourceRef.current = null;
-              streamingRef.current = false;
-              setIsTyping(false);
+            // Only clear typing state when we're completely done
+            if (isDone) {
+              setTimeout(() => {
+                if (eventSourceRef.current) {
+                  eventSourceRef.current.close();
+                  eventSourceRef.current = null;
+                }
+                streamingRef.current = false;
+                setIsTyping(false);
+              }, 500); // Short delay to keep cursor visible a bit longer
             }
             break;
             
           case 'completed':
-            // Cleanup
-            eventSource.close();
-            eventSourceRef.current = null;
-            streamingRef.current = false;
-            isProcessingRef.current = false;
-            setIsTyping(false);
-            
-            // Call onResponse if provided
-            if (onResponse) {
-              onResponse();
-            }
+            // Cleanup after a short delay to ensure cursor is seen at the end
+            setTimeout(() => {
+              if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+                eventSourceRef.current = null;
+              }
+              streamingRef.current = false;
+              isProcessingRef.current = false;
+              setIsTyping(false);
+              
+              // Call onResponse if provided
+              if (onResponse) {
+                onResponse();
+              }
+            }, 500);
             break;
             
           case 'error':

@@ -48,17 +48,44 @@ export async function GET(request: Request) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
+        // Track if controller is closed to prevent further enqueuing
+        let isControllerClosed = false;
+        
+        // Safe wrapper for enqueuing data that checks if controller is closed
+        const safeEnqueue = (data: Uint8Array) => {
+          if (!isControllerClosed) {
+            try {
+              controller.enqueue(data);
+            } catch (err) {
+              console.warn("Warning: Could not enqueue data, controller may be closed");
+              isControllerClosed = true;
+            }
+          }
+        };
+        
+        // Safe wrapper for closing the controller
+        const safeClose = () => {
+          if (!isControllerClosed) {
+            try {
+              controller.close();
+              isControllerClosed = true;
+            } catch (err) {
+              console.warn("Warning: Error closing controller", err);
+            }
+          }
+        };
+
         // First check if run is already completed
         const runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
         
         if (runStatus.status === 'failed') {
-          controller.enqueue(
+          safeEnqueue(
             new TextEncoder().encode(`data: ${JSON.stringify({
               status: 'failed',
               error: runStatus.last_error?.message || 'Run failed'
             })}\n\n`)
           );
-          controller.close();
+          safeClose();
           return;
         }
 
@@ -69,12 +96,12 @@ export async function GET(request: Request) {
         const maxProcessingTime = 120000; // 2 minutes max
 
         // Send a processing message
-        controller.enqueue(
+        safeEnqueue(
           new TextEncoder().encode(`data: ${JSON.stringify({ status: 'processing' })}\n\n`)
         );
 
         // Poll until completion or timeout
-        while (!completed && Date.now() - processingStartedAt < maxProcessingTime) {
+        while (!completed && Date.now() - processingStartedAt < maxProcessingTime && !isControllerClosed) {
           // Polling interval
           await new Promise(resolve => setTimeout(resolve, 1000));
           
@@ -83,13 +110,13 @@ export async function GET(request: Request) {
           
           // Check if run is complete or failed
           if (currentStatus.status === 'failed') {
-            controller.enqueue(
+            safeEnqueue(
               new TextEncoder().encode(`data: ${JSON.stringify({
                 status: 'failed',
                 error: currentStatus.last_error?.message || 'Run failed'
               })}\n\n`)
             );
-            controller.close();
+            safeClose();
             return;
           }
           
@@ -100,21 +127,24 @@ export async function GET(request: Request) {
           }
           
           // Send status update
-          controller.enqueue(
+          safeEnqueue(
             new TextEncoder().encode(`data: ${JSON.stringify({ status: currentStatus.status })}\n\n`)
           );
         }
 
-        if (!completed) {
-          controller.enqueue(
+        if (!completed && !isControllerClosed) {
+          safeEnqueue(
             new TextEncoder().encode(`data: ${JSON.stringify({
               status: 'timeout',
               error: 'Processing timed out'
             })}\n\n`)
           );
-          controller.close();
+          safeClose();
           return;
         }
+
+        // Only proceed if controller is still open
+        if (isControllerClosed) return;
 
         // Fetch the assistant's response
         const messages = await openai.beta.threads.messages.list(threadId, { order: 'desc', limit: 10 });
@@ -123,18 +153,18 @@ export async function GET(request: Request) {
         const assistantMessage = messages.data.find(msg => msg.role === 'assistant');
         
         if (!assistantMessage) {
-          controller.enqueue(
+          safeEnqueue(
             new TextEncoder().encode(`data: ${JSON.stringify({
               status: 'error',
               error: 'No assistant message found'
             })}\n\n`)
           );
-          controller.close();
+          safeClose();
           return;
         }
 
         // Extract message content
-        if (assistantMessage.content && assistantMessage.content.length > 0) {
+        if (assistantMessage.content && assistantMessage.content.length > 0 && !isControllerClosed) {
           const contentPart = assistantMessage.content[0];
           if (contentPart.type === 'text') {
             fullMessage = contentPart.text.value;
@@ -143,11 +173,11 @@ export async function GET(request: Request) {
             let currentIndex = 0;
             const chunkSize = 1; // Reduce chunk size to one character at a time for smoother effect
             
-            while (currentIndex < fullMessage.length) {
+            while (currentIndex < fullMessage.length && !isControllerClosed) {
               const end = Math.min(currentIndex + chunkSize, fullMessage.length);
               const chunk = fullMessage.substring(currentIndex, end);
               
-              controller.enqueue(
+              safeEnqueue(
                 new TextEncoder().encode(`data: ${JSON.stringify({
                   status: 'streaming',
                   content: chunk,
@@ -175,28 +205,34 @@ export async function GET(request: Request) {
           created_at: new Date().toISOString(),
         });
 
-        // Send completion message
-        controller.enqueue(
-          new TextEncoder().encode(`data: ${JSON.stringify({
-            status: 'completed',
-            threadId,
-            fullContent: fullMessage
-          })}\n\n`)
-        );
-        
-        controller.close();
+        // Send completion message if controller is still open
+        if (!isControllerClosed) {
+          safeEnqueue(
+            new TextEncoder().encode(`data: ${JSON.stringify({
+              status: 'completed',
+              threadId,
+              fullContent: fullMessage
+            })}\n\n`)
+          );
+          
+          safeClose();
+        }
       } catch (error: any) {
         console.error('Error in streaming assistant response:', error);
-        controller.enqueue(
-          new TextEncoder().encode(`data: ${JSON.stringify({
-            status: 'error',
-            error: error.message || 'An error occurred'
-          })}\n\n`)
-        );
-        controller.close();
+        try {
+          controller.enqueue(
+            new TextEncoder().encode(`data: ${JSON.stringify({
+              status: 'error',
+              error: error.message || 'An error occurred'
+            })}\n\n`)
+          );
+          controller.close();
+        } catch (closeError) {
+          console.warn('Could not send error because controller is already closed');
+        }
       }
     }
   });
 
   return new Response(stream, { headers });
-} 
+}
