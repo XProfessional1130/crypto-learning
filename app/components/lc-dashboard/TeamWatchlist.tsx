@@ -41,21 +41,13 @@ export default function TeamWatchlist({
 
   // Handle add coin to watchlist
   const handleAddToWatchlist = async (coin: CoinData, priceTarget?: number) => {
-    console.log('handleAddToWatchlist called with coin:', coin);
-    console.log('Price target:', priceTarget);
-    console.log('isAdmin value:', isAdmin);
-    
     try {
-      console.log('Calling addToWatchlist service');
       const result = await addToWatchlist(coin, priceTarget);
-      console.log('addToWatchlist service result:', result);
       
       // Only close modal and refresh if the operation was successful
       if (result && result.success) {
-        console.log('Closing modal and refreshing watchlist');
         setShowAddToWatchlistModal(false);
         await refreshWatchlist(true);
-        console.log('Watchlist refreshed');
       } else {
         console.error('Failed to add coin to watchlist:', (result as { message?: string })?.message || 'Unknown error');
       }
@@ -74,7 +66,7 @@ export default function TeamWatchlist({
     return (
       <div className="space-y-4">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-16 animate-pulse rounded bg-gray-200"></div>
+          <div key={i} className="h-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
         ))}
       </div>
     );
@@ -82,7 +74,7 @@ export default function TeamWatchlist({
 
   if (error) {
     return (
-      <div className="rounded-lg bg-red-50 p-4 text-red-600">
+      <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-4 text-red-600 dark:text-red-400">
         Error loading watchlist data. Please try again later.
       </div>
     );
@@ -91,17 +83,13 @@ export default function TeamWatchlist({
   if (!watchlist || watchlist.length === 0) {
     return (
       <div>
-        <div className="rounded-lg bg-blue-50 p-4 text-blue-600">
+        <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-4 text-blue-600 dark:text-blue-400">
           <p className="mb-2 font-semibold">No assets in the team watchlist yet.</p>
           {isAdmin ? (
             <div className="mt-4">
               <button 
-                onClick={() => {
-                  console.log('Empty state Add Asset button clicked');
-                  setShowAddToWatchlistModal(true);
-                  console.log('showAddToWatchlistModal set to:', true);
-                }}
-                className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center"
+                onClick={() => setShowAddToWatchlistModal(true)}
+                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors flex items-center"
               >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Asset to Team Watchlist
@@ -126,104 +114,64 @@ export default function TeamWatchlist({
 
   return (
     <div className="space-y-6">
-      {isAdmin && (
-        <div className="flex justify-end mb-4">
+      <div className="flex justify-between items-center mb-4">
+        {isAdmin && (
           <button 
-            onClick={() => {
-              console.log('Add Asset button clicked');
-              setShowAddToWatchlistModal(true);
-              console.log('showAddToWatchlistModal set to:', true);
-            }}
-            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center"
+            onClick={() => setShowAddToWatchlistModal(true)}
+            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors flex items-center"
           >
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Asset
           </button>
-        </div>
-      )}
+        )}
+      </div>
       
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Asset
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Current Price
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                24h Change
-              </th>
-              {/* Only show price targets column if any coins have a price target */}
-              {watchlist.some(item => item.priceTarget) && (
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Price Target
-                </th>
-              )}
-              {isAdmin && (
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Actions
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {sortedWatchlistItems.map((item: WatchlistItem) => {
-              const targetPercentage = getTargetPercentage(item);
-              return (
-                <tr key={item.id} className={isAdmin ? "cursor-pointer hover:bg-gray-50" : ""} onClick={isAdmin ? () => handleSelectItem(item) : undefined}>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                        <img
-                          src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
-                          alt={item.symbol}
-                          className="h-10 w-10 object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const parent = target.parentElement;
-                            if (parent) {
-                              parent.innerHTML = item.symbol.substring(0, 3);
-                              parent.classList.add('flex', 'items-center', 'justify-center', 'bg-gray-200', 'text-gray-600', 'font-bold');
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        <div className="text-sm text-gray-500">{item.symbol}</div>
-                      </div>
+      <div className="overflow-y-auto h-[calc(100vh-32rem)] scrollbar-thin">
+        {sortedWatchlistItems.map((item: WatchlistItem) => {
+          const targetPercentage = getTargetPercentage(item);
+          return (
+            <div 
+              key={item.id}
+              onClick={isAdmin ? () => handleSelectItem(item) : undefined}
+              className={`flex justify-between items-center p-4 border-b border-gray-100 dark:border-gray-700 ${isAdmin ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750' : ''}`}
+            >
+              <div className="flex items-center">
+                <div className="h-10 w-10 flex-shrink-0 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                  <img
+                    src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
+                    alt={item.symbol}
+                    className="h-10 w-10 object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.innerHTML = item.symbol.substring(0, 3);
+                        parent.classList.add('flex', 'items-center', 'justify-center', 'bg-gray-200', 'dark:bg-gray-600', 'text-gray-600', 'dark:text-gray-300', 'font-bold');
+                      }
+                    }}
+                  />
+                </div>
+                <div className="ml-4">
+                  <div className="font-medium text-gray-900 dark:text-white">{item.name}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{item.symbol}</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="font-medium">{formatCryptoPrice(item.price)}</div>
+                <div className="flex items-center justify-end space-x-2">
+                  <div className={item.change24h >= 0 ? 'text-green-500' : 'text-red-500'}>
+                    {item.change24h >= 0 ? '+' : ''}{item.change24h.toFixed(2)}%
+                  </div>
+                  {item.priceTarget && (
+                    <div className={`text-xs px-2 py-0.5 rounded-full ${targetPercentage >= 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'}`}>
+                      Target: {formatCryptoPrice(item.priceTarget)}
                     </div>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                    {formatCryptoPrice(item.price)}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm">
-                    <span className={item.change24h >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      {item.change24h >= 0 ? '+' : ''}{item.change24h.toFixed(2)}%
-                    </span>
-                  </td>
-                  {/* Only show price targets column if any coins have a price target */}
-                  {watchlist.some(item => item.priceTarget) && (
-                    <td className="whitespace-nowrap px-6 py-4 text-sm">
-                      {item.priceTarget ? (
-                        <div>
-                          <div>{formatCryptoPrice(item.priceTarget)}</div>
-                          <div className={targetPercentage >= 0 ? 'text-green-600 text-xs' : 'text-red-600 text-xs'}>
-                            {targetPercentage >= 0 ? '+' : ''}{targetPercentage.toFixed(2)}% from current
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">--</span>
-                      )}
-                    </td>
                   )}
                   {isAdmin && (
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                    <div className="ml-2 flex space-x-1" onClick={(e) => e.stopPropagation()}>
                       <button 
-                        className="text-indigo-600 hover:text-indigo-900 mr-3"
+                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleSelectItem(item);
@@ -232,7 +180,7 @@ export default function TeamWatchlist({
                         <Edit2 className="h-4 w-4" />
                       </button>
                       <button 
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                         onClick={async (e) => {
                           e.stopPropagation();
                           if (window.confirm(`Remove ${item.name} from the team watchlist?`)) {
@@ -243,18 +191,18 @@ export default function TeamWatchlist({
                       >
                         <Trash className="h-4 w-4" />
                       </button>
-                    </td>
+                    </div>
                   )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="bg-indigo-50 p-4 rounded-lg mt-6">
-        <h3 className="text-lg font-medium text-indigo-800">Watchlist Analysis</h3>
-        <p className="text-indigo-600 mt-1">
+      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mt-6">
+        <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">Watchlist Analysis</h3>
+        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
           Our team is closely monitoring these assets for potential investment opportunities. We perform thorough technical and fundamental analysis before adding any asset to our watchlist.
         </p>
       </div>
