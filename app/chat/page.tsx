@@ -4,6 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { ChatMessage } from '@/types';
+import Image from 'next/image';
+import { AnimatePresence, motion } from 'framer-motion';
+
+// Personality profile images (placeholders for now)
+const personalityImages = {
+  tobo: '/images/avatars/tobo-avatar.svg',
+  heido: '/images/avatars/heido-avatar.svg',
+};
 
 export default function Chat() {
   const { user, loading } = useAuth();
@@ -23,20 +31,32 @@ export default function Chat() {
   const [activePersonality, setActivePersonality] = useState<'tobo' | 'heido'>('tobo');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialRenderRef = useRef(true);
+  const textInputRef = useRef<HTMLInputElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const firstToggleRef = useRef<HTMLButtonElement>(null);
+  const secondToggleRef = useRef<HTMLButtonElement>(null);
+  const [shouldScroll, setShouldScroll] = useState(false);
 
-  // Scroll to bottom of messages
+  // Smooth scroll to bottom
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   };
 
   useEffect(() => {
-    // Only scroll if it's not the initial render
+    // Only set initial render state
     if (initialRenderRef.current) {
       initialRenderRef.current = false;
-      return;
+    } else if (shouldScroll) {
+      // Scroll to bottom when a new message is sent
+      scrollToBottom();
+      setShouldScroll(false);
     }
-    scrollToBottom();
-  }, [messages]);
+  }, [messages, shouldScroll]);
 
   useEffect(() => {
     // Check if user is authenticated
@@ -45,6 +65,11 @@ export default function Chat() {
     }
   }, [user, loading, router]);
 
+  // Focus input on personality switch
+  useEffect(() => {
+    textInputRef.current?.focus();
+  }, [activePersonality]);
+  
   // Switch personality
   const switchPersonality = (personality: 'tobo' | 'heido') => {
     if (personality === activePersonality) return;
@@ -67,6 +92,9 @@ export default function Chat() {
         created_at: new Date().toISOString(),
       },
     ]);
+    
+    // Set flag to scroll to bottom after personality switch message
+    setShouldScroll(true);
   };
 
   // Send message
@@ -87,6 +115,9 @@ export default function Chat() {
     setMessages([...messages, userMessage]);
     setInputMessage('');
     setIsTyping(true);
+    
+    // Set flag to scroll to bottom after sending message
+    setShouldScroll(true);
     
     // In a real app, this would call OpenAI API
     // For this demo, we'll simulate a response after a delay
@@ -134,123 +165,275 @@ export default function Chat() {
       
       setMessages(prev => [...prev, aiMessage]);
       setIsTyping(false);
+      
+      // Set flag to scroll to bottom after AI response
+      setShouldScroll(true);
     }, 1500);
   };
 
   if (loading || !user) {
     return (
       <div className="flex min-h-[calc(100vh-16rem)] items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
       </div>
     );
   }
 
+  // Custom message animations
+  const messageAnimation = {
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+    exit: { opacity: 0, transition: { duration: 0.2 } }
+  };
+
+  // Custom typing indicator animation
+  const typingAnimation = {
+    initial: { opacity: 0, scale: 0.95 },
+    animate: { opacity: 1, scale: 1, transition: { duration: 0.3 } },
+    exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } }
+  };
+
+  // Text appearing animation - optimized for performance
+  const textAnimation = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { 
+        duration: 0.5,
+        ease: "easeOut"
+      }
+    }
+  };
+
+  // For longer messages, we'll use a simpler animation to avoid performance issues
+  const isLongMessage = (text: string) => text.length > 150;
+
+  // An optimized word-level animation for longer texts
+  const wordAnimation = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { 
+        staggerChildren: 0.03,
+        ease: "easeOut"
+      }
+    }
+  };
+
+  const wordItem = {
+    hidden: { opacity: 0, y: 3 },
+    visible: { opacity: 1, y: 0 }
+  };
+
+  const letterAnimation = {
+    hidden: { opacity: 0, y: 5 },
+    visible: { opacity: 1, y: 0 }
+  };
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">AI Crypto Chat</h1>
-        <p className="mt-1 text-gray-600">
+        <h1 className="text-3xl font-bold text-gradient-vibrant">AI Crypto Chat</h1>
+        <p className="mt-1 text-light-text-secondary dark:text-dark-text-secondary">
           Chat with our AI assistants to learn about crypto concepts in a way that suits your learning style.
         </p>
       </div>
 
-      {/* Personality Selector */}
-      <div className="mb-6 flex space-x-4">
-        <button
-          onClick={() => switchPersonality('tobo')}
-          className={`rounded-lg px-4 py-2 ${
-            activePersonality === 'tobo'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          <span className="font-medium">Tobo</span>
-          <span className="ml-2 text-xs">
-            {activePersonality === 'tobo' ? 'ACTIVE' : 'Simple & Concise'}
-          </span>
-        </button>
-        <button
-          onClick={() => switchPersonality('heido')}
-          className={`rounded-lg px-4 py-2 ${
-            activePersonality === 'heido'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          <span className="font-medium">Heido</span>
-          <span className="ml-2 text-xs">
-            {activePersonality === 'heido' ? 'ACTIVE' : 'Detailed & Analytical'}
-          </span>
-        </button>
+      {/* Redesigned Personality Selector */}
+      <div className="mb-6 flex justify-center">
+        <div className="neo-glass px-1 py-1 rounded-full flex items-center transition-all duration-300 relative overflow-hidden">
+          {/* Improved Sliding background indicator */}
+          <motion.div 
+            className="absolute rounded-full bg-brand-primary/30 backdrop-blur-md border border-brand-primary/40 shadow-[0_0_8px_rgba(77,181,176,0.3)]"
+            initial={false}
+            animate={{
+              x: activePersonality === 'tobo' ? 0 : secondToggleRef.current ? secondToggleRef.current.offsetLeft - (firstToggleRef.current?.offsetLeft || 0) : 0,
+              width: activePersonality === 'tobo' 
+                ? firstToggleRef.current?.offsetWidth 
+                : secondToggleRef.current?.offsetWidth,
+              height: '90%',
+              top: '5%',
+            }}
+            transition={{ type: "spring", stiffness: 400, damping: 28 }}
+          />
+          
+          {/* Tobo Button */}
+          <button
+            ref={firstToggleRef}
+            onClick={() => switchPersonality('tobo')}
+            className="z-10 px-4 py-2 rounded-full flex items-center space-x-2 transition-all duration-300 relative"
+          >
+            <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border border-white/30 shadow-sm transition-all duration-300 ${
+              activePersonality === 'tobo' 
+                ? 'bg-brand-100 dark:bg-brand-800/50 scale-110 shadow-[0_0_10px_rgba(77,181,176,0.3)]' 
+                : 'bg-gray-100/70 dark:bg-gray-800/30'
+            }`}>
+              <Image 
+                src={personalityImages.tobo} 
+                alt="Tobo" 
+                width={32} 
+                height={32} 
+                className={`object-cover transition-transform duration-300 ${activePersonality === 'tobo' ? 'scale-110' : 'scale-100 opacity-80'}`}
+              />
+            </div>
+            <div>
+              <div className={`font-medium transition-all duration-300 ${activePersonality === 'tobo' ? 'text-brand-primary dark:text-brand-light' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}>Tobo</div>
+              <div className="text-xs opacity-70">Simple & Concise</div>
+            </div>
+          </button>
+          
+          {/* Heido Button */}
+          <button
+            ref={secondToggleRef}
+            onClick={() => switchPersonality('heido')}
+            className="z-10 px-4 py-2 rounded-full flex items-center space-x-2 transition-all duration-300"
+          >
+            <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border border-white/30 shadow-sm transition-all duration-300 ${
+              activePersonality === 'heido' 
+                ? 'bg-blue-100 dark:bg-blue-800/50 scale-110 shadow-[0_0_10px_rgba(77,181,176,0.3)]' 
+                : 'bg-gray-100/70 dark:bg-gray-800/30'
+            }`}>
+              <Image 
+                src={personalityImages.heido} 
+                alt="Heido" 
+                width={32} 
+                height={32} 
+                className={`object-cover transition-transform duration-300 ${activePersonality === 'heido' ? 'scale-110' : 'scale-100 opacity-80'}`}
+              />
+            </div>
+            <div>
+              <div className={`font-medium transition-all duration-300 ${activePersonality === 'heido' ? 'text-brand-primary dark:text-brand-light' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}>Heido</div>
+              <div className="text-xs opacity-70">Detailed & Analytical</div>
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Chat Container */}
-      <div className="flex h-[600px] flex-col rounded-lg border border-gray-200 bg-white shadow-md">
+      <div className="flex flex-col rounded-xl h-[70vh] neo-glass overflow-hidden backdrop-blur-md relative neo-glass-before">
+        {/* Glassmorphic effect elements */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-24 -left-24 w-48 h-48 bg-brand-primary/5 dark:bg-brand-primary/10 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-brand-primary/5 dark:bg-brand-primary/10 rounded-full blur-3xl"></div>
+        </div>
+        
         {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    message.role === 'user'
-                      ? 'bg-indigo-600 text-white'
-                      : message.personality === 'tobo'
-                      ? 'bg-green-100 text-gray-800'
-                      : 'bg-blue-100 text-gray-800'
-                  }`}
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 scrollbar-thin">
+          <AnimatePresence initial={false}>
+            <div className="space-y-6">
+              {messages.map((message) => (
+                <motion.div
+                  key={message.id}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  {...messageAnimation}
+                  layout
                 >
-                  {message.content}
-                </div>
-              </div>
-            ))}
-            {isTyping && (
-              <div className="flex justify-start">
-                <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    activePersonality === 'tobo'
-                      ? 'bg-green-100 text-gray-800'
-                      : 'bg-blue-100 text-gray-800'
-                  }`}
-                >
-                  <div className="flex space-x-2">
-                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500"></div>
-                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500" style={{ animationDelay: '0.2s' }}></div>
-                    <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500" style={{ animationDelay: '0.4s' }}></div>
+                  {message.role === 'assistant' && (
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center mr-2 flex-shrink-0 border border-white/20 dark:border-white/5">
+                      <Image 
+                        src={personalityImages[message.personality || 'tobo']} 
+                        alt={message.personality || 'AI'} 
+                        width={32} 
+                        height={32} 
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                  
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                      message.role === 'user'
+                        ? 'glass-brand-effect text-white animate-blur-in'
+                        : message.personality === 'tobo'
+                        ? 'glass animate-blur-in'
+                        : 'glass animate-blur-in'
+                    }`}
+                  >
+                    <motion.div
+                      initial="hidden"
+                      animate="visible"
+                      variants={isLongMessage(message.content) ? wordAnimation : textAnimation}
+                    >
+                      {isLongMessage(message.content) ? (
+                        // For long messages, animate word by word
+                        <motion.div variants={wordAnimation}>
+                          {message.content.split(' ').map((word, index) => (
+                            <motion.span key={index} variants={wordItem} style={{ display: 'inline-block' }}>
+                              {word}&nbsp;
+                            </motion.span>
+                          ))}
+                        </motion.div>
+                      ) : (
+                        // For shorter messages, animate letter by letter
+                        message.content.split('').map((char, index) => (
+                          <motion.span key={index} variants={letterAnimation}>
+                            {char}
+                          </motion.span>
+                        ))
+                      )}
+                    </motion.div>
                   </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+                  
+                  {message.role === 'user' && (
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-brand-primary/80 dark:bg-brand-primary/90 flex items-center justify-center ml-2 flex-shrink-0 text-white border border-white/20 dark:border-white/5">
+                      {user.email?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+              
+              {isTyping && (
+                <motion.div 
+                  className="flex justify-start"
+                  {...typingAnimation}
+                >
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center mr-2 flex-shrink-0 border border-white/20 dark:border-white/5">
+                    <Image 
+                      src={personalityImages[activePersonality]} 
+                      alt={activePersonality} 
+                      width={32} 
+                      height={32}
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="glass rounded-2xl px-4 py-3 relative backdrop-blur-md overflow-hidden">
+                    <div className="flex space-x-2 relative z-10">
+                      <div className="h-2 w-2 rounded-full bg-brand-primary/70 dark:bg-brand-primary/90 animate-bounce"></div>
+                      <div className="h-2 w-2 rounded-full bg-brand-primary/70 dark:bg-brand-primary/90 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="h-2 w-2 rounded-full bg-brand-primary/70 dark:bg-brand-primary/90 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                    </div>
+                    {/* Glassmorphic effect elements */}
+                    <div className="absolute inset-0 pointer-events-none">
+                      <div className="absolute -top-6 -right-6 w-12 h-12 bg-brand-primary/10 dark:bg-brand-primary/20 rounded-full blur-xl"></div>
+                      <div className="absolute -bottom-6 -left-6 w-12 h-12 bg-brand-primary/10 dark:bg-brand-primary/20 rounded-full blur-xl"></div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </AnimatePresence>
         </div>
 
         {/* Chat Input */}
-        <div className="border-t border-gray-200 p-4">
+        <div className="p-4 border-t border-white/10 dark:border-dark-bg-accent/10 backdrop-blur-md bg-white/5 dark:bg-dark-bg-primary/5">
           <form onSubmit={handleSendMessage} className="flex space-x-2">
             <input
+              ref={textInputRef}
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               placeholder="Ask about any crypto concept..."
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="flex-1 rounded-xl input focus:ring-brand-primary focus:ring-2 transition-all duration-300"
             />
             <button
               type="submit"
               disabled={!inputMessage.trim() || isTyping}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:bg-indigo-300"
+              className="btn btn-primary rounded-xl relative overflow-hidden transition-all duration-300 hover:shadow-[0_0_15px_rgba(77,181,176,0.5)] group"
             >
               Send
             </button>
           </form>
-          <p className="mt-2 text-xs text-gray-500">
-            Try asking about: Bitcoin, Ethereum, DeFi, NFTs, or any crypto topic!
-          </p>
         </div>
       </div>
     </div>
