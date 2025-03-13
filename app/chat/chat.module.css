@@ -74,4 +74,16 @@
     height: calc(100vh - 8rem) !important;
     max-height: calc(100vh - 8rem) !important;
   }
+}
+
+/* Prevent message bubble jittering */
+.smoothMessage {
+  transition: height 0.1s ease-out;
+  height: auto;
+  min-height: 1.5rem;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  /* Prevent horizontal bouncing */
+  width: 100%;
 } 

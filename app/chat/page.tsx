@@ -607,12 +607,12 @@ export default function Chat() {
                             >
                               {isLongMessage(message.content) ? (
                                 // For long messages with better formatting
-                                <motion.div variants={wordAnimation} className={styles['message-content']}>
+                                <motion.div variants={wordAnimation} className={`${styles['message-content']} ${styles.smoothMessage}`}>
                                   {formatMessageContent(message.content)}
                                 </motion.div>
                               ) : (
                                 // For short messages
-                                <div>
+                                <div className={styles.smoothMessage}>
                                   {message.content === "" && isStreaming ? (
                                     <motion.span 
                                       ref={typingIndicatorRef}
@@ -638,6 +638,7 @@ export default function Chat() {
                                       </motion.span>
                                     ))
                                   )}
+
                                   {isStreaming && message.content !== "" && (
                                     <motion.span 
                                       ref={typingIndicatorRef}
