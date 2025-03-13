@@ -1,6 +1,6 @@
 .message-content {
-  line-height: 1.5;
   font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .message-content p {
@@ -24,16 +24,49 @@
 
 .message-content pre {
   background-color: rgba(0, 0, 0, 0.1);
-  padding: 0.75rem;
   border-radius: 0.5rem;
+  padding: 1rem;
   overflow-x: auto;
   margin: 0.75rem 0;
 }
 
 .message-content code {
-  font-family: 'Courier New', monospace;
-  font-size: 0.9em;
   background-color: rgba(0, 0, 0, 0.1);
-  padding: 0.1rem 0.3rem;
   border-radius: 0.25rem;
+  padding: 0.15rem 0.3rem;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.message-content pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.message-content strong {
+  font-weight: 600;
+}
+
+/* Fix scrolling container behavior */
+:global(.chat-scroll-container) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+:global(.chat-scrollable-content) {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+}
+
+/* Ensure scroll works on mobile */
+@media (max-width: 768px) {
+  :global(.h-vh-fix) {
+    height: calc(100vh - 8rem) !important;
+    max-height: calc(100vh - 8rem) !important;
+  }
 } 
