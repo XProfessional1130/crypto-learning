@@ -335,4 +335,42 @@ html {
     z-index: -1;
     pointer-events: none;
   }
+  
+  /* Mobile navigation specific styles */
+  .mobile-nav-link .mobile-nav-indicator {
+    position: absolute;
+    bottom: 50%;
+    transform: translateY(50%);
+    left: 0;
+    width: auto;
+    justify-content: flex-start;
+    padding-left: 10px;
+  }
+  
+  .mobile-nav-link .mobile-nav-indicator div {
+    width: 4px;
+    height: 4px;
+  }
+  
+  /* Enhanced mobile menu appearance */
+  @media (max-width: 768px) {
+    .mobile-nav-link {
+      position: relative;
+      padding-left: 24px !important;
+      transition: all 0.2s ease-in-out;
+    }
+    
+    .mobile-nav-link:active {
+      transform: scale(0.98);
+    }
+    
+    /* Remove problematic background effects on mobile */
+    .mobile-nav-menu .backdrop-blur-xl {
+      background: var(--glass-surface-light) !important;
+    }
+    
+    .dark .mobile-nav-menu .backdrop-blur-xl {
+      background: var(--glass-surface-dark) !important;
+    }
+  }
 }

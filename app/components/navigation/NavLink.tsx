@@ -66,8 +66,8 @@ export default function NavLink({
       <div className="relative">
         {children}
         
-        {/* Always render the indicator, but conditionally apply colors */}
-        <div className="absolute bottom-[-6px] inset-x-0 flex justify-center">
+        {/* Indicator with mobile-specific positioning */}
+        <div className={`absolute bottom-[-6px] inset-x-0 flex justify-center mobile-nav-indicator`}>
           <div className={`w-1 h-1 rounded-full ${indicatorColor}`} aria-hidden="true" />
         </div>
       </div>

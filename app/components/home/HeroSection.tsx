@@ -58,7 +58,7 @@ export default function HeroSection() {
       <div ref={heroRef} className={`grid grid-cols-1 gap-16 md:grid-cols-2 md:gap-20 relative z-10 transition-all duration-1000 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'} mt-8 pt-4`}>
         {/* Left content with enhanced typography and animations */}
         <div className="flex flex-col justify-center mt-0">
-          <div className="inline-flex items-center px-3 py-1.5 mb-2 rounded-full text-xs font-medium tracking-wider bg-brand-100/30 dark:bg-brand-800/30 text-brand-700 dark:text-brand-300 border border-brand-200/50 dark:border-brand-700/50 backdrop-blur-sm shadow-sm">
+          <div className="inline-flex items-center px-3 py-1.5 mb-2 rounded-full text-xs font-medium tracking-wider bg-brand-100/30 dark:bg-brand-800/30 text-brand-700 dark:text-brand-300 border border-brand-200/50 dark:border-brand-700/50 backdrop-blur-sm shadow-sm max-w-fit">
             <span className="w-2 h-2 rounded-full bg-brand-500 dark:bg-brand-400 mr-2 animate-pulse"></span>
             NEXT GENERATION CRYPTO LEARNING
           </div>
@@ -234,9 +234,9 @@ export default function HeroSection() {
                 </svg>
               </div>
             </div>
-            <div className="absolute -left-6 bottom-1/4 w-16 h-16 rounded-lg neo-glass flex items-center justify-center transform -rotate-12 animate-float" style={{ animationDelay: "2.2s" }}>
+            <div className="absolute -left-6 bottom-1/4 w-16 h-16 rounded-lg neo-glass flex items-center justify-center animate-float" style={{ animationDelay: "2.2s", transform: "rotate(-12deg)" }}>
               <div className="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-white">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={{ transform: "rotate(0deg)" }}>
                   <path d="M12 4V20M12 4L18 10M12 4L6 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>

@@ -88,9 +88,9 @@ export default function Navigation() {
         <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-400/50 dark:via-white/20 to-transparent transition-opacity duration-500 ${scrolled ? 'opacity-100' : 'opacity-30'}`}></div>
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-400/40 dark:via-white/10 to-transparent"></div>
         
-        {/* Glow spots */}
-        <div className="absolute -top-20 -left-20 w-40 h-40 bg-brand-300/20 dark:bg-brand-500/20 rounded-full blur-3xl"></div>
-        <div className="absolute -top-10 right-20 w-60 h-60 bg-blue-300/10 dark:bg-blue-500/10 rounded-full blur-3xl"></div>
+        {/* Glow spots - fixed for mobile */}
+        <div className="absolute -top-20 -left-20 w-40 h-40 bg-brand-300/10 dark:bg-brand-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute -top-10 right-20 w-30 h-30 bg-blue-300/5 dark:bg-blue-500/10 rounded-full blur-3xl"></div>
       </div>
       
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
@@ -132,13 +132,13 @@ export default function Navigation() {
             {/* Mobile menu button */}
             <button
               type="button"
-              className="inline-flex md:hidden items-center justify-center rounded-full p-2 text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/10 dark:hover:bg-white/5 focus:outline-none"
+              className="inline-flex md:hidden items-center justify-center rounded-full p-2 text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/20 dark:hover:bg-white/10 focus:outline-none backdrop-blur-sm border border-gray-300/30 dark:border-white/10 transition-all duration-200 active:scale-95"
               onClick={toggleMobileMenu}
               aria-expanded={mobileMenuOpen}
             >
               <span className="sr-only">Open main menu</span>
               <svg 
-                className="h-6 w-6" 
+                className="h-5 w-5" 
                 fill="none" 
                 viewBox="0 0 24 24" 
                 strokeWidth={1.5} 
@@ -160,8 +160,8 @@ export default function Navigation() {
       </div>
 
       {/* Mobile menu - always rendered but visibility controlled by CSS */}
-      <div className={`md:hidden ${mobileMenuOpen ? 'block' : 'hidden'} animate-fade-in`}>
-        <div className="backdrop-blur-xl bg-white/15 dark:bg-black/20 border-t border-gray-300/40 dark:border-white/5 px-2 pb-3 pt-2 shadow-lg">
+      <div className={`md:hidden ${mobileMenuOpen ? 'block' : 'hidden'} animate-fade-in mobile-nav-menu`}>
+        <div className="backdrop-blur-xl bg-white/75 dark:bg-black/75 border-t border-gray-300/40 dark:border-white/5 px-2 pb-3 pt-2 shadow-lg">
           <div className="space-y-1">
             {visibleNavItems.map((item) => (
               <NavLink
@@ -171,8 +171,8 @@ export default function Navigation() {
                 onClick={() => {
                   setMobileMenuOpen(false);
                 }}
-                className="block w-full px-3 py-2.5 text-base font-medium rounded-lg hover:bg-gray-200/40 dark:hover:bg-white/5"
-                activeClassName="text-brand-primary dark:text-brand-light font-medium"
+                className="mobile-nav-link block w-full px-3 py-2.5 text-base font-medium rounded-lg hover:bg-gray-200/40 dark:hover:bg-white/5"
+                activeClassName="text-brand-primary dark:text-brand-light font-medium bg-gray-200/40 dark:bg-white/5"
               >
                 {item.name}
               </NavLink>
