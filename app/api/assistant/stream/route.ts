@@ -9,8 +9,8 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Set max duration to improve server response time for streaming
-export const maxDuration = 300; // Increase max duration to 5 minutes for longer responses
+// Set max duration to comply with Vercel hobby plan limits
+export const maxDuration = 60; // 60 seconds is the maximum for Vercel hobby plan
 
 export async function GET(request: Request) {
   // Setup response headers for SSE
@@ -129,7 +129,7 @@ export async function GET(request: Request) {
         let completed = runStatus.status === 'completed';
         let lastFetchedMessageId = null;
         let processingStartedAt = Date.now();
-        const maxProcessingTime = 240000; // 4 minutes max (increased from 2 minutes)
+        const maxProcessingTime = 45000; // 45 seconds max to allow for other operations within the 60s limit
 
         // Send a processing message
         safeEnqueue(
