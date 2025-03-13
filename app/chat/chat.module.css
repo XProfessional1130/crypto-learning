@@ -78,7 +78,7 @@
 
 /* Prevent message bubble jittering */
 .smoothMessage {
-  transition: height 0.1s ease-out;
+  transition: all 0.05s ease-out;
   height: auto;
   min-height: 1.5rem;
   overflow: hidden;
@@ -86,4 +86,10 @@
   word-break: break-word;
   /* Prevent horizontal bouncing */
   width: 100%;
+  /* Prevent container from collapsing during transitions */
+  contain: content;
+  /* Force the browser to establish a containing block */
+  position: relative;
+  /* Add minimum width */
+  min-width: 3rem;
 } 

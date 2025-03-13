@@ -377,13 +377,20 @@ export default function Chat() {
     exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } }
   };
 
+  // Use static container animation for the message container
+  const staticContainerAnimation = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1, transition: { duration: 0.2 } },
+    exit: { opacity: 0, transition: { duration: 0.1 } }
+  };
+
   // Text appearing animation - optimized for performance
   const textAnimation = {
     hidden: { opacity: 0 },
     visible: { 
       opacity: 1,
       transition: { 
-        duration: 0.5,
+        duration: 0.3,
         ease: "easeOut"
       }
     }
@@ -398,15 +405,15 @@ export default function Chat() {
     visible: { 
       opacity: 1,
       transition: { 
-        staggerChildren: 0.03,
+        staggerChildren: 0.01, // Reduce stagger time to prevent layout shifts
         ease: "easeOut"
       }
     }
   };
 
   const wordItem = {
-    hidden: { opacity: 0, y: 3 },
-    visible: { opacity: 1, y: 0 }
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 }
   };
 
   const letterAnimation = {
@@ -576,8 +583,7 @@ export default function Chat() {
                         <motion.div
                           key={message.id}
                           className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                          {...messageAnimation}
-                          layout
+                          {...staticContainerAnimation}
                         >
                           {message.role === 'assistant' && (
                             <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center mr-2 flex-shrink-0 border border-white/20 dark:border-white/5">
@@ -599,6 +605,7 @@ export default function Chat() {
                                 ? 'glass animate-blur-in'
                                 : 'glass animate-blur-in'
                             }`}
+                            style={{ minWidth: '10rem' }}
                           >
                             <motion.div
                               initial="hidden"
@@ -631,7 +638,7 @@ export default function Chat() {
                                     message.content.split(' ').map((word, i) => (
                                       <motion.span
                                         key={i}
-                                        variants={wordAnimation}
+                                        variants={wordItem}
                                         className="inline-block mr-1"
                                       >
                                         {word}
