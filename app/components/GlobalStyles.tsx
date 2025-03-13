@@ -18,6 +18,21 @@ export default function GlobalStyles() {
         animation-delay: 0.001ms !important;
         transition-duration: 0.001ms !important;
       }
+
+      /* Prevent overscrolling */
+      html, body {
+        overscroll-behavior: none;
+        -webkit-overflow-scrolling: touch;
+        overflow-x: hidden;
+        position: relative;
+        height: 100%;
+      }
+
+      /* Additional iOS specific fixes */
+      body {
+        -webkit-text-size-adjust: 100%;
+        touch-action: manipulation;
+      }
     `;
     document.head.appendChild(styleElement);
     

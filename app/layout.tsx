@@ -48,8 +48,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="smooth-scroll overflow-x-hidden">
-      <body className={`${inter.className} h-full antialiased overflow-x-hidden`}>
+    <html lang="en" className="smooth-scroll overflow-x-hidden optimize-scroll">
+      <body className={`${inter.className} h-full antialiased overflow-x-hidden overscroll-none`}>
         {/* Initialize providers first - they handle their own client/server logic */}
         <QueryProvider>
           <AuthProvider>
