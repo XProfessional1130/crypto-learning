@@ -10,14 +10,15 @@ const openai = new OpenAI({
 });
 
 // Set max duration to improve server response time for streaming
-export const maxDuration = 60; // Set max duration to 60 seconds
+export const maxDuration = 300; // Increase max duration to 5 minutes for longer responses
 
 export async function GET(request: Request) {
   // Setup response headers for SSE
   const headers = {
     'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
+    'Cache-Control': 'no-cache, no-transform',
     'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no', // Disable buffering for nginx
   };
 
   const { searchParams } = new URL(request.url);
@@ -51,6 +52,21 @@ export async function GET(request: Request) {
         // Track if controller is closed to prevent further enqueuing
         let isControllerClosed = false;
         
+        // Heartbeat interval to keep connection alive
+        const heartbeatInterval = setInterval(() => {
+          if (!isControllerClosed) {
+            try {
+              controller.enqueue(new TextEncoder().encode(`: heartbeat\n\n`));
+            } catch (err) {
+              console.warn("Warning: Could not send heartbeat, controller may be closed");
+              isControllerClosed = true;
+              clearInterval(heartbeatInterval);
+            }
+          } else {
+            clearInterval(heartbeatInterval);
+          }
+        }, 15000); // Send heartbeat every 15 seconds
+        
         // Safe wrapper for enqueuing data that checks if controller is closed
         const safeEnqueue = (data: Uint8Array) => {
           if (!isControllerClosed) {
@@ -59,6 +75,7 @@ export async function GET(request: Request) {
             } catch (err) {
               console.warn("Warning: Could not enqueue data, controller may be closed");
               isControllerClosed = true;
+              clearInterval(heartbeatInterval);
             }
           }
         };
@@ -67,6 +84,7 @@ export async function GET(request: Request) {
         const safeClose = () => {
           if (!isControllerClosed) {
             try {
+              clearInterval(heartbeatInterval);
               controller.close();
               isControllerClosed = true;
             } catch (err) {
@@ -75,8 +93,26 @@ export async function GET(request: Request) {
           }
         };
 
+        // Send initial connection established message
+        safeEnqueue(
+          new TextEncoder().encode(`data: ${JSON.stringify({ status: 'connected' })}\n\n`)
+        );
+
         // First check if run is already completed
-        const runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+        let runStatus;
+        try {
+          runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+        } catch (error: any) {
+          console.error('Error retrieving run status:', error);
+          safeEnqueue(
+            new TextEncoder().encode(`data: ${JSON.stringify({
+              status: 'error',
+              error: `Failed to retrieve OpenAI run status: ${error.message || 'Unknown error'}`
+            })}\n\n`)
+          );
+          safeClose();
+          return;
+        }
         
         if (runStatus.status === 'failed') {
           safeEnqueue(
@@ -93,7 +129,7 @@ export async function GET(request: Request) {
         let completed = runStatus.status === 'completed';
         let lastFetchedMessageId = null;
         let processingStartedAt = Date.now();
-        const maxProcessingTime = 120000; // 2 minutes max
+        const maxProcessingTime = 240000; // 4 minutes max (increased from 2 minutes)
 
         // Send a processing message
         safeEnqueue(
@@ -106,30 +142,45 @@ export async function GET(request: Request) {
           await new Promise(resolve => setTimeout(resolve, 1000));
           
           // Retrieve run status
-          const currentStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
-          
-          // Check if run is complete or failed
-          if (currentStatus.status === 'failed') {
+          try {
+            const currentStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+            
+            // Check if run is complete or failed
+            if (currentStatus.status === 'failed') {
+              safeEnqueue(
+                new TextEncoder().encode(`data: ${JSON.stringify({
+                  status: 'failed',
+                  error: currentStatus.last_error?.message || 'Run failed'
+                })}\n\n`)
+              );
+              safeClose();
+              return;
+            }
+            
+            // If completed, break out of loop
+            if (currentStatus.status === 'completed') {
+              completed = true;
+              break;
+            }
+            
+            // Send status update
+            safeEnqueue(
+              new TextEncoder().encode(`data: ${JSON.stringify({ status: currentStatus.status })}\n\n`)
+            );
+          } catch (error: any) {
+            console.error('Error during status polling:', error);
+            
+            // Don't immediately fail - try a few more times
             safeEnqueue(
               new TextEncoder().encode(`data: ${JSON.stringify({
-                status: 'failed',
-                error: currentStatus.last_error?.message || 'Run failed'
+                status: 'polling_error',
+                error: `Error checking run status: ${error.message}. Will retry.`
               })}\n\n`)
             );
-            safeClose();
-            return;
+            
+            // Wait a little longer before next attempt
+            await new Promise(resolve => setTimeout(resolve, 2000));
           }
-          
-          // If completed, break out of loop
-          if (currentStatus.status === 'completed') {
-            completed = true;
-            break;
-          }
-          
-          // Send status update
-          safeEnqueue(
-            new TextEncoder().encode(`data: ${JSON.stringify({ status: currentStatus.status })}\n\n`)
-          );
         }
 
         if (!completed && !isControllerClosed) {
@@ -147,7 +198,20 @@ export async function GET(request: Request) {
         if (isControllerClosed) return;
 
         // Fetch the assistant's response
-        const messages = await openai.beta.threads.messages.list(threadId, { order: 'desc', limit: 10 });
+        let messages;
+        try {
+          messages = await openai.beta.threads.messages.list(threadId, { order: 'desc', limit: 10 });
+        } catch (error: any) {
+          console.error('Error fetching messages:', error);
+          safeEnqueue(
+            new TextEncoder().encode(`data: ${JSON.stringify({
+              status: 'error',
+              error: `Failed to fetch messages: ${error.message || 'Unknown error'}`
+            })}\n\n`)
+          );
+          safeClose();
+          return;
+        }
         
         // Find the latest assistant message
         const assistantMessage = messages.data.find(msg => msg.role === 'assistant');
@@ -194,16 +258,21 @@ export async function GET(request: Request) {
         }
 
         // Save the complete message to the database
-        const assistantId = getAssistantId(personality);
-        await saveChatMessage({
-          user_id: userId,
-          role: 'assistant',
-          content: fullMessage,
-          personality,
-          thread_id: threadId,
-          assistant_id: assistantId,
-          created_at: new Date().toISOString(),
-        });
+        try {
+          const assistantId = getAssistantId(personality);
+          await saveChatMessage({
+            user_id: userId,
+            role: 'assistant',
+            content: fullMessage,
+            personality,
+            thread_id: threadId,
+            assistant_id: assistantId,
+            created_at: new Date().toISOString(),
+          });
+        } catch (error: any) {
+          console.error('Error saving chat message:', error);
+          // Don't fail the stream if saving to DB fails - just log it
+        }
 
         // Send completion message if controller is still open
         if (!isControllerClosed) {

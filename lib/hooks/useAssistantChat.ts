@@ -233,110 +233,256 @@ export function useAssistantChat({
 
     streamingRef.current = true;
     
-    // Create a new EventSource connection
-    const streamUrl = `/api/assistant/stream?threadId=${threadId}&runId=${runId}&userId=${userId}&personality=${activePersonality}`;
-    const eventSource = new EventSource(streamUrl);
-    eventSourceRef.current = eventSource;
+    // Add retry counters
+    let retryCount = 0;
+    const maxRetries = 3;
+    let isFirstConnect = true;
     
-    let partialContent = '';
-    let isDone = false;
-    
-    // Setup event handlers
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+    const connectEventSource = () => {
+      // Create a new EventSource connection
+      const streamUrl = `/api/assistant/stream?threadId=${threadId}&runId=${runId}&userId=${userId}&personality=${activePersonality}`;
+      const eventSource = new EventSource(streamUrl);
+      eventSourceRef.current = eventSource;
+      
+      let partialContent = '';
+      let isDone = false;
+      let receivedFirstMessage = false;
+      let connectionTimeoutId: NodeJS.Timeout | null = null;
+      
+      // Set connection timeout - if we don't get a message within 10 seconds, retry
+      connectionTimeoutId = setTimeout(() => {
+        if (!receivedFirstMessage && eventSourceRef.current === eventSource) {
+          console.warn('Connection timeout - no message received within 10 seconds');
+          eventSource.close();
+          
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`Retrying connection (${retryCount}/${maxRetries})...`);
+            connectEventSource();
+          } else {
+            streamingRef.current = false;
+            isProcessingRef.current = false;
+            setIsTyping(false);
+            
+            setMessages(prevMessages => prevMessages.filter(msg => msg.id !== typingMsgId));
+            
+            if (onError) {
+              onError(new Error('Connection timeout after multiple retries'));
+            }
+          }
+        }
+      }, 10000);
+      
+      // Event for when connection is established
+      eventSource.onopen = () => {
+        console.log('EventSource connection opened');
         
-        // Handle different status types
-        switch (data.status) {
-          case 'streaming':
-            // Add the new content chunk
-            partialContent += data.content;
-            // Track if this is the last chunk
-            isDone = data.done;
-            
-            // Update the message with the current content
-            setMessages(prevMessages => {
-              return prevMessages.map(msg => {
-                if (msg.id === typingMsgId) {
-                  return { ...msg, content: partialContent };
-                }
-                return msg;
-              });
+        // If this is a reconnection, send a status update to the user
+        if (!isFirstConnect) {
+          setMessages(prevMessages => {
+            return prevMessages.map(msg => {
+              if (msg.id === typingMsgId) {
+                return { 
+                  ...msg, 
+                  content: partialContent || 'Reconnected to server. Continuing...' 
+                };
+              }
+              return msg;
             });
-            
-            // Only clear typing state when we're completely done
-            if (isDone) {
+          });
+        }
+        
+        isFirstConnect = false;
+      };
+      
+      // Setup event handlers
+      eventSource.onmessage = (event) => {
+        try {
+          // Clear the connection timeout since we received a message
+          if (connectionTimeoutId) {
+            clearTimeout(connectionTimeoutId);
+            connectionTimeoutId = null;
+          }
+          
+          receivedFirstMessage = true;
+          
+          // Skip heartbeat messages
+          if (event.data.startsWith(':') || event.data.trim() === '') {
+            return;
+          }
+          
+          const data = JSON.parse(event.data);
+          
+          // Handle different status types
+          switch (data.status) {
+            case 'connected':
+              console.log('Stream connection established');
+              break;
+              
+            case 'streaming':
+              // Add the new content chunk
+              partialContent += data.content;
+              // Track if this is the last chunk
+              isDone = data.done;
+              
+              // Update the message with the current content
+              setMessages(prevMessages => {
+                return prevMessages.map(msg => {
+                  if (msg.id === typingMsgId) {
+                    return { ...msg, content: partialContent };
+                  }
+                  return msg;
+                });
+              });
+              
+              // Only clear typing state when we're completely done
+              if (isDone) {
+                setTimeout(() => {
+                  if (eventSourceRef.current) {
+                    eventSourceRef.current.close();
+                    eventSourceRef.current = null;
+                  }
+                  streamingRef.current = false;
+                  setIsTyping(false);
+                }, 1000); // Longer delay to ensure cursor is visible at the end
+              }
+              break;
+              
+            case 'completed':
+              // Cleanup after a longer delay to ensure cursor is seen at the end
               setTimeout(() => {
                 if (eventSourceRef.current) {
                   eventSourceRef.current.close();
                   eventSourceRef.current = null;
                 }
                 streamingRef.current = false;
+                isProcessingRef.current = false;
                 setIsTyping(false);
+                
+                // Call onResponse if provided
+                if (onResponse) {
+                  onResponse();
+                }
               }, 1000); // Longer delay to ensure cursor is visible at the end
-            }
-            break;
-            
-          case 'completed':
-            // Cleanup after a longer delay to ensure cursor is seen at the end
-            setTimeout(() => {
-              if (eventSourceRef.current) {
-                eventSourceRef.current.close();
-                eventSourceRef.current = null;
-              }
+              break;
+              
+            case 'error':
+            case 'failed':
+              console.error(`Error in streaming: ${data.error}`);
+              eventSource.close();
+              eventSourceRef.current = null;
               streamingRef.current = false;
               isProcessingRef.current = false;
               setIsTyping(false);
               
-              // Call onResponse if provided
-              if (onResponse) {
-                onResponse();
+              // Update the message with error instead of removing
+              setMessages(prevMessages => {
+                return prevMessages.map(msg => {
+                  if (msg.id === typingMsgId) {
+                    return { 
+                      ...msg, 
+                      content: `Error: ${data.error || 'An unknown error occurred'}. Please try again.` 
+                    };
+                  }
+                  return msg;
+                });
+              });
+              
+              if (onError) {
+                onError(new Error(data.error || 'Streaming failed'));
               }
-            }, 1000); // Longer delay to ensure cursor is visible at the end
-            break;
+              break;
+              
+            case 'polling_error':
+              // Just log polling errors but don't fail the connection
+              console.warn(`Polling error: ${data.error}`);
+              break;
+              
+            default:
+              // For processing, queued, etc. - just log the status
+              console.log(`Streaming status: ${data.status}`);
+          }
+        } catch (error) {
+          console.error('Error processing stream event:', error);
+        }
+      };
+      
+      eventSource.onerror = (error) => {
+        console.error('EventSource error:', error);
+        
+        // Clear connection timeout if it exists
+        if (connectionTimeoutId) {
+          clearTimeout(connectionTimeoutId);
+          connectionTimeoutId = null;
+        }
+        
+        // Close the current connection
+        eventSource.close();
+        
+        // Only handle error if this is still the current eventSource
+        if (eventSourceRef.current === eventSource) {
+          eventSourceRef.current = null;
+          
+          // Try to reconnect if we haven't reached max retries
+          if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`Connection error. Retrying (${retryCount}/${maxRetries})...`);
             
-          case 'error':
-          case 'failed':
-            console.error(`Error in streaming: ${data.error}`);
-            eventSource.close();
-            eventSourceRef.current = null;
+            // Wait a bit before reconnecting (use exponential backoff)
+            const retryDelay = Math.min(1000 * Math.pow(2, retryCount - 1), 10000);
+            setTimeout(() => {
+              // Only reconnect if we're still in streaming mode
+              if (streamingRef.current) {
+                connectEventSource();
+              }
+            }, retryDelay);
+            
+            // Update message to show reconnecting status
+            setMessages(prevMessages => {
+              return prevMessages.map(msg => {
+                if (msg.id === typingMsgId) {
+                  return { 
+                    ...msg, 
+                    content: partialContent ? 
+                      `${partialContent}\n\n(Connection lost. Reconnecting...)` : 
+                      'Connection lost. Reconnecting...' 
+                  };
+                }
+                return msg;
+              });
+            });
+          } else {
             streamingRef.current = false;
             isProcessingRef.current = false;
             setIsTyping(false);
             
-            // Remove typing message and show error
-            setMessages(prevMessages => prevMessages.filter(msg => msg.id !== typingMsgId));
+            // Keep message but show error
+            setMessages(prevMessages => {
+              return prevMessages.map(msg => {
+                if (msg.id === typingMsgId) {
+                  return { 
+                    ...msg, 
+                    content: partialContent ? 
+                      `${partialContent}\n\n(Connection failed after multiple attempts. The response may be incomplete.)` : 
+                      'Failed to connect to server after multiple attempts.' 
+                  };
+                }
+                return msg;
+              });
+            });
             
             if (onError) {
-              onError(new Error(data.error || 'Streaming failed'));
+              onError(new Error('Streaming connection failed after multiple attempts'));
             }
-            break;
-            
-          default:
-            // For processing, queued, etc. - just log the status
-            console.log(`Streaming status: ${data.status}`);
+          }
         }
-      } catch (error) {
-        console.error('Error processing stream event:', error);
-      }
+      };
+      
+      return eventSource;
     };
     
-    eventSource.onerror = (error) => {
-      console.error('EventSource error:', error);
-      eventSource.close();
-      eventSourceRef.current = null;
-      streamingRef.current = false;
-      isProcessingRef.current = false;
-      setIsTyping(false);
-      
-      // Remove typing message
-      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== typingMsgId));
-      
-      if (onError) {
-        onError(new Error('Streaming connection failed'));
-      }
-    };
-    
+    // Start the initial connection
+    const eventSource = connectEventSource();
     return eventSource;
   }, [activePersonality, userId, onResponse, onError]);
   
