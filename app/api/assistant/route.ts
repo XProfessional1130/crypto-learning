@@ -13,6 +13,9 @@ const openai = new OpenAI({
 // In a real app, you would store this in a database
 const userThreads: Record<string, ThreadInfo> = {};
 
+// Extend the NextResponse to allow maxDuration
+export const maxDuration = 60; // Set max duration to 60 seconds
+
 /**
  * GET handler to retrieve chat history
  */
@@ -123,35 +126,73 @@ export async function POST(request: Request) {
       }
     );
     
-    // Wait for the run to complete
-    let runStatus = await openai.beta.threads.runs.retrieve(
-      currentThreadId,
-      run.id
-    );
+    // Instead of waiting for completion, return the thread and run IDs
+    // The client will poll for updates
+    return NextResponse.json({ 
+      status: 'processing', 
+      threadId: currentThreadId,
+      runId: run.id
+    });
     
-    // Poll for completion (simplified for demo)
-    while (runStatus.status !== 'completed' && runStatus.status !== 'failed') {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      runStatus = await openai.beta.threads.runs.retrieve(
-        currentThreadId,
-        run.id
+  } catch (error: any) {
+    console.error('Error in assistant API:', error);
+    return NextResponse.json(
+      { error: error.message || 'An error occurred' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * New endpoint to check the status of a run and get the response when complete
+ */
+export async function GET_STATUS(request: Request) {
+  try {
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const threadId = searchParams.get('threadId');
+    const runId = searchParams.get('runId');
+    const userId = searchParams.get('userId');
+    
+    if (!threadId || !runId || !userId) {
+      return NextResponse.json(
+        { error: 'Missing required parameters' },
+        { status: 400 }
       );
     }
     
+    // Get run status
+    const runStatus = await openai.beta.threads.runs.retrieve(
+      threadId,
+      runId
+    );
+    
     if (runStatus.status === 'failed') {
-      throw new Error('Assistant run failed: ' + runStatus.last_error?.message);
+      return NextResponse.json({
+        status: 'failed',
+        error: runStatus.last_error?.message || 'Run failed',
+      });
     }
     
-    // Get the latest message
+    if (runStatus.status !== 'completed') {
+      return NextResponse.json({
+        status: runStatus.status,
+      });
+    }
+    
+    // If the run is completed, fetch the messages
     const messages = await openai.beta.threads.messages.list(
-      currentThreadId,
+      threadId,
       { order: 'desc', limit: 1 }
     );
     
     const latestMessage = messages.data[0];
     
     if (!latestMessage || latestMessage.role !== 'assistant') {
-      throw new Error('No assistant message found');
+      return NextResponse.json({
+        status: 'error',
+        error: 'No assistant message found',
+      });
     }
     
     // Extract the message content
@@ -163,25 +204,29 @@ export async function POST(request: Request) {
       }
     }
     
+    // Try to get the personality from user threads or default to 'tobo'
+    const personality = userThreads[userId]?.personality || 'tobo';
+    
     // Save to database
     await saveChatMessage({
       user_id: userId,
       role: 'assistant',
       content: messageContent,
       personality,
-      thread_id: currentThreadId,
-      assistant_id: assistantId,
+      thread_id: threadId,
+      assistant_id: latestMessage.assistant_id || '',
       created_at: new Date().toISOString(),
     });
     
     // Return the message content
     return NextResponse.json({ 
+      status: 'completed',
       content: messageContent,
-      threadId: currentThreadId,
+      threadId,
     });
     
   } catch (error: any) {
-    console.error('Error in assistant API:', error);
+    console.error('Error checking run status:', error);
     return NextResponse.json(
       { error: error.message || 'An error occurred' },
       { status: 500 }

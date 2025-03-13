@@ -70,6 +70,7 @@ export default function Chat() {
   const [shouldScroll, setShouldScroll] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [randomPrompts, setRandomPrompts] = useState<typeof samplePrompts>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Initialize chat with useAssistantChat hook
   const {
@@ -101,7 +102,11 @@ export default function Chat() {
     },
     onError: (error) => {
       console.error('Chat error:', error);
-    },
+      // Show error message to user
+      setErrorMessage(`Error: ${error.message || 'Something went wrong. Please try again.'}`);
+      // Clear error after 5 seconds
+      setTimeout(() => setErrorMessage(null), 5000);
+    }
   });
 
   // Get three random prompts on initial load
@@ -325,6 +330,11 @@ export default function Chat() {
     return content;
   };
 
+  // Add a function to clear error message
+  const clearError = () => {
+    setErrorMessage(null);
+  };
+
   if (loading || !user) {
     return (
       <div className="flex min-h-[calc(100vh-16rem)] items-center justify-center">
@@ -509,6 +519,22 @@ export default function Chat() {
               
               {/* Chat Messages */}
               <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 scrollbar-thin">
+                {/* Error message display */}
+                {errorMessage && (
+                  <div 
+                    className="mb-4 p-3 bg-red-100 border border-red-300 text-red-800 rounded-md flex justify-between items-center"
+                    onClick={clearError}
+                  >
+                    <p>{errorMessage}</p>
+                    <button 
+                      className="text-red-600 hover:text-red-800"
+                      onClick={clearError}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
                 <AnimatePresence initial={false}>
                   <div className="space-y-6">
                     {messages.map((message) => {

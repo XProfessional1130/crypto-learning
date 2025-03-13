@@ -4,5 +4,16 @@
       "path": "/api/cron/process-jobs",
       "schedule": "0 0 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/assistant/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/assistant/status/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/chat/route.ts": {
+      "maxDuration": 60
+    }
+  }
 } 
