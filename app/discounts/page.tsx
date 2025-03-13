@@ -186,7 +186,7 @@ export default function Discounts() {
               onClick={() => setSelectedCategory(category)}
               className={`rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 ${
                 selectedCategory === category
-                  ? 'neo-glass bg-brand-primary/10 dark:bg-brand-primary/20 border border-brand-primary/30 text-brand-primary dark:text-brand-light animate-pulse-glow'
+                  ? 'neo-glass bg-brand-primary/10 dark:bg-brand-primary/20 border border-brand-primary/30 text-brand-primary dark:text-brand-light'
                   : 'bg-white/50 dark:bg-dark-bg-accent/30 border border-white/10 dark:border-dark-bg-accent/20 text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/70 dark:hover:bg-dark-bg-accent/50'
               }`}
             >
@@ -250,7 +250,7 @@ export default function Discounts() {
           </p>
           <button
             onClick={() => {setSelectedCategory('All'); setSearchTerm('');}}
-            className="mt-4 btn btn-primary"
+            className="mt-4 btn btn-primary text-center text-white hover:shadow-[0_0_15px_rgba(77,181,176,0.5)] transition-all duration-300"
           >
             <span className="relative z-10">View All Discounts</span>
           </button>
