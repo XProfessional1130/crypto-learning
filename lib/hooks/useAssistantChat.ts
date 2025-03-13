@@ -237,6 +237,7 @@ export function useAssistantChat({
     let retryCount = 0;
     const maxRetries = 3;
     let isFirstConnect = true;
+    let hadReconnection = false;
     
     const connectEventSource = () => {
       // Create a new EventSource connection
@@ -279,12 +280,14 @@ export function useAssistantChat({
         
         // If this is a reconnection, send a status update to the user
         if (!isFirstConnect) {
+          hadReconnection = true;
           setMessages(prevMessages => {
             return prevMessages.map(msg => {
               if (msg.id === typingMsgId) {
+                let updatedContent = partialContent.replace(/\n\n\(Connection lost\. Reconnecting\.\.\.\)$/, '');
                 return { 
                   ...msg, 
-                  content: partialContent || 'Reconnected to server. Continuing...' 
+                  content: updatedContent || 'Reconnected to server. Continuing...' 
                 };
               }
               return msg;
@@ -329,7 +332,11 @@ export function useAssistantChat({
               setMessages(prevMessages => {
                 return prevMessages.map(msg => {
                   if (msg.id === typingMsgId) {
-                    return { ...msg, content: partialContent };
+                    let updatedContent = partialContent;
+                    if (hadReconnection) {
+                      updatedContent = partialContent.replace(/\n\n\(Connection lost\. Reconnecting\.\.\.\)$/, '');
+                    }
+                    return { ...msg, content: updatedContent };
                   }
                   return msg;
                 });
@@ -355,6 +362,19 @@ export function useAssistantChat({
                   eventSourceRef.current.close();
                   eventSourceRef.current = null;
                 }
+                
+                if (hadReconnection) {
+                  setMessages(prevMessages => {
+                    return prevMessages.map(msg => {
+                      if (msg.id === typingMsgId) {
+                        const cleanContent = partialContent.replace(/\n\n\(Connection lost\. Reconnecting\.\.\.\)$/, '');
+                        return { ...msg, content: cleanContent };
+                      }
+                      return msg;
+                    });
+                  });
+                }
+                
                 streamingRef.current = false;
                 isProcessingRef.current = false;
                 setIsTyping(false);
@@ -441,6 +461,7 @@ export function useAssistantChat({
             setMessages(prevMessages => {
               return prevMessages.map(msg => {
                 if (msg.id === typingMsgId) {
+                  hadReconnection = true;
                   return { 
                     ...msg, 
                     content: partialContent ? 
