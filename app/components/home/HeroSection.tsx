@@ -98,7 +98,7 @@ export default function HeroSection() {
               size="lg"
               className="neo-glass backdrop-blur-lg bg-brand-primary/90 dark:bg-brand-primary/90 border border-white/20 hover:bg-brand-primary hover:border-white/30 animate-pulse-glow prism-edge font-medium shadow-md"
             >
-              <span className="relative z-10 text-brand-100 dark:text-white font-semibold">Get Started</span>
+              <span className="relative z-10 text-brand-primary dark:text-white font-semibold">Get Started</span>
             </Button>
             <Button 
               href="/about" 
