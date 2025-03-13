@@ -1,28 +1,79 @@
 import { useMemo, useState } from 'react';
-import { PortfolioItemWithPrice, CoinData } from '@/types/portfolio';
-import { GlobalData } from '@/lib/services/coinmarketcap';
 import { useTeamPortfolio } from '@/lib/hooks/useTeamPortfolio';
-import { PlusCircle, Edit2, Trash } from 'lucide-react';
+import { PortfolioItemWithPrice } from '@/types/portfolio';
+import { CoinData } from '@/types/portfolio';
+import { PlusCircle, Edit2, Trash2 } from 'lucide-react';
 import TeamAddCoinModal from './TeamAddCoinModal';
 import TeamAssetDetailModal from './TeamAssetDetailModal';
+import { GlobalData } from '@/lib/services/coinmarketcap';
+import { formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
 
-// Function to format cryptocurrency prices adaptively based on their value
+// Local formatCryptoPrice function
 const formatCryptoPrice = (price: number): string => {
-  if (!price) return '$---';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(price);
+};
 
-  if (price >= 1) {
-    // For prices $1 and above: round to whole number
-    return `$${Math.round(price).toLocaleString()}`;
-  } else if (price >= 0.01) {
-    // For prices between $0.01 and $1: show 2 decimal places
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  } else if (price >= 0.0001) {
-    // For prices between $0.0001 and $0.01: show 4 decimal places
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`;
-  } else {
-    // For extremely low prices: show as "< $0.0001"
-    return `< $0.0001`;
-  }
+// Memoized Portfolio Item component
+const PortfolioItem = ({ item, onItemClick, totalPortfolioValue, isAdmin }: {
+  item: PortfolioItemWithPrice;
+  onItemClick: (item: PortfolioItemWithPrice) => void;
+  totalPortfolioValue: number;
+  isAdmin: boolean;
+}) => {
+  // Calculate percentage of total portfolio
+  const portfolioPercentage = totalPortfolioValue > 0 
+    ? (item.valueUsd / totalPortfolioValue) * 100 
+    : 0;
+
+  return (
+    <div
+      onClick={() => isAdmin && onItemClick(item)}
+      className={`flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 ${isAdmin ? 'hover:bg-gray-50 dark:hover:bg-gray-750 cursor-pointer' : ''} transition-colors`}
+    >
+      <div className="flex items-center">
+        <div className="w-8 h-8 mr-3 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold overflow-hidden">
+          <img
+            src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
+            alt={item.coinSymbol}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = item.coinSymbol.substring(0, 3);
+                parent.classList.add('flex', 'items-center', 'justify-center', 'bg-gray-200', 'dark:bg-gray-600', 'text-gray-600', 'dark:text-gray-300', 'font-bold');
+              }
+            }}
+          />
+        </div>
+        <div>
+          <p className="font-medium text-gray-900 dark:text-white">{item.coinName}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{item.coinSymbol}</p>
+        </div>
+      </div>
+      <div className="text-right">
+        <p className="font-medium">${item.valueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        <div className="flex items-center justify-end space-x-2">
+          <p className={`text-sm ${item.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(2)}%
+          </p>
+          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+            <svg className="w-3.5 h-3.5 mr-0.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12,2L4,6.5v11L12,22l8-4.5v-11L12,2z M12,4.311l6,3.375v8.627l-6,3.375l-6-3.375V7.686L12,4.311z" />
+              <path d="M12,6.5L7,9.25v5.5L12,17.5l5-2.75v-5.5L12,6.5z M12,8.122l3,1.65v3.456l-3,1.65l-3-1.65V9.772L12,8.122z" />
+            </svg>
+            {portfolioPercentage.toFixed(1)}%
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 interface TeamPortfolioProps {
@@ -94,9 +145,12 @@ export default function TeamPortfolio({
     }
   };
 
-  const handleDeleteAsset = async (assetId: string) => {
+  // The delete handler wrapped to match the expected interface (no arguments)
+  const handleDelete = async () => {
+    if (!selectedAsset) return { success: false };
+    
     try {
-      await removeCoin(assetId);
+      await removeCoin(selectedAsset.id);
       setShowAssetDetailModal(false);
       refreshPortfolio(true);
       return { success: true };
@@ -110,7 +164,7 @@ export default function TeamPortfolio({
     return (
       <div className="space-y-4">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-16 animate-pulse rounded bg-gray-200"></div>
+          <div key={i} className="h-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>
         ))}
       </div>
     );
@@ -118,32 +172,31 @@ export default function TeamPortfolio({
 
   if (error) {
     return (
-      <div className="rounded-lg bg-red-50 p-4 text-red-600">
-        Error loading portfolio data. Please try again later.
+      <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-4 text-red-600 dark:text-red-400">
+        <p>Error loading portfolio data. Please try again later.</p>
+        <button 
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          onClick={() => refreshPortfolio(true)}
+        >
+          Try Again
+        </button>
       </div>
     );
   }
 
   if (!portfolio || portfolio.items.length === 0) {
     return (
-      <div className="rounded-lg bg-blue-50 p-4 text-blue-600">
+      <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-4 text-blue-600 dark:text-blue-400">
         <p className="mb-2 font-semibold">No assets in the team portfolio yet.</p>
         {isAdmin ? (
           <div className="mt-4">
             <button 
               onClick={() => setShowAddCoinModal(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded flex items-center"
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors flex items-center"
             >
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Asset to Team Portfolio
             </button>
-            {showAddCoinModal && (
-              <TeamAddCoinModal
-                isOpen={showAddCoinModal}
-                onClose={() => setShowAddCoinModal(false)}
-                onCoinAdded={handleAddCoin}
-              />
-            )}
           </div>
         ) : (
           <p className="text-sm">
@@ -155,119 +208,40 @@ export default function TeamPortfolio({
   }
 
   return (
-    <div className="space-y-6">
-      {isAdmin && (
-        <div className="flex justify-end mb-4">
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-white">Team Portfolio</h2>
+        {isAdmin && (
           <button 
             onClick={() => setShowAddCoinModal(true)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded flex items-center"
+            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors flex items-center"
           >
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Asset
           </button>
-        </div>
-      )}
+        )}
+      </div>
       
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Asset
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Allocation
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Current Price
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                24h Change
-              </th>
-              {isAdmin && (
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Actions
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {sortedPortfolioItems.map((item: PortfolioItemWithPrice) => (
-              <tr key={item.id} className={isAdmin ? "cursor-pointer hover:bg-gray-50" : ""} onClick={isAdmin ? () => handleSelectAsset(item) : undefined}>
-                <td className="whitespace-nowrap px-6 py-4">
-                  <div className="flex items-center">
-                    <div className="h-10 w-10 flex-shrink-0 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                      <img
-                        src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
-                        alt={item.coinSymbol}
-                        className="h-10 w-10 object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const parent = target.parentElement;
-                          if (parent) {
-                            parent.innerHTML = item.coinSymbol.substring(0, 3);
-                            parent.classList.add('flex', 'items-center', 'justify-center', 'bg-gray-200', 'text-gray-600', 'font-bold');
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">{item.coinName}</div>
-                      <div className="text-sm text-gray-500">{item.coinSymbol}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                  {item.percentage.toFixed(1)}%
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                  {formatCryptoPrice(item.priceUsd)}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm">
-                  <span className={item.priceChange24h >= 0 ? 'text-green-600' : 'text-red-600'}>
-                    {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(2)}%
-                  </span>
-                </td>
-                {isAdmin && (
-                  <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
-                    <button 
-                      className="text-indigo-600 hover:text-indigo-900 mr-3"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSelectAsset(item);
-                      }}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button 
-                      className="text-red-600 hover:text-red-900"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (window.confirm(`Remove ${item.coinName} from the team portfolio?`)) {
-                          await removeCoin(item.id);
-                          refreshPortfolio(true);
-                        }
-                      }}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="overflow-y-auto h-[calc(100vh-32rem)] scrollbar-thin">
+        {sortedPortfolioItems.map((item) => (
+          <PortfolioItem 
+            key={item.id} 
+            item={item} 
+            onItemClick={handleSelectAsset} 
+            totalPortfolioValue={portfolio.totalValueUsd} 
+            isAdmin={isAdmin}
+          />
+        ))}
       </div>
 
-      <div className="bg-indigo-50 p-4 rounded-lg mt-6">
-        <h3 className="text-lg font-medium text-indigo-800">Portfolio Analysis</h3>
-        <p className="text-indigo-600 mt-1">
-          Our team is currently overweight on Bitcoin and Solana due to strong technical signals and increasing institutional adoption. We expect a market correction in Q3 but remain bullish on the long-term outlook.
+      <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+        <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">Portfolio Analysis</h3>
+        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+          This portfolio represents the collective recommendations of our expert analysts. Assets are carefully selected based on thorough research, technical analysis, and fundamental value propositions.
         </p>
       </div>
 
-      {/* Add Coin Modal - Only shown when admin clicks Add Asset button */}
+      {/* Add Coin Modal */}
       {showAddCoinModal && (
         <TeamAddCoinModal
           isOpen={showAddCoinModal}
@@ -275,15 +249,15 @@ export default function TeamPortfolio({
           onCoinAdded={handleAddCoin}
         />
       )}
-
-      {/* Asset Detail Modal - Only shown when admin clicks on an asset */}
+      
+      {/* Asset Detail Modal */}
       {showAssetDetailModal && selectedAsset && (
         <TeamAssetDetailModal
           isOpen={showAssetDetailModal}
           onClose={() => setShowAssetDetailModal(false)}
           asset={selectedAsset}
           onUpdate={(amount) => handleUpdateAmount(selectedAsset.id, amount)}
-          onDelete={() => handleDeleteAsset(selectedAsset.id)}
+          onDelete={handleDelete}
         />
       )}
     </div>
