@@ -64,7 +64,7 @@ export default function HeroSection() {
           </div>
           
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl animate-fade-in relative">
-            <span className="text-gradient-vibrant text-shadow-glow relative inline-block after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[6px] after:bg-gradient-to-r after:from-brand-primary/70 after:to-brand-light/30 after:rounded-full after:transform after:translate-y-2 after:blur-sm">
+            <span className="text-gradient-vibrant text-shadow-glow relative inline-block text-rendering-optimizeLegibility after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[6px] after:bg-gradient-to-r after:from-brand-primary/70 after:to-brand-light/30 after:rounded-full after:transform after:translate-y-2 after:blur-sm">
               Master Crypto
             </span>
             <br/>
@@ -96,7 +96,7 @@ export default function HeroSection() {
               href="/auth/signin" 
               variant="glass" 
               size="lg"
-              className="neo-glass backdrop-blur-lg bg-brand-primary/90 text-white border border-white/10 hover:bg-brand-primary animate-pulse-glow prism-edge"
+              className="neo-glass backdrop-blur-lg bg-brand-primary/90 dark:bg-brand-primary/90 text-white border border-white/20 hover:bg-brand-primary hover:border-white/30 animate-pulse-glow prism-edge font-medium shadow-md"
             >
               <span className="relative z-10">Get Started</span>
             </Button>

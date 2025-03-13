@@ -173,7 +173,7 @@ html {
   }
 
   .text-shadow-glow {
-    text-shadow: 0 0 8px rgba(77, 181, 176, 0.7), 0 0 20px rgba(77, 181, 176, 0.3);
+    text-shadow: 0 0 4px rgba(77, 181, 176, 0.5), 0 0 12px rgba(77, 181, 176, 0.2);
   }
 
   .glass-effect {
@@ -350,6 +350,13 @@ html {
   .mobile-nav-link .mobile-nav-indicator div {
     width: 4px;
     height: 4px;
+  }
+  
+  /* High-quality text rendering */
+  .text-rendering-optimizeLegibility {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   /* Enhanced mobile menu appearance */

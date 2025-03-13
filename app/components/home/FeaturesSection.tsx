@@ -68,8 +68,8 @@ export default function FeaturesSection() {
       <div ref={sectionRef} className={`max-w-4xl mx-auto ${isVisible ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000`}>
         <div className="text-center">
           {/* Feature badge with improved visibility */}
-          <div className="inline-flex items-center px-3 py-1.5 mb-6 rounded-full text-xs font-medium tracking-wider bg-gray-800/50 dark:bg-gray-700/60 text-gray-100 dark:text-gray-50 border border-teal-500/30 dark:border-teal-400/30 backdrop-blur-sm shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-teal-400 dark:bg-teal-300 mr-2 animate-pulse"></span>
+          <div className="inline-flex items-center px-3 py-1.5 mb-6 rounded-full text-xs font-medium tracking-wider bg-gray-200/80 dark:bg-gray-700/60 text-gray-700 dark:text-gray-50 border border-teal-500/20 dark:border-teal-400/30 backdrop-blur-sm shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-teal-500 dark:bg-teal-300 mr-2 animate-pulse"></span>
             KEY PLATFORM FEATURES
           </div>
           
