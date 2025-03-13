@@ -397,7 +397,7 @@ export default function Chat() {
   const isNewChat = messages.length <= 1 && messages[0]?.role === 'assistant';
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 h-[calc(100vh-8rem)] h-vh-fix flex flex-col">
+    <div className={`mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 ${styles.heightVhFix} flex flex-col`}>
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Personality Selector */}
         <div className="mb-3 flex justify-center">
@@ -470,7 +470,7 @@ export default function Chat() {
         </div>
 
         {/* Chat tabs and content */}
-        <div className="flex flex-col flex-1 overflow-hidden chat-scroll-container">
+        <div className={`flex flex-col flex-1 overflow-hidden ${styles.chatScrollContainer}`}>
           {/* Tab Navigation */}
           <div className="flex mb-0 relative z-10">
             <button 
@@ -510,7 +510,7 @@ export default function Chat() {
             </AnimatePresence>
 
             {/* Chat Container */}
-            <div className="flex-1 flex flex-col rounded-tr-xl rounded-b-xl neo-glass overflow-hidden backdrop-blur-md relative neo-glass-before chat-scroll-container">
+            <div className={`flex-1 flex flex-col rounded-tr-xl rounded-b-xl neo-glass overflow-hidden backdrop-blur-md relative neo-glass-before ${styles.chatScrollContainer}`}>
               {/* Glassmorphic effect elements */}
               <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 <div className="absolute -top-24 -left-24 w-48 h-48 bg-brand-primary/5 dark:bg-brand-primary/10 rounded-full blur-3xl"></div>
@@ -520,7 +520,7 @@ export default function Chat() {
               {/* Chat Messages */}
               <div 
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto p-6 scrollbar-thin min-h-0 chat-scrollable-content"
+                className={`flex-1 overflow-y-auto p-6 scrollbar-thin min-h-0 ${styles.scrollableContent}`}
               >
                 {/* Error message display */}
                 {errorMessage && (

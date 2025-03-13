@@ -48,7 +48,7 @@
 }
 
 /* Fix scrolling container behavior */
-:global(.chat-scroll-container) {
+.chatScrollContainer {
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -56,16 +56,21 @@
   overflow: hidden;
 }
 
-:global(.chat-scrollable-content) {
+.scrollableContent {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
   scrollbar-width: thin;
 }
 
+.heightVhFix {
+  height: calc(100vh - 8rem);
+  max-height: calc(100vh - 8rem);
+}
+
 /* Ensure scroll works on mobile */
 @media (max-width: 768px) {
-  :global(.h-vh-fix) {
+  .heightVhFix {
     height: calc(100vh - 8rem) !important;
     max-height: calc(100vh - 8rem) !important;
   }
