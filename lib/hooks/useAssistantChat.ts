@@ -217,11 +217,6 @@ export function useAssistantChat({
       }
       abortControllerRef.current = new AbortController();
       
-      // Call onResponse callback after user message
-      if (onResponse) {
-        onResponse();
-      }
-      
       // Create a temporary assistant typing message
       const typingMessage: ChatMessage = {
         id: `typing-${Date.now()}`,
