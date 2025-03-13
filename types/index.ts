@@ -109,6 +109,8 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   personality?: 'tobo' | 'heido';
+  thread_id?: string;
+  assistant_id?: string;
   created_at: string;
 }
 

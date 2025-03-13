@@ -1,15 +1,22 @@
 "use client";
 
 import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
 import HeroSection from './components/home/HeroSection';
-// Dynamically import below-the-fold components
-const FeaturesSection = dynamic(() => import('./components/home/FeaturesSection'), { ssr: true });
-const TestimonialsSection = dynamic(() => import('./components/home/TestimonialsSection'), { ssr: true });
-const PricingSection = dynamic(() => import('./components/home/PricingSection'), { ssr: true });
-const CTASection = dynamic(() => import('./components/home/CTASection'), { ssr: true });
+// Dynamically import below-the-fold components with client-side only loading
+const FeaturesSection = dynamic(() => import('./components/home/FeaturesSection'), { ssr: false });
+const TestimonialsSection = dynamic(() => import('./components/home/TestimonialsSection'), { ssr: false });
+const PricingSection = dynamic(() => import('./components/home/PricingSection'), { ssr: false });
+const CTASection = dynamic(() => import('./components/home/CTASection'), { ssr: false });
 import AuthCodeHandler from './components/auth/AuthCodeHandler';
 
 export default function Home() {
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
   return (
     <div className="w-full relative overflow-x-hidden overflow-y-hidden glow-overflow -mt-10">
       <AuthCodeHandler />
@@ -30,10 +37,14 @@ export default function Home() {
       {/* Content sections with seamless flow */}
       <div className="relative z-10">
         <HeroSection />
-        <FeaturesSection />
-        <TestimonialsSection />
-        <PricingSection />
-        <CTASection />
+        {isClient && (
+          <>
+            <FeaturesSection />
+            <TestimonialsSection />
+            <PricingSection />
+            <CTASection />
+          </>
+        )}
       </div>
     </div>
   );

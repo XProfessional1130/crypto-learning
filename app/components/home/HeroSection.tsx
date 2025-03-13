@@ -158,7 +158,7 @@ export default function HeroSection() {
           >
             {/* Main dashboard card with optimized glassmorphism for mobile */}
             <div 
-              className="relative aspect-[4/3] rounded-2xl overflow-hidden neo-glass neo-glass-before" 
+              className="relative rounded-2xl overflow-hidden neo-glass neo-glass-before sm:aspect-[4/3] h-[80vw] max-h-[400px] w-full" 
               style={{ 
                 willChange: 'transform',
                 transform: 'translateZ(0)',
@@ -173,11 +173,11 @@ export default function HeroSection() {
               <div className="absolute bottom-0 left-0 w-[40%] h-[20%] bg-gradient-to-tr from-white/10 dark:from-white/5 to-transparent rounded-tr-full"></div>
               
               {/* Dashboard content */}
-              <div className="absolute inset-0 p-8 flex flex-col">
-                <div className="flex items-center justify-between mb-6">
+              <div className="absolute inset-0 p-4 sm:p-8 flex flex-col">
+                <div className="flex items-center justify-between mb-3 sm:mb-6">
                   <div>
-                    <h3 className="text-xl font-bold text-gradient-vibrant mb-1">Crypto Analytics Dashboard</h3>
-                    <div className="text-sm text-light-text-secondary dark:text-dark-text-secondary opacity-80">Real-time data insights</div>
+                    <h3 className="text-lg sm:text-xl font-bold text-gradient-vibrant mb-0.5 sm:mb-1">Crypto Analytics Dashboard</h3>
+                    <div className="text-xs sm:text-sm text-light-text-secondary dark:text-dark-text-secondary opacity-80">Real-time data insights</div>
                   </div>
                   <div className="flex space-x-2">
                     {[1, 2, 3].map(i => (
@@ -188,7 +188,7 @@ export default function HeroSection() {
                 <div className="w-full h-1 bg-gradient-to-r from-brand-primary to-brand-light opacity-70 rounded-full"></div>
                 
                 {/* Chart area with optimized animations for mobile */}
-                <div className="flex-1 rounded-lg bg-white/10 dark:bg-dark-bg-accent/20 border border-white/10 dark:border-dark-bg-accent/30 mt-6 p-4 flex flex-col">
+                <div className="flex-1 rounded-lg bg-white/10 dark:bg-dark-bg-accent/20 border border-white/10 dark:border-dark-bg-accent/30 mt-4 sm:mt-6 p-3 sm:p-4 flex flex-col">
                   <div className="flex justify-between items-center mb-4">
                     <div className="font-medium text-sm text-light-text-primary dark:text-dark-text-primary">BTC/USD</div>
                     <div className="text-sm text-green-500 font-medium flex items-center">
@@ -200,7 +200,7 @@ export default function HeroSection() {
                   </div>
                   
                   {/* Optimized chart rendering for mobile */}
-                  <div className="w-full h-36 relative">
+                  <div className="w-full h-24 sm:h-36 relative">
                     <div className="absolute bottom-0 inset-x-0 h-[1px] bg-white/20 dark:bg-white/10"></div>
                     <div className="h-full w-full flex items-end relative">
                       {chartData.map((value, i) => (
@@ -242,17 +242,17 @@ export default function HeroSection() {
                   </div>
                   
                   {/* Additional data points */}
-                  <div className="flex justify-between mt-4 text-xs">
+                  <div className="flex justify-between mt-3 sm:mt-4 text-xs">
                     <div className="flex flex-col">
-                      <span className="text-light-text-secondary dark:text-dark-text-secondary">24h Vol</span>
+                      <span className="text-light-text-secondary dark:text-dark-text-secondary text-[10px] sm:text-xs">24h Vol</span>
                       <span className="font-medium text-light-text-primary dark:text-dark-text-primary">$36.8B</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-light-text-secondary dark:text-dark-text-secondary">Market Cap</span>
+                      <span className="text-light-text-secondary dark:text-dark-text-secondary text-[10px] sm:text-xs">Market Cap</span>
                       <span className="font-medium text-light-text-primary dark:text-dark-text-primary">$428.4B</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-light-text-secondary dark:text-dark-text-secondary">Price</span>
+                      <span className="text-light-text-secondary dark:text-dark-text-secondary text-[10px] sm:text-xs">Price</span>
                       <span className="font-medium text-light-text-primary dark:text-dark-text-primary">$21,984</span>
                     </div>
                   </div>

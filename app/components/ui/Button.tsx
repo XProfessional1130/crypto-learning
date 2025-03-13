@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 
 interface ButtonProps {
   children: ReactNode;
@@ -24,6 +24,13 @@ export default function Button({
   className = '',
   type = 'button',
 }: ButtonProps) {
+  // Add client-side only rendering to prevent hydration mismatch
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
   const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg focus:outline-none focus:ring-2 shadow-sm hover:shadow-md';
   
   const variantStyles = {
@@ -44,7 +51,12 @@ export default function Button({
 
   const styles = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${disabledStyles} ${className}`;
 
-  if (href) {
+  // Simple button for server-side rendering
+  if (href && !isClient) {
+    return <button className={styles} disabled={disabled}>Loading...</button>;
+  }
+
+  if (href && isClient) {
     return (
       <Link href={href} className={styles}>
         {children}
