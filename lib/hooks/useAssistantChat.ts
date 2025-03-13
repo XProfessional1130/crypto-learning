@@ -30,6 +30,8 @@ export function useAssistantChat({
   const abortControllerRef = useRef<AbortController | null>(null);
   const threadIdRef = useRef<string | null>(initialThreadId);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isProcessingRef = useRef<boolean>(false);
+  const pollRequestIdRef = useRef<number>(0);
   
   // Reset abort controller when component unmounts
   useEffect(() => {
@@ -39,7 +41,9 @@ export function useAssistantChat({
       }
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
       }
+      isProcessingRef.current = false;
     };
   }, []);
   
@@ -105,13 +109,20 @@ export function useAssistantChat({
     }
   }, [userId, onResponse, onError]);
   
-  // Poll for run status
-  const pollRunStatus = useCallback(async (threadId: string, runId: string, typingMsgId: string) => {
+  // Poll for run status - modified to be more robust
+  const pollRunStatus = useCallback(async (threadId: string, runId: string, typingMsgId: string, requestId: number) => {
+    if (requestId !== pollRequestIdRef.current) {
+      return true;
+    }
+    
     try {
       const url = `/api/assistant/status?threadId=${threadId}&runId=${runId}&userId=${userId}&personality=${activePersonality}`;
       const response = await fetch(url);
       
-      // Improved error handling
+      if (requestId !== pollRequestIdRef.current) {
+        return true;
+      }
+      
       let data;
       try {
         const responseText = await response.text();
@@ -129,18 +140,14 @@ export function useAssistantChat({
         throw error;
       }
       
-      // If still in progress, continue polling
       if (data.status !== 'completed' && data.status !== 'failed') {
         return false;
       }
       
-      // If failed, show error and stop polling
       if (data.status === 'failed') {
         throw new Error(data.error || 'Assistant run failed');
       }
       
-      // If completed, update messages with the response
-      // Replace the typing indicator with the actual response
       setMessages(prevMessages => {
         const newMessages = prevMessages.filter(msg => msg.id !== typingMsgId);
         
@@ -160,8 +167,8 @@ export function useAssistantChat({
       
       setTypingMessageId(null);
       setIsTyping(false);
+      isProcessingRef.current = false;
       
-      // Call onResponse again after getting the response
       if (onResponse) {
         onResponse();
       }
@@ -170,19 +177,21 @@ export function useAssistantChat({
     } catch (error) {
       console.error('Error polling run status:', error);
       
-      // Remove typing indicator on error
-      setMessages(prevMessages => 
-        prevMessages.filter(msg => msg.id !== typingMsgId)
-      );
-      
-      setTypingMessageId(null);
-      setIsTyping(false);
-      
-      if (onError) {
-        onError(error instanceof Error ? error : new Error(String(error)));
+      if (requestId === pollRequestIdRef.current) {
+        setMessages(prevMessages => 
+          prevMessages.filter(msg => msg.id !== typingMsgId)
+        );
+        
+        setTypingMessageId(null);
+        setIsTyping(false);
+        isProcessingRef.current = false;
+        
+        if (onError) {
+          onError(error instanceof Error ? error : new Error(String(error)));
+        }
       }
       
-      return true; // Stop polling on error
+      return true;
     }
   }, [activePersonality, userId, onResponse, onError]);
   
@@ -190,14 +199,19 @@ export function useAssistantChat({
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
     
+    if (isProcessingRef.current || isTyping) {
+      console.log('Message already being processed, ignoring duplicate send');
+      return;
+    }
+    
+    isProcessingRef.current = true;
+    
     try {
-      // Stop any ongoing polling
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
       }
       
-      // Create user message
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
         user_id: userId,
@@ -206,18 +220,15 @@ export function useAssistantChat({
         created_at: new Date().toISOString(),
       };
       
-      // Update state with user message
       setMessages(prevMessages => [...prevMessages, userMessage]);
       setInputMessage('');
       setIsTyping(true);
       
-      // Create abort controller for the request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
       abortControllerRef.current = new AbortController();
       
-      // Create a temporary assistant typing message
       const typingMessage: ChatMessage = {
         id: `typing-${Date.now()}`,
         user_id: 'system',
@@ -227,11 +238,9 @@ export function useAssistantChat({
         created_at: new Date().toISOString(),
       };
       
-      // Add typing indicator as a message
       setMessages(prevMessages => [...prevMessages, typingMessage]);
       setTypingMessageId(typingMessage.id);
       
-      // Send request to API
       const response = await fetch('/api/assistant', {
         method: 'POST',
         headers: {
@@ -246,7 +255,6 @@ export function useAssistantChat({
         signal: abortControllerRef.current.signal,
       });
       
-      // Improved error handling for API responses
       let data;
       try {
         const responseText = await response.text();
@@ -264,32 +272,33 @@ export function useAssistantChat({
         throw error;
       }
       
-      // Update thread ID if provided
       if (data.threadId) {
         threadIdRef.current = data.threadId;
       }
       
-      // If the status is processing and we have a runId, start polling
       if (data.status === 'processing' && data.runId && data.threadId) {
-        // Begin polling for the response
+        pollRequestIdRef.current += 1;
+        const currentRequestId = pollRequestIdRef.current;
+        
         const pollStatus = async () => {
-          const isDone = await pollRunStatus(data.threadId, data.runId, typingMessage.id);
+          const isDone = await pollRunStatus(data.threadId, data.runId, typingMessage.id, currentRequestId);
           if (isDone && pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
             pollIntervalRef.current = null;
           }
+          
+          // Continue polling if not already complete and no active interval
+          if (!pollIntervalRef.current) {
+            pollIntervalRef.current = setInterval(pollStatus, 1000);
+          }
         };
         
-        // Initial check right away
         await pollStatus();
-        
-        // Continue polling if not already complete
-        pollIntervalRef.current = setInterval(pollStatus, 1000);
       }
     } catch (error: any) {
       setIsTyping(false);
+      isProcessingRef.current = false;
       
-      // Remove typing indicator on error
       setMessages(prevMessages => 
         prevMessages.filter(msg => !msg.id.startsWith('typing-'))
       );
@@ -298,12 +307,11 @@ export function useAssistantChat({
       
       console.error('Error sending message:', error);
       
-      // Don't show error for aborted requests
       if (error.name !== 'AbortError' && onError) {
         onError(error);
       }
     }
-  }, [activePersonality, userId, onError, onResponse, pollRunStatus]);
+  }, [activePersonality, userId, onError, pollRunStatus, isTyping]);
   
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInputMessage(e.target.value);
