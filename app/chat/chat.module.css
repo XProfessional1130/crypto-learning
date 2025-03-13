@@ -1,6 +1,15 @@
 .message-content {
   font-size: 0.95rem;
   line-height: 1.5;
+  position: relative;
+}
+
+/* Style for typing cursor in formatted content */
+.typingCursor {
+  display: inline;
+  position: relative;
+  line-height: inherit;
+  vertical-align: baseline;
 }
 
 .message-content p {
@@ -9,6 +18,7 @@
 
 .message-content p:last-child {
   margin-bottom: 0;
+  display: inline;
 }
 
 /* For lists and code blocks in messages */

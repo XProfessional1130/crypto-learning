@@ -92,7 +92,7 @@ export default function Chat() {
         id: '1',
         user_id: 'system',
         role: 'assistant',
-        content: "Hi there! I'm Tobo, your crypto AI assistant. What would you like to learn about today?",
+        content: "Hi there! I'm Tobot, your crypto AI assistant. What would you like to learn about today?",
         personality: 'tobo',
         created_at: new Date().toISOString(),
       },
@@ -269,6 +269,8 @@ export default function Chat() {
                   ))}
                 </ul>
               )}
+              {/* Add an extra space at the end of the last paragraph for the cursor */}
+              {i === paragraphs.length - 1 && <span className={styles.typingCursor}>&nbsp;</span>}
             </div>
           );
         }
@@ -285,12 +287,20 @@ export default function Chat() {
                   {j < lines.length - 1 && <br />}
                 </React.Fragment>
               ))}
+              {/* Add an extra space at the end of the last paragraph for the cursor */}
+              {i === paragraphs.length - 1 && <span className={styles.typingCursor}>&nbsp;</span>}
             </p>
           );
         }
         
         // Regular paragraph
-        return <p key={i} className={i > 0 ? 'mt-3' : ''} dangerouslySetInnerHTML={{ __html: paragraph }} />;
+        return (
+          <p key={i} className={i > 0 ? 'mt-3' : ''}>
+            <span dangerouslySetInnerHTML={{ __html: paragraph }} />
+            {/* Add an extra space at the end of the last paragraph for the cursor */}
+            {i === paragraphs.length - 1 && <span className={styles.typingCursor}>&nbsp;</span>}
+          </p>
+        );
       });
     }
     
@@ -314,6 +324,7 @@ export default function Chat() {
               ))}
             </ul>
           )}
+          <span className={styles.typingCursor}>&nbsp;</span>
         </div>
       );
     }
@@ -329,17 +340,28 @@ export default function Chat() {
               {i < lines.length - 1 && <br />}
             </React.Fragment>
           ))}
+          <span className={styles.typingCursor}>&nbsp;</span>
         </p>
       );
     }
     
     // Handle code blocks and inline code that were preprocessed
     if (content.includes('<pre>') || content.includes('<code>')) {
-      return <div dangerouslySetInnerHTML={{ __html: content }} />;
+      return (
+        <>
+          <div dangerouslySetInnerHTML={{ __html: content }} />
+          <span className={styles.typingCursor}>&nbsp;</span>
+        </>
+      );
     }
     
     // No special formatting needed
-    return content;
+    return (
+      <>
+        {content}
+        <span className={styles.typingCursor}>&nbsp;</span>
+      </>
+    );
   };
 
   // Add a function to clear error message
@@ -625,7 +647,8 @@ export default function Chat() {
                                   {formatMessageContent(message.content)}
                                   {isStreaming && (
                                     <motion.span 
-                                      className="inline-block ml-1 text-brand-primary"
+                                      className={`${styles.typingCursor} text-brand-primary inline-block`}
+                                      style={{ position: 'absolute' }}
                                       initial={{ opacity: 0.3 }}
                                       animate={{ opacity: 1 }}
                                       transition={{ 
