@@ -22,12 +22,12 @@ export default function HeroSection() {
   }, []);
   
   useEffect(() => {    
-    // Animate in after mount
-    const timer = setTimeout(() => {
+    // Use requestAnimationFrame for better performance, especially on mobile
+    const rafId = requestAnimationFrame(() => {
       setIsVisible(true);
-    }, 100);
+    });
     
-    return () => clearTimeout(timer);
+    return () => cancelAnimationFrame(rafId);
   }, []);
 
   return (
@@ -36,30 +36,52 @@ export default function HeroSection() {
       spacing="none"
       className="relative nav-section-fix"
     >
-      {/* Enhanced background elements with more dynamic animations */}
-      <div className="absolute inset-0 z-0 will-change-opacity">
-        {/* Primary glow effects - fixed max-width and contained */}
-        <div className="absolute top-[-35%] right-[10%] max-w-full w-[900px] h-[900px] rounded-full bg-gradient-to-br from-brand-200/25 to-brand-300/5 dark:from-brand-700/15 dark:to-brand-900/5 blur-[150px] animate-pulse-slow will-change-transform"></div>
-        <div className="absolute bottom-[-40%] left-[5%] max-w-full w-[800px] h-[800px] rounded-full bg-gradient-to-tr from-indigo-300/15 dark:from-indigo-700/15 to-blue-200/10 dark:to-blue-800/10 blur-[150px] animate-pulse-slow will-change-transform" style={{ animationDelay: '3s' }}></div>
+      {/* Background elements with mobile performance optimizations */}
+      <div className="absolute inset-0 z-0 will-change-transform contain-paint">
+        {/* Primary glow effects - optimized for mobile */}
+        <div 
+          className="absolute top-[-35%] right-[10%] max-w-full w-[900px] h-[900px] rounded-full bg-gradient-to-br from-brand-200/25 to-brand-300/5 dark:from-brand-700/15 dark:to-brand-900/5 blur-[150px] animate-pulse-slow" 
+          style={{ 
+            willChange: 'transform',
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden'
+          }}
+        ></div>
+        <div 
+          className="absolute bottom-[-40%] left-[5%] max-w-full w-[800px] h-[800px] rounded-full bg-gradient-to-tr from-indigo-300/15 dark:from-indigo-700/15 to-blue-200/10 dark:to-blue-800/10 blur-[150px] animate-pulse-slow" 
+          style={{ 
+            animationDelay: '3s',
+            willChange: 'transform',
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden'
+          }}
+        ></div>
         
-        {/* Secondary accent glows - max-width added */}
-        <div className="absolute top-[20%] left-[30%] max-w-full w-[450px] h-[450px] rounded-full bg-gradient-to-r from-teal-200/12 dark:from-teal-700/8 to-cyan-300/4 dark:to-cyan-800/4 blur-[100px] animate-pulse-slow will-change-transform" style={{ animationDelay: '1.5s' }}></div>
-        <div className="absolute bottom-[-5%] right-[25%] max-w-full w-[400px] h-[400px] rounded-full bg-gradient-to-l from-green-200/8 dark:from-green-800/4 to-emerald-200/4 dark:to-emerald-900/4 blur-[80px] animate-pulse-slow will-change-transform" style={{ animationDelay: '4.5s' }}></div>
+        {/* Secondary accent glows - optimized for mobile */}
+        <div 
+          className="absolute top-[20%] left-[30%] max-w-full w-[450px] h-[450px] rounded-full bg-gradient-to-r from-teal-200/12 dark:from-teal-700/8 to-cyan-300/4 dark:to-cyan-800/4 blur-[100px] animate-pulse-slow" 
+          style={{ 
+            animationDelay: '1.5s',
+            willChange: 'transform',
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden'
+          }}
+        ></div>
         
-        {/* Decorative elements with broader blur and better positioning for transitions */}
+        {/* Decorative elements - static to avoid animation jank on mobile */}
         <div className="absolute top-[15%] left-[15%] w-[2px] h-[250px] bg-gradient-to-b from-brand-300/30 via-brand-300/15 to-transparent blur-[4px] dark:from-brand-400/20 dark:via-brand-400/8"></div>
-        <div className="absolute top-[10%] left-[45%] w-[1px] h-[200px] bg-gradient-to-b from-brand-200/25 via-brand-200/12 to-transparent blur-[3px] dark:from-brand-300/15 dark:via-brand-300/8"></div>
         <div className="absolute top-[8%] right-[25%] w-[1.5px] h-[220px] bg-gradient-to-b from-brand-300/25 via-brand-300/12 to-transparent blur-[3.5px] dark:from-brand-400/12 dark:via-brand-400/6"></div>
-        
-        {/* Special boundary element for bottom transition */}
-        <div className="absolute bottom-[-10%] left-[40%] max-w-full w-[600px] h-[300px] rounded-[100%] bg-gradient-to-b from-brand-200/5 to-transparent blur-[80px] dark:from-brand-700/5 pointer-events-none"></div>
       </div>
       
-      <div ref={heroRef} className={`grid grid-cols-1 gap-16 md:grid-cols-2 md:gap-20 relative z-10 transition-all duration-1000 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'} mt-8 pt-4`}>
-        {/* Left content with enhanced typography and animations */}
+      <div 
+        ref={heroRef} 
+        className={`grid grid-cols-1 gap-16 md:grid-cols-2 md:gap-20 relative z-10 transition-all duration-700 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'} mt-8 pt-4`}
+        style={{ willChange: isVisible ? 'auto' : 'opacity, transform' }}
+      >
+        {/* Left content with optimized animations for mobile */}
         <div className="flex flex-col justify-center mt-0">
           <div className="inline-flex items-center px-3 py-1.5 mb-2 rounded-full text-xs font-medium tracking-wider bg-brand-100/30 dark:bg-brand-800/30 text-brand-700 dark:text-brand-300 border border-brand-200/50 dark:border-brand-700/50 backdrop-blur-sm shadow-sm max-w-fit">
-            <span className="w-2 h-2 rounded-full bg-brand-500 dark:bg-brand-400 mr-2 animate-pulse"></span>
+            <span className="w-2 h-2 rounded-full bg-brand-500 dark:bg-brand-400 mr-2"></span>
             NEXT GENERATION CRYPTO LEARNING
           </div>
           
@@ -73,7 +95,7 @@ export default function HeroSection() {
             <span className="text-light-text-primary dark:text-dark-text-primary relative inline-block">
               Education
               <svg 
-                className="absolute -right-12 -bottom-1 w-10 h-10 text-brand-300 dark:text-brand-400 opacity-70 animate-levitate" 
+                className="absolute -right-12 -bottom-1 w-10 h-10 text-brand-300 dark:text-brand-400 opacity-70" 
                 viewBox="0 0 24 24" 
                 fill="none" 
                 xmlns="http://www.w3.org/2000/svg"
@@ -96,7 +118,7 @@ export default function HeroSection() {
               href="/auth/signin" 
               variant="glass" 
               size="lg"
-              className="neo-glass backdrop-blur-lg bg-brand-primary/90 dark:bg-brand-primary/90 border border-white/20 hover:bg-brand-primary hover:border-white/30 animate-pulse-glow prism-edge font-medium shadow-md"
+              className="neo-glass backdrop-blur-lg bg-brand-primary/90 dark:bg-brand-primary/90 border border-white/20 hover:bg-brand-primary hover:border-white/30 font-medium shadow-md"
             >
               <span className="relative z-10 text-brand-primary dark:text-white font-semibold">Get Started</span>
             </Button>
@@ -104,7 +126,7 @@ export default function HeroSection() {
               href="/about" 
               variant="outline" 
               size="lg"
-              className="backdrop-blur-md border-2 shimmer"
+              className="backdrop-blur-md border-2"
             >
               Learn More
             </Button>
@@ -124,15 +146,29 @@ export default function HeroSection() {
           </div>
         </div>
 
-        {/* Enhanced right side with a more realistic 3D glassmorphic dashboard */}
+        {/* Right side with optimized rendering for mobile */}
         <div className="flex items-center justify-center">
-          <div className="relative w-full max-w-lg mx-auto transition-all duration-1000 transform perspective-tilt" style={{ animationDelay: "0.3s" }}>
-            {/* Main dashboard card with enhanced glassmorphism */}
-            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden neo-glass neo-glass-before animate-float">
-              {/* Card background with advanced glass effect */}
-              <div className="absolute inset-0 backdrop-blur-xl bg-white/20 dark:bg-dark-bg-primary/25 backdrop-glow"></div>
+          <div 
+            className="relative w-full max-w-lg mx-auto transition-all duration-700 transform perspective-tilt" 
+            style={{ 
+              willChange: isVisible ? 'auto' : 'transform',
+              transform: 'translateZ(0)',
+              backfaceVisibility: 'hidden'
+            }}
+          >
+            {/* Main dashboard card with optimized glassmorphism for mobile */}
+            <div 
+              className="relative aspect-[4/3] rounded-2xl overflow-hidden neo-glass neo-glass-before" 
+              style={{ 
+                willChange: 'transform',
+                transform: 'translateZ(0)',
+                backfaceVisibility: 'hidden'
+              }}
+            >
+              {/* Card background with optimized glass effect for mobile */}
+              <div className="absolute inset-0 backdrop-blur-xl bg-white/20 dark:bg-dark-bg-primary/25"></div>
               
-              {/* Light reflections */}
+              {/* Light reflections - static for better mobile performance */}
               <div className="absolute top-0 right-0 w-[80%] h-[30%] bg-gradient-to-br from-white/20 dark:from-white/10 to-transparent rounded-bl-full"></div>
               <div className="absolute bottom-0 left-0 w-[40%] h-[20%] bg-gradient-to-tr from-white/10 dark:from-white/5 to-transparent rounded-tr-full"></div>
               
@@ -151,7 +187,7 @@ export default function HeroSection() {
                 </div>
                 <div className="w-full h-1 bg-gradient-to-r from-brand-primary to-brand-light opacity-70 rounded-full"></div>
                 
-                {/* Enhanced chart area */}
+                {/* Chart area with optimized animations for mobile */}
                 <div className="flex-1 rounded-lg bg-white/10 dark:bg-dark-bg-accent/20 border border-white/10 dark:border-dark-bg-accent/30 mt-6 p-4 flex flex-col">
                   <div className="flex justify-between items-center mb-4">
                     <div className="font-medium text-sm text-light-text-primary dark:text-dark-text-primary">BTC/USD</div>
@@ -163,14 +199,14 @@ export default function HeroSection() {
                     </div>
                   </div>
                   
-                  {/* Animated chart - optimized rendering with will-change */}
+                  {/* Optimized chart rendering for mobile */}
                   <div className="w-full h-36 relative">
                     <div className="absolute bottom-0 inset-x-0 h-[1px] bg-white/20 dark:bg-white/10"></div>
                     <div className="h-full w-full flex items-end relative">
                       {chartData.map((value, i) => (
                         <div 
                           key={i} 
-                          className="flex-1 mx-0.5 transform transition-all duration-500 ease-out will-change-transform"
+                          className="flex-1 mx-0.5 transform transition-all duration-300 ease-out"
                           style={{ 
                             height: `${value}%`,
                             background: 'linear-gradient(to top, rgba(77, 181, 176, 0.8), rgba(77, 181, 176, 0.1))',
@@ -178,12 +214,14 @@ export default function HeroSection() {
                             borderTopRightRadius: '3px',
                             opacity: isVisible ? 1 : 0,
                             transform: isVisible ? 'scaleY(1)' : 'scaleY(0)',
-                            transitionDelay: `${i * 50}ms`,
+                            transitionDelay: `${i * 25}ms`, // Reduced delay for better mobile performance
+                            willChange: 'transform, opacity',
+                            backfaceVisibility: 'hidden'
                           }}
                         ></div>
                       ))}
                       
-                      {/* Chart line overlay */}
+                      {/* Chart line overlay - optimized for mobile */}
                       <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
                         <polyline
                           points={chartData.map((value, i) => `${(i / (chartData.length - 1)) * 100},${100 - value}`).join(' ')}
@@ -192,7 +230,7 @@ export default function HeroSection() {
                           strokeWidth="1.5"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          className="transition-all duration-1000 ease-out"
+                          className="transition-all duration-700 ease-out"
                           style={{ 
                             opacity: isVisible ? 1 : 0,
                             strokeDasharray: 1000,
@@ -222,25 +260,15 @@ export default function HeroSection() {
               </div>
             </div>
             
-            {/* Enhanced decorative elements */}
-            <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-gradient-to-br from-brand-200 to-brand-300 dark:from-brand-800 dark:to-brand-700 blur-xl opacity-40 dark:opacity-25 animate-pulse-slow"></div>
-            <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-gradient-to-bl from-indigo-200 to-indigo-300 dark:from-indigo-900 dark:to-indigo-800 blur-xl opacity-30 dark:opacity-20 animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
-            
-            {/* Small floating UI elements */}
-            <div className="absolute -right-8 top-1/3 w-20 h-20 rounded-lg neo-glass flex items-center justify-center transform rotate-12 animate-float" style={{ animationDelay: "1.5s" }}>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-brand-primary to-brand-light flex items-center justify-center text-white">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-            </div>
-            <div className="absolute -left-6 bottom-1/4 w-16 h-16 rounded-lg neo-glass flex items-center justify-center animate-float" style={{ animationDelay: "2.2s", transform: "rotate(-12deg)" }}>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-white">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={{ transform: "rotate(0deg)" }}>
-                  <path d="M12 4V20M12 4L18 10M12 4L6 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-            </div>
+            {/* Decorative elements - optimized for mobile */}
+            <div 
+              className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-gradient-to-br from-brand-200 to-brand-300 dark:from-brand-800 dark:to-brand-700 blur-xl opacity-40 dark:opacity-25 animate-pulse-slow"
+              style={{ 
+                willChange: 'transform',
+                transform: 'translateZ(0)',
+                backfaceVisibility: 'hidden'
+              }}
+            ></div>
           </div>
         </div>
       </div>

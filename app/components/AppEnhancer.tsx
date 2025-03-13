@@ -6,8 +6,7 @@ import { useEffect } from 'react';
  * AppEnhancer
  * 
  * Client component that adds app-like behaviors and enhancements
- * Handles user experience improvements like disabling text selection
- * and preventing unwanted behaviors
+ * Optimized for mobile performance with better event handling
  */
 export default function AppEnhancer() {
   useEffect(() => {
@@ -21,40 +20,69 @@ export default function AppEnhancer() {
     }
     
     // Prevent default behaviors for app-like experience
-    document.addEventListener('contextmenu', (e) => {
+    const handleContextMenu = (e: MouseEvent) => {
       // Allow context menu in text areas and inputs
       const target = e.target as HTMLElement;
       if (target?.tagName === 'TEXTAREA' || target?.tagName === 'INPUT') {
         return;
       }
       e.preventDefault();
-    });
+    };
     
     // Prevent image dragging
-    document.addEventListener('dragstart', (e) => {
+    const handleDragStart = (e: DragEvent) => {
       if (e.target instanceof HTMLImageElement) {
         e.preventDefault();
       }
-    });
-    
-    // Add class to disable animations during window resize for performance
-    let resizeTimer: NodeJS.Timeout;
-    const handleResize = () => {
-      document.body.classList.add('resize-animation-stopper');
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        document.body.classList.remove('resize-animation-stopper');
-      }, 400);
     };
     
-    window.addEventListener('resize', handleResize);
+    // Use requestAnimationFrame for debounced resize handler
+    // This provides much better performance, especially on mobile
+    let rafId: number;
+    let resizeTimer: NodeJS.Timeout;
     
+    const handleResize = () => {
+      // Cancel any pending animation frame
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+      
+      // Schedule the resize handler in the next animation frame
+      rafId = requestAnimationFrame(() => {
+        // Add class to disable animations during resize for better performance
+        document.body.classList.add('resize-animation-stopper');
+        
+        // Clear previous timeout
+        clearTimeout(resizeTimer);
+        
+        // Set new timeout with debounce
+        resizeTimer = setTimeout(() => {
+          document.body.classList.remove('resize-animation-stopper');
+        }, 400);
+      });
+    };
+    
+    // Add event listeners with passive option for better mobile performance
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('dragstart', handleDragStart);
+    window.addEventListener('resize', handleResize, { passive: true });
+    
+    // Add touch event handling optimizations
+    document.addEventListener('touchstart', () => {}, { passive: true });
+    document.addEventListener('touchmove', () => {}, { passive: true });
+    
+    // Clean up all event listeners and timers on unmount
     return () => {
       window.removeEventListener('resize', handleResize);
-      document.removeEventListener('contextmenu', (e) => e.preventDefault());
-      document.removeEventListener('dragstart', (e) => {
-        if (e.target instanceof HTMLImageElement) e.preventDefault();
-      });
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('dragstart', handleDragStart);
+      document.removeEventListener('touchstart', () => {});
+      document.removeEventListener('touchmove', () => {});
+      
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+      clearTimeout(resizeTimer);
     };
   }, []);
   

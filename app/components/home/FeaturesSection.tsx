@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import Section from '../ui/Section';
 import FeatureCard from './FeatureCard';
+import { useIntersectionObserver } from '@/app/hooks/useIntersectionObserver';
 
 // Define the features as constants to avoid recreation on each render
 const features = [
@@ -39,35 +40,23 @@ const features = [
 ];
 
 export default function FeaturesSection() {
-  const [isVisible, setIsVisible] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Simple intersection observer to trigger animations when in view
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
+  const [isVisible, sectionRef] = useIntersectionObserver<HTMLDivElement>({
+    threshold: 0.1,
+    rootMargin: '0px 0px -10% 0px', // Trigger slightly before the section is fully visible
+    triggerOnce: true
+  });
 
   return (
-    <Section background="none" className="relative overflow-visible py-16 sm:py-20">
+    <div ref={sectionRef} className="below-fold-section">
+      <Section 
+        background="none" 
+        className="relative py-20"
+      >
       {/* Visual accent patterns */}
       <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-96 h-96 bg-brand-primary/5 dark:bg-brand-primary/10 rounded-full blur-3xl opacity-70 pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-96 h-96 bg-brand-secondary/5 dark:bg-brand-secondary/10 rounded-full blur-3xl opacity-70 pointer-events-none"></div>
       
-      <div ref={sectionRef} className={`max-w-6xl mx-auto px-4 sm:px-6 transition-opacity duration-1000 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`max-w-6xl mx-auto px-4 sm:px-6 transition-opacity duration-1000 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
         <div className="text-center mb-12 sm:mb-16">
           {/* Feature badge with improved visibility */}
           <div className="inline-flex items-center px-3 py-1.5 mb-4 sm:mb-6 rounded-full text-xs font-medium tracking-wider bg-gray-200/80 dark:bg-gray-700/60 text-gray-700 dark:text-gray-50 border border-teal-500/20 dark:border-teal-400/30 backdrop-blur-sm shadow-sm">
@@ -113,6 +102,7 @@ export default function FeaturesSection() {
           ))}
         </div>
       </div>
-    </Section>
+      </Section>
+    </div>
   );
 } 
