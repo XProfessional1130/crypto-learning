@@ -207,6 +207,7 @@ export function useAssistantChat({
     isProcessingRef.current = true;
     
     try {
+      // Always clear any existing interval first
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
@@ -280,20 +281,52 @@ export function useAssistantChat({
         pollRequestIdRef.current += 1;
         const currentRequestId = pollRequestIdRef.current;
         
-        const pollStatus = async () => {
-          const isDone = await pollRunStatus(data.threadId, data.runId, typingMessage.id, currentRequestId);
-          if (isDone && pollIntervalRef.current) {
+        // SIMPLIFIED POLLING APPROACH - Use a single consistent polling method
+        // First poll immediately without an interval
+        const initialResult = await pollRunStatus(
+          data.threadId, 
+          data.runId, 
+          typingMessage.id, 
+          currentRequestId
+        );
+        
+        // If not done with the first poll, start an interval
+        if (!initialResult && currentRequestId === pollRequestIdRef.current) {
+          // Ensure no other interval is running
+          if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
           }
           
-          // Continue polling if not already complete and no active interval
-          if (!pollIntervalRef.current) {
-            pollIntervalRef.current = setInterval(pollStatus, 1000);
-          }
-        };
-        
-        await pollStatus();
+          // Create a simple polling function that stops itself when done
+          pollIntervalRef.current = setInterval(async () => {
+            console.log(`Polling for response, request ID: ${currentRequestId}`);
+            
+            // If this isn't the current request anymore, stop polling
+            if (currentRequestId !== pollRequestIdRef.current) {
+              clearInterval(pollIntervalRef.current!);
+              pollIntervalRef.current = null;
+              return;
+            }
+            
+            try {
+              const isDone = await pollRunStatus(
+                data.threadId, 
+                data.runId, 
+                typingMessage.id, 
+                currentRequestId
+              );
+              
+              if (isDone) {
+                clearInterval(pollIntervalRef.current!);
+                pollIntervalRef.current = null;
+              }
+            } catch (error) {
+              console.error('Error in polling interval:', error);
+              clearInterval(pollIntervalRef.current!);
+              pollIntervalRef.current = null;
+            }
+          }, 1000);
+        }
       }
     } catch (error: any) {
       setIsTyping(false);
