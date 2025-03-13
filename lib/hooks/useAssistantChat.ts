@@ -273,12 +273,12 @@ export function useAssistantChat({
                 }
                 streamingRef.current = false;
                 setIsTyping(false);
-              }, 500); // Short delay to keep cursor visible a bit longer
+              }, 1000); // Longer delay to ensure cursor is visible at the end
             }
             break;
             
           case 'completed':
-            // Cleanup after a short delay to ensure cursor is seen at the end
+            // Cleanup after a longer delay to ensure cursor is seen at the end
             setTimeout(() => {
               if (eventSourceRef.current) {
                 eventSourceRef.current.close();
@@ -292,7 +292,7 @@ export function useAssistantChat({
               if (onResponse) {
                 onResponse();
               }
-            }, 500);
+            }, 1000); // Longer delay to ensure cursor is visible at the end
             break;
             
           case 'error':

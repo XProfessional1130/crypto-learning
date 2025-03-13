@@ -355,6 +355,13 @@ export default function Chat() {
     return isTyping && typingMessageId === message.id;
   };
 
+  // Ensure cursor stays visible when message is updating
+  useEffect(() => {
+    if (isTyping && typingMessageId) {
+      setShouldScroll(true);
+    }
+  }, [isTyping, typingMessageId, messages]);
+
   if (loading || !user) {
     return (
       <div className="flex min-h-[calc(100vh-16rem)] items-center justify-center">
@@ -598,14 +605,14 @@ export default function Chat() {
                           )}
                           
                           <div
-                            className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                            className={`${
                               message.role === 'user'
-                                ? 'glass-brand-effect text-white animate-blur-in'
+                                ? 'max-w-[80%] glass-brand-effect text-white animate-blur-in'
                                 : message.personality === 'tobo'
-                                ? 'glass animate-blur-in'
-                                : 'glass animate-blur-in'
-                            }`}
-                            style={{ minWidth: '10rem' }}
+                                ? `${isMessageStreaming(message) ? 'max-w-[40%]' : 'max-w-[80%]'} glass animate-blur-in`
+                                : `${isMessageStreaming(message) ? 'max-w-[40%]' : 'max-w-[80%]'} glass animate-blur-in`
+                            } rounded-2xl px-4 py-3`}
+                            style={{ minWidth: isMessageStreaming(message) ? '8rem' : '10rem' }}
                           >
                             <motion.div
                               initial="hidden"
@@ -616,6 +623,20 @@ export default function Chat() {
                                 // For long messages with better formatting
                                 <motion.div variants={wordAnimation} className={`${styles['message-content']} ${styles.smoothMessage}`}>
                                   {formatMessageContent(message.content)}
+                                  {isStreaming && (
+                                    <motion.span 
+                                      className="inline-block ml-1 text-brand-primary"
+                                      initial={{ opacity: 0.3 }}
+                                      animate={{ opacity: 1 }}
+                                      transition={{ 
+                                        repeat: Infinity, 
+                                        duration: 0.8, 
+                                        repeatType: "reverse" 
+                                      }}
+                                    >
+                                      ▌
+                                    </motion.span>
+                                  )}
                                 </motion.div>
                               ) : (
                                 // For short messages
