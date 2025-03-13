@@ -3,6 +3,25 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
+// Custom icons instead of heroicons
+const SearchIcon = () => (
+  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+);
+
+const FilterIcon = () => (
+  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+  </svg>
+);
+
+const XIcon = () => (
+  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
 // Sample discount data - in a real app, this would come from Supabase
 const SAMPLE_DISCOUNTS = [
   {
@@ -70,7 +89,9 @@ const SAMPLE_DISCOUNTS = [
 export default function Discounts() {
   const [discounts, setDiscounts] = useState(SAMPLE_DISCOUNTS);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Categories for filtering
   const categories = ['All', 'Exchange', 'Hardware Wallet', 'Trading Tools', 'Data & Analytics'];
@@ -82,9 +103,13 @@ export default function Discounts() {
     }, 1000);
   }, []);
 
-  // Filter discounts based on category
+  // Filter discounts based on category and search term
   const filteredDiscounts = discounts.filter((discount) => {
-    return selectedCategory === 'All' || discount.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'All' || discount.category === selectedCategory;
+    const matchesSearch = searchTerm === '' || 
+      discount.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      discount.description.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesSearch;
   });
 
   // Format date for display
@@ -104,24 +129,65 @@ export default function Discounts() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Exclusive Discounts</h1>
-        <p className="mt-2 text-xl text-gray-600">
-          Special deals and referral links for LearningCrypto members
-        </p>
+      {/* Header with glassmorphic background */}
+      <div className="neo-glass neo-glass-before rounded-2xl p-8 mb-10 relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-brand-300/10 dark:bg-brand-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-16 -left-16 w-40 h-40 bg-blue-300/10 dark:bg-blue-500/10 rounded-full blur-3xl"></div>
+        
+        <div className="relative z-10">
+          <h1 className="text-3xl font-bold text-light-text-primary dark:text-dark-text-primary mb-2">
+            Exclusive <span className="text-gradient">Discounts</span>
+          </h1>
+          <p className="text-xl text-light-text-secondary dark:text-dark-text-secondary">
+            Special deals and referral links for LearningCrypto members
+          </p>
+        </div>
       </div>
 
-      {/* Category Filter */}
-      <div className="mb-8">
-        <div className="flex flex-wrap gap-2">
+      {/* Search and filters bar */}
+      <div className="glass rounded-xl mb-8 p-4 flex flex-col md:flex-row gap-4 items-center">
+        {/* Search box */}
+        <div className="relative flex-grow">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <SearchIcon />
+          </div>
+          <input
+            type="text"
+            className="input pl-10"
+            placeholder="Search discounts..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            >
+              <XIcon />
+            </button>
+          )}
+        </div>
+
+        {/* Filter toggle for mobile */}
+        <button 
+          className="md:hidden btn btn-secondary" 
+          onClick={() => setShowFilters(!showFilters)}
+        >
+          <FilterIcon />
+          Filters
+        </button>
+
+        {/* Filter buttons - visible on desktop or when toggled on mobile */}
+        <div className={`flex-wrap gap-2 ${showFilters ? 'flex' : 'hidden md:flex'}`}>
           {categories.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`rounded-md px-4 py-2 text-sm font-medium ${
+              className={`rounded-md px-4 py-2 text-sm font-medium transition-all duration-300 ${
                 selectedCategory === category
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'neo-glass bg-brand-primary/10 dark:bg-brand-primary/20 border border-brand-primary/30 text-brand-primary dark:text-brand-light animate-pulse-glow'
+                  : 'bg-white/50 dark:bg-dark-bg-accent/30 border border-white/10 dark:border-dark-bg-accent/20 text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/70 dark:hover:bg-dark-bg-accent/50'
               }`}
             >
               {category}
@@ -134,37 +200,42 @@ export default function Discounts() {
       {isLoading ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-64 animate-pulse rounded-lg bg-gray-200"></div>
+            <div key={i} className="neo-glass neo-glass-before rounded-xl h-64 animate-pulse relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-brand-50/30 to-transparent dark:from-brand-900/20 dark:to-transparent"></div>
+            </div>
           ))}
         </div>
       ) : filteredDiscounts.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filteredDiscounts.map((discount) => (
-            <div key={discount.id} className="flex flex-col rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div 
+              key={discount.id} 
+              className="neo-glass neo-glass-before rounded-xl overflow-hidden transition-all duration-300 transform hover:-translate-y-1 hover:shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_15px_30px_rgba(0,0,0,0.4)] perspective-tilt backdrop-glow"
+            >
               {isExpiringSoon(discount.expires_at) && (
-                <div className="rounded-t-lg bg-yellow-100 px-4 py-1 text-center text-sm font-medium text-yellow-800">
+                <div className="bg-gradient-to-r from-yellow-400/90 to-yellow-500/90 dark:from-yellow-500/90 dark:to-yellow-600/90 px-4 py-1 text-center text-sm font-medium text-white">
                   Expiring Soon - {formatDate(discount.expires_at)}
                 </div>
               )}
-              <div className="flex-1 p-6">
+              <div className="p-6">
                 <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+                  <span className="rounded-full neo-glass px-2.5 py-0.5 text-xs font-medium text-brand-primary dark:text-brand-light border border-brand-primary/20 dark:border-brand-light/20">
                     {discount.category}
                   </span>
                 </div>
-                <h2 className="mt-2 text-xl font-semibold text-gray-900">{discount.title}</h2>
-                <p className="mt-3 text-gray-600">{discount.description}</p>
+                <h2 className="mt-3 text-xl font-semibold text-light-text-primary dark:text-dark-text-primary">{discount.title}</h2>
+                <p className="mt-3 text-light-text-secondary dark:text-dark-text-secondary">{discount.description}</p>
               </div>
-              <div className="border-t border-gray-200 p-4">
+              <div className="border-t border-white/10 dark:border-dark-bg-accent/20 p-4">
                 <a
                   href={discount.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full rounded-md bg-indigo-600 px-4 py-2 text-center font-medium text-white hover:bg-indigo-700"
+                  className="block w-full btn btn-primary"
                 >
-                  Get Discount
+                  <span className="relative z-10">Get Discount</span>
                 </a>
-                <p className="mt-2 text-center text-xs text-gray-500">
+                <p className="mt-2 text-center text-xs text-light-text-secondary dark:text-dark-text-secondary">
                   {discount.expires_at ? `Valid until ${formatDate(discount.expires_at)}` : 'No expiration date'}
                 </p>
               </div>
@@ -172,32 +243,38 @@ export default function Discounts() {
           ))}
         </div>
       ) : (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-          <h3 className="text-lg font-medium text-gray-900">No discounts found</h3>
-          <p className="mt-2 text-gray-600">
-            No discounts available in this category at the moment.
+        <div className="neo-glass neo-glass-before rounded-xl p-8 text-center">
+          <h3 className="text-lg font-medium text-light-text-primary dark:text-dark-text-primary">No discounts found</h3>
+          <p className="mt-2 text-light-text-secondary dark:text-dark-text-secondary">
+            No discounts available matching your filters at the moment.
           </p>
           <button
-            onClick={() => setSelectedCategory('All')}
-            className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            onClick={() => {setSelectedCategory('All'); setSearchTerm('');}}
+            className="mt-4 btn btn-primary"
           >
-            View All Discounts
+            <span className="relative z-10">View All Discounts</span>
           </button>
         </div>
       )}
 
-      {/* Referral Program */}
-      <div className="mt-16 rounded-lg bg-indigo-700 p-8 text-center text-white">
-        <h2 className="text-2xl font-bold">Earn While You Share</h2>
-        <p className="mx-auto mt-2 max-w-2xl text-indigo-100">
-          Join our referral program and earn rewards when your friends sign up for LearningCrypto. Share your unique referral link and earn up to 20% commission on their subscription.
-        </p>
-        <Link
-          href="/auth/signin"
-          className="mt-6 inline-block rounded-md bg-white px-6 py-3 text-base font-medium text-indigo-600 hover:bg-indigo-50"
-        >
-          Join Referral Program
-        </Link>
+      {/* Referral Program - enhanced with glassmorphic effects */}
+      <div className="mt-16 neo-glass neo-glass-before rounded-xl p-8 text-center relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute -top-24 left-1/2 w-48 h-48 bg-brand-primary/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-24 right-1/4 w-48 h-48 bg-brand-light/20 rounded-full blur-3xl"></div>
+        
+        <div className="relative z-10">
+          <h2 className="text-2xl font-bold text-gradient">Earn While You Share</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-light-text-secondary dark:text-dark-text-secondary">
+            Join our referral program and earn rewards when your friends sign up for LearningCrypto. Share your unique referral link and earn up to 20% commission on their subscription.
+          </p>
+          <Link
+            href="/auth/signin"
+            className="mt-6 btn btn-secondary shimmer"
+          >
+            Join Referral Program
+          </Link>
+        </div>
       </div>
     </div>
   );
