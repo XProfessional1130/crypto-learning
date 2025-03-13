@@ -277,21 +277,7 @@ export function useAssistantChat({
       eventSource.onopen = () => {
         console.log('EventSource connection opened');
         
-        // If this is a reconnection, send a status update to the user
-        if (!isFirstConnect) {
-          setMessages(prevMessages => {
-            return prevMessages.map(msg => {
-              if (msg.id === typingMsgId) {
-                return { 
-                  ...msg, 
-                  content: partialContent || 'Reconnected to server. Continuing...' 
-                };
-              }
-              return msg;
-            });
-          });
-        }
-        
+        // If this is a reconnection, just silently continue without showing any message
         isFirstConnect = false;
       };
       
@@ -438,37 +424,21 @@ export function useAssistantChat({
               }
             }, retryDelay);
             
-            // Only show reconnecting message if we've had multiple failures
-            // This prevents showing the message for brief network hiccups
-            if (retryCount >= 2) {
-              setMessages(prevMessages => {
-                return prevMessages.map(msg => {
-                  if (msg.id === typingMsgId) {
-                    return { 
-                      ...msg, 
-                      content: partialContent ? 
-                        `${partialContent}\n\n(Connection lost. Reconnecting...)` : 
-                        'Connection lost. Reconnecting...' 
-                    };
-                  }
-                  return msg;
-                });
-              });
-            }
+            // No reconnection message - silently try to reconnect
           } else {
             streamingRef.current = false;
             isProcessingRef.current = false;
             setIsTyping(false);
             
-            // Keep message but show error
+            // Only show error message when all reconnection attempts fail
             setMessages(prevMessages => {
               return prevMessages.map(msg => {
                 if (msg.id === typingMsgId) {
                   return { 
                     ...msg, 
                     content: partialContent ? 
-                      `${partialContent}\n\n(Connection failed after multiple attempts. The response may be incomplete.)` : 
-                      'Failed to connect to server after multiple attempts.' 
+                      `${partialContent}\n\n(Connection failed. The response may be incomplete.)` : 
+                      'Connection failed. Please try again.' 
                   };
                 }
                 return msg;
