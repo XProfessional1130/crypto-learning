@@ -255,12 +255,13 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
                 className="relative group"
               >
                 <button
+                  id={`thread-${thread.threadId}`}
                   onClick={() => onThreadSelect(thread.threadId)}
                   className={`w-full p-3 rounded-lg text-left transition-all duration-200 ${
                     currentThreadId === thread.threadId 
                       ? 'bg-brand-primary/10 shadow-sm border border-brand-primary/20' 
                       : 'hover:bg-white/5 dark:hover:bg-dark-bg-secondary/30 border border-transparent'
-                  }`}
+                  } group-hover:border-red-500/20`}
                 >
                   <div className="flex items-start">
                     <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100/20 dark:bg-gray-800/30 flex items-center justify-center mr-2 flex-shrink-0 border border-white/10 dark:border-white/5">
@@ -294,24 +295,34 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
                   </div>
                 </button>
                 
-                {/* Delete button - Updated to be more visible */}
+                {/* Delete button - Updated to clearly show which conversation it deletes */}
                 <button
                   onClick={(e) => handleDelete(e, thread.threadId)}
                   disabled={deleting === thread.threadId}
-                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 
+                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200 
                     ${deleting === thread.threadId 
-                      ? 'opacity-70 cursor-not-allowed bg-red-500/10 border border-red-400/30' 
-                      : 'opacity-80 hover:opacity-100 hover:bg-red-500/20 hover:border-red-500/40 cursor-pointer bg-white/10 border border-white/20'
-                    }`}
+                      ? 'bg-red-500/40 border-red-500/60 shadow-[0_0_8px_rgba(239,68,68,0.4)]' 
+                      : 'opacity-90 hover:opacity-100 hover:bg-red-500/30 hover:border-red-500/50 hover:shadow-[0_0_5px_rgba(239,68,68,0.3)] bg-red-500/20 border border-red-500/30'
+                    } z-10`}
                   aria-label="Delete conversation"
+                  onMouseEnter={() => {
+                    const button = document.getElementById(`thread-${thread.threadId}`);
+                    if (button) button.classList.add('border-red-500/30', 'bg-red-500/5');
+                  }}
+                  onMouseLeave={() => {
+                    const button = document.getElementById(`thread-${thread.threadId}`);
+                    if (button) button.classList.remove('border-red-500/30', 'bg-red-500/5');
+                  }}
                 >
                   {deleting === thread.threadId ? (
-                    <svg className="animate-spin h-4 w-4 text-white/80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                    <div className="flex flex-col items-center">
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
                   ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-400 hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   )}
