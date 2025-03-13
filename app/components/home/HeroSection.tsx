@@ -96,7 +96,7 @@ export default function HeroSection() {
               href="/auth/signin" 
               variant="glass" 
               size="lg"
-              className="neo-glass backdrop-blur-lg bg-brand-primary/90 dark:bg-brand-primary/90 text-white border border-white/20 hover:bg-brand-primary hover:border-white/30 animate-pulse-glow prism-edge font-medium shadow-md"
+              className="bg-brand-600 dark:bg-brand-primary/90 text-white border-2 border-brand-400/60 dark:border-white/20 hover:bg-brand-700 dark:hover:bg-brand-primary hover:border-brand-500 dark:hover:border-white/30 font-semibold shadow-lg"
             >
               <span className="relative z-10">Get Started</span>
             </Button>
