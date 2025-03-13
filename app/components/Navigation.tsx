@@ -41,18 +41,43 @@ export default function Navigation() {
   useEffect(() => {
     if (!mounted) return;
     
+    // Use requestAnimationFrame to debounce scroll events for better performance
+    let rafId: number;
+    let lastScrollY = window.scrollY;
+    
     const handleScroll = () => {
-      const isScrolled = window.scrollY > 20;
-      if (isScrolled !== scrolled) {
-        setScrolled(isScrolled);
+      // Cancel any pending animation frame
+      if (rafId) {
+        cancelAnimationFrame(rafId);
       }
+      
+      // Schedule the scroll check in the next animation frame
+      rafId = requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY;
+        const isScrolled = currentScrollY > 20;
+        
+        // Only update state if scroll position crossed our threshold
+        if ((currentScrollY > 20 && lastScrollY <= 20) || 
+            (currentScrollY <= 20 && lastScrollY > 20)) {
+          setScrolled(isScrolled);
+        }
+        
+        lastScrollY = currentScrollY;
+      });
     };
 
     // Initial scroll position check
     handleScroll();
     
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Use passive event listener to prevent blocking the main thread
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+    };
   }, [scrolled, mounted]);
 
   const handleSignOut = useCallback(async () => {
