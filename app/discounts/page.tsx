@@ -210,14 +210,14 @@ export default function Discounts() {
           {filteredDiscounts.map((discount) => (
             <div 
               key={discount.id} 
-              className="neo-glass neo-glass-before rounded-xl overflow-hidden transition-all duration-300 transform hover:-translate-y-1 hover:shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_15px_30px_rgba(0,0,0,0.4)] perspective-tilt backdrop-glow"
+              className="neo-glass neo-glass-before rounded-xl overflow-hidden transition-all duration-300 transform hover:-translate-y-1 hover:shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_15px_30px_rgba(0,0,0,0.4)] perspective-tilt backdrop-glow flex flex-col"
             >
               {isExpiringSoon(discount.expires_at) && (
                 <div className="bg-gradient-to-r from-yellow-400/90 to-yellow-500/90 dark:from-yellow-500/90 dark:to-yellow-600/90 px-4 py-1 text-center text-sm font-medium text-white">
                   Expiring Soon - {formatDate(discount.expires_at)}
                 </div>
               )}
-              <div className="p-6">
+              <div className="p-6 flex-grow">
                 <div className="flex items-center justify-between">
                   <span className="rounded-full neo-glass px-2.5 py-0.5 text-xs font-medium text-brand-primary dark:text-brand-light border border-brand-primary/20 dark:border-brand-light/20">
                     {discount.category}
@@ -226,12 +226,12 @@ export default function Discounts() {
                 <h2 className="mt-3 text-xl font-semibold text-light-text-primary dark:text-dark-text-primary">{discount.title}</h2>
                 <p className="mt-3 text-light-text-secondary dark:text-dark-text-secondary">{discount.description}</p>
               </div>
-              <div className="border-t border-white/10 dark:border-dark-bg-accent/20 p-4">
+              <div className="border-t border-white/10 dark:border-dark-bg-accent/20 p-4 mt-auto">
                 <a
                   href={discount.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full btn btn-primary"
+                  className="block w-full btn btn-primary text-center text-white hover:shadow-[0_0_15px_rgba(77,181,176,0.5)] transition-all duration-300"
                 >
                   <span className="relative z-10">Get Discount</span>
                 </a>
@@ -270,7 +270,7 @@ export default function Discounts() {
           </p>
           <Link
             href="/auth/signin"
-            className="mt-6 btn btn-secondary shimmer"
+            className="mt-6 btn btn-secondary hover:shadow-[0_0_15px_rgba(77,181,176,0.5)] transition-all duration-300"
           >
             Join Referral Program
           </Link>
