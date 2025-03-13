@@ -181,4 +181,25 @@ function getMessagePreview(content: string): string {
   
   // Add ellipsis if content is longer than 50 characters
   return content.length > 50 ? `${preview}...` : preview;
+}
+
+/**
+ * Delete a chat thread by ID
+ */
+export async function deleteThread(userId: string, threadId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`/api/assistant/delete?userId=${userId}&threadId=${threadId}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete thread');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting thread:', error);
+    throw error;
+  }
 } 

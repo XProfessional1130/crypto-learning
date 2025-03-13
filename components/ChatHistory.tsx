@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { deleteThread } from '@/lib/services/chat-history';
 
 // Define personality profile images here instead of importing from page.tsx
 const personalityImages = {
@@ -31,6 +32,8 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchConversations() {
@@ -67,6 +70,59 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
         (thread.personality || '').toLowerCase().includes(searchTerm.toLowerCase())
       )
     : conversations;
+
+  // Handle thread deletion
+  const handleDelete = async (e: React.MouseEvent, threadId: string) => {
+    e.stopPropagation(); // Prevent clicking through to the thread select
+    
+    try {
+      setDeleting(threadId);
+      setDeleteError(null);
+      
+      // Delete the thread via API
+      if (user) {
+        await deleteThread(user.id, threadId);
+        
+        // Remove from local state
+        setConversations(prev => prev.filter(thread => thread.threadId !== threadId));
+        
+        // If the deleted thread was selected, clear the current thread
+        if (currentThreadId === threadId) {
+          onThreadSelect('');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete thread:', err);
+      setDeleteError('Failed to delete. Try again?');
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    
+    if (isToday) {
+      return `Today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+    
+    if (isYesterday) {
+      return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    
+    return date.toLocaleDateString([], { 
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
+  };
 
   if (loading) {
     return (
@@ -113,31 +169,6 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
     );
   }
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-    
-    if (isToday) {
-      return `Today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    }
-    
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const isYesterday = date.toDateString() === yesterday.toDateString();
-    
-    if (isYesterday) {
-      return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    }
-    
-    return date.toLocaleDateString([], { 
-      month: 'short', 
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-    });
-  };
-
   return (
     <div className="flex flex-col h-full">
       <div className="p-3 border-b border-white/10 flex flex-col">
@@ -170,6 +201,17 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
           )}
         </div>
       </div>
+      
+      {deleteError && (
+        <div className="px-3 py-2 mx-2 mt-2 text-xs text-red-500 bg-red-500/10 rounded-md flex items-center justify-between">
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="text-red-500/70 hover:text-red-500">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
       
       <div className="overflow-y-auto flex-1 scrollbar-thin">
         {filteredConversations.length === 0 && !loading && (
@@ -204,52 +246,86 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
         <AnimatePresence>
           <div className="p-2 space-y-2">
             {filteredConversations.map((thread, index) => (
-              <motion.button
+              <motion.div
                 key={thread.threadId}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2, delay: index * 0.05 }}
-                whileHover={{ scale: 1.02, backgroundColor: 'rgba(77, 181, 176, 0.05)' }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onThreadSelect(thread.threadId)}
-                className={`w-full p-3 rounded-lg text-left transition-all duration-200 ${
-                  currentThreadId === thread.threadId 
-                    ? 'bg-brand-primary/10 shadow-sm border border-brand-primary/20' 
-                    : 'hover:bg-white/5 dark:hover:bg-dark-bg-secondary/30 border border-transparent'
-                }`}
+                className="relative group"
               >
-                <div className="flex items-start">
-                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100/20 dark:bg-gray-800/30 flex items-center justify-center mr-2 flex-shrink-0 border border-white/10 dark:border-white/5">
-                    <Image 
-                      src={personalityImages[thread.personality || 'tobo']} 
-                      alt={thread.personality || 'AI'} 
-                      width={32} 
-                      height={32} 
-                      className="object-cover"
-                    />
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center">
-                      <span className={`font-medium text-sm truncate ${
-                        currentThreadId === thread.threadId 
-                          ? 'text-brand-primary dark:text-brand-light' 
-                          : 'text-light-text-primary dark:text-dark-text-primary'
-                      }`}>
-                        {thread.personality === 'tobo' ? 'Tobo AI' : 'Heido AI'}
-                      </span>
-                      <span className="text-xs text-light-text-secondary/70 dark:text-dark-text-secondary/70 ml-2 flex-shrink-0">
-                        {formatDate(thread.latestMessage.created_at)}
-                      </span>
+                <button
+                  onClick={() => onThreadSelect(thread.threadId)}
+                  className={`w-full p-3 rounded-lg text-left transition-all duration-200 ${
+                    currentThreadId === thread.threadId 
+                      ? 'bg-brand-primary/10 shadow-sm border border-brand-primary/20' 
+                      : 'hover:bg-white/5 dark:hover:bg-dark-bg-secondary/30 border border-transparent'
+                  }`}
+                >
+                  <div className="flex items-start">
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100/20 dark:bg-gray-800/30 flex items-center justify-center mr-2 flex-shrink-0 border border-white/10 dark:border-white/5">
+                      <Image 
+                        src={personalityImages[thread.personality || 'tobo']} 
+                        alt={thread.personality || 'AI'} 
+                        width={32} 
+                        height={32} 
+                        className="object-cover"
+                      />
                     </div>
                     
-                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary truncate mt-1">
-                      {thread.preview}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-center">
+                        <span className={`font-medium text-sm truncate ${
+                          currentThreadId === thread.threadId 
+                            ? 'text-brand-primary dark:text-brand-light' 
+                            : 'text-light-text-primary dark:text-dark-text-primary'
+                        }`}>
+                          {thread.personality === 'tobo' ? 'Tobot' : 'Haidi'}
+                        </span>
+                        <span className="text-xs text-light-text-secondary/70 dark:text-dark-text-secondary/70 ml-2 flex-shrink-0">
+                          {formatDate(thread.latestMessage.created_at)}
+                        </span>
+                      </div>
+                      
+                      <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary truncate mt-1">
+                        {thread.preview}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </motion.button>
+                </button>
+                
+                {/* Delete button */}
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileHover={{ 
+                    opacity: 1, 
+                    scale: 1.05,
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+                  }}
+                  animate={{ 
+                    opacity: currentThreadId === thread.threadId ? 0.8 : 0,
+                    scale: 1
+                  }}
+                  onClick={(e) => handleDelete(e, thread.threadId)}
+                  disabled={deleting === thread.threadId}
+                  className={`absolute right-0 top-1/2 transform -translate-y-1/2 mr-3 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 border border-white/10 dark:hover:bg-red-600/20 hover:bg-red-500/10 hover:border-red-500/30 transition-all duration-200 ${
+                    deleting === thread.threadId ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                  } ${
+                    currentThreadId === thread.threadId ? '' : 'opacity-0 group-hover:opacity-70'
+                  }`}
+                >
+                  {deleting === thread.threadId ? (
+                    <svg className="animate-spin h-3 w-3 text-white/70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-light-text-secondary/70 hover:text-red-500 transition-colors duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  )}
+                </motion.button>
+              </motion.div>
             ))}
           </div>
         </AnimatePresence>

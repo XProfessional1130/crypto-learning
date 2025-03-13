@@ -209,6 +209,14 @@ export default function Chat() {
 
   // Handle loading a thread from history
   const handleThreadSelect = (selectedThreadId: string) => {
+    // If empty string is passed, it means the thread was deleted or deselected
+    if (!selectedThreadId) {
+      // Reset to new chat state
+      handleNewChat();
+      setShowHistory(false);
+      return;
+    }
+    
     if (selectedThreadId === threadId) return;
     
     loadThread(selectedThreadId);
@@ -504,7 +512,10 @@ export default function Chat() {
                   transition={{ type: "spring", damping: 25, stiffness: 300 }}
                   className="h-full neo-glass rounded-tr-xl rounded-b-xl overflow-hidden backdrop-blur-md border border-white/10 flex-shrink-0"
                 >
-                  <ChatHistory onThreadSelect={handleThreadSelect} currentThreadId={threadId} />
+                  <ChatHistory 
+                    onThreadSelect={handleThreadSelect} 
+                    currentThreadId={threadId} 
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
