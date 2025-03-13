@@ -6,29 +6,61 @@ import { useRouter } from 'next/navigation';
 import { ChatMessage } from '@/types';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useAssistantChat } from '@/lib/hooks/useAssistantChat';
+import ChatHistory from '@/components/ChatHistory';
+import personalities from '@/lib/config/ai-personalities';
+import React from 'react';
+import styles from './chat.module.css';
 
-// Personality profile images (placeholders for now)
-const personalityImages = {
+// Personality profile images
+export const personalityImages = {
   tobo: '/images/avatars/tobo-avatar.svg',
   heido: '/images/avatars/heido-avatar.svg',
 };
 
+// Sample prompts based on crypto topics
+const samplePrompts = [
+  {
+    text: "Explain blockchain technology in simple terms",
+    personality: "tobo" as const
+  },
+  {
+    text: "What's the difference between Bitcoin and Ethereum?",
+    personality: "tobo" as const
+  },
+  {
+    text: "How do smart contracts work?",
+    personality: "heido" as const
+  },
+  {
+    text: "What are NFTs and why are they valuable?",
+    personality: "tobo" as const
+  },
+  {
+    text: "Explain the concept of DeFi (Decentralized Finance)",
+    personality: "heido" as const
+  },
+  {
+    text: "What are the environmental concerns with Bitcoin mining?",
+    personality: "heido" as const
+  },
+  {
+    text: "How does cryptocurrency staking work?",
+    personality: "tobo" as const
+  },
+  {
+    text: "What is a crypto wallet and how do I keep it secure?",
+    personality: "tobo" as const
+  },
+  {
+    text: "Explain the concept of tokenomics",
+    personality: "heido" as const
+  }
+];
+
 export default function Chat() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      user_id: 'system',
-      role: 'assistant',
-      content: "Hi there! I'm Tobo, your crypto AI assistant. What would you like to learn about today?",
-      personality: 'tobo',
-      created_at: new Date().toISOString(),
-    },
-  ]);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [activePersonality, setActivePersonality] = useState<'tobo' | 'heido'>('tobo');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialRenderRef = useRef(true);
   const textInputRef = useRef<HTMLInputElement>(null);
@@ -36,6 +68,48 @@ export default function Chat() {
   const firstToggleRef = useRef<HTMLButtonElement>(null);
   const secondToggleRef = useRef<HTMLButtonElement>(null);
   const [shouldScroll, setShouldScroll] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [randomPrompts, setRandomPrompts] = useState<typeof samplePrompts>([]);
+  
+  // Initialize chat with useAssistantChat hook
+  const {
+    messages,
+    inputMessage,
+    isTyping,
+    activePersonality,
+    threadId,
+    handleInputChange,
+    handleSubmit,
+    switchPersonality,
+    setMessages,
+    loadThread,
+    sendMessage,
+  } = useAssistantChat({
+    initialMessages: [
+      {
+        id: '1',
+        user_id: 'system',
+        role: 'assistant',
+        content: "Hi there! I'm Tobo, your crypto AI assistant. What would you like to learn about today?",
+        personality: 'tobo',
+        created_at: new Date().toISOString(),
+      },
+    ],
+    userId: user?.id || 'anonymous',
+    onResponse: () => {
+      setShouldScroll(true);
+    },
+    onError: (error) => {
+      console.error('Chat error:', error);
+    },
+  });
+
+  // Get three random prompts on initial load
+  useEffect(() => {
+    // Shuffle array and get 3 random prompts
+    const shuffled = [...samplePrompts].sort(() => 0.5 - Math.random());
+    setRandomPrompts(shuffled.slice(0, 3));
+  }, []);
 
   // Smooth scroll to bottom
   const scrollToBottom = () => {
@@ -70,105 +144,185 @@ export default function Chat() {
     textInputRef.current?.focus();
   }, [activePersonality]);
   
-  // Switch personality
-  const switchPersonality = (personality: 'tobo' | 'heido') => {
-    if (personality === activePersonality) return;
-    
-    setActivePersonality(personality);
-    
-    const personalityIntros = {
-      tobo: "Hey! I'm Tobo! I'll explain crypto concepts in simple, concise terms with a bit of wit. What can I help you with?",
-      heido: "Greetings, I'm Heido. I provide careful, detailed analysis with a focus on accuracy and risk assessment. How may I assist you?",
-    };
+  // Start a new chat
+  const handleNewChat = (newPersonality?: 'tobo' | 'heido') => {
+    const personality = newPersonality || activePersonality;
+    const personalityConfig = personalities[personality];
     
     setMessages([
-      ...messages,
       {
         id: Date.now().toString(),
         user_id: 'system',
         role: 'assistant',
-        content: personalityIntros[personality],
+        content: `Hi there! I'm ${personalityConfig?.displayName || (personality === 'tobo' ? 'Tobot' : 'Haidi')}, your crypto AI assistant. What would you like to learn about today?`,
         personality,
         created_at: new Date().toISOString(),
       },
     ]);
     
-    // Set flag to scroll to bottom after personality switch message
+    // Get new random prompts
+    const shuffled = [...samplePrompts].sort(() => 0.5 - Math.random());
+    setRandomPrompts(shuffled.slice(0, 3));
+    setShouldScroll(true);
+    
+    // If a new personality was specified, also update the active personality
+    if (newPersonality && newPersonality !== activePersonality) {
+      switchPersonality(newPersonality);
+    }
+  };
+
+  // Handle switching personalities
+  const handleSwitchPersonality = (personality: 'tobo' | 'heido') => {
+    if (personality === activePersonality) return;
+    
+    // If we only have the initial welcome message, replace it instead of adding a new one
+    if (messages.length === 1 && messages[0].role === 'assistant') {
+      // This is a "new chat" scenario, so just replace the message
+      const personalityConfig = personalities[personality];
+      
+      setMessages([{
+        id: Date.now().toString(),
+        user_id: 'system',
+        role: 'assistant',
+        content: `Hi there! I'm ${personalityConfig?.displayName || (personality === 'tobo' ? 'Tobot' : 'Haidi')}, your crypto AI assistant. What would you like to learn about today?`,
+        personality,
+        created_at: new Date().toISOString(),
+      }]);
+      
+      // Generate new random prompts with the new personality
+      const shuffled = [...samplePrompts].sort(() => 0.5 - Math.random());
+      setRandomPrompts(shuffled.slice(0, 3));
+    } else {
+      // There's already a conversation going, so we should start a new chat with the new personality
+      handleNewChat(personality);
+    }
+    
+    // Switch the personality in the hook - this now only updates the active personality without adding a message
+    switchPersonality(personality);
     setShouldScroll(true);
   };
 
-  // Send message
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Handle loading a thread from history
+  const handleThreadSelect = (selectedThreadId: string) => {
+    if (selectedThreadId === threadId) return;
     
-    if (!inputMessage.trim()) return;
-    
-    // Add user message
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      user_id: user?.id || 'user',
-      role: 'user',
-      content: inputMessage,
-      created_at: new Date().toISOString(),
-    };
-    
-    setMessages([...messages, userMessage]);
-    setInputMessage('');
-    setIsTyping(true);
-    
-    // Set flag to scroll to bottom after sending message
+    loadThread(selectedThreadId);
     setShouldScroll(true);
+    setShowHistory(false); // Close history panel after selection
+  };
+
+  // Handle clicking a sample prompt
+  const handlePromptClick = (prompt: string) => {
+    sendMessage(prompt);
+  };
+
+  // Helper function to format message content with proper line breaks and markdown-like syntax
+  const formatMessageContent = (content: string) => {
+    // Process code blocks first
+    content = content.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
     
-    // In a real app, this would call OpenAI API
-    // For this demo, we'll simulate a response after a delay
-    setTimeout(() => {
-      const aiResponses = {
-        tobo: {
-          'bitcoin': "Bitcoin is digital money that lives on a global network called a blockchain. Think of it like digital gold that you can send across the internet without needing a bank! It has a limited supply of 21 million coins, which is why some people see it as protection against inflation.",
-          'ethereum': "Ethereum is like a global computer that runs on a blockchain. Unlike Bitcoin which is mainly digital money, Ethereum lets developers build apps (called dApps) that run exactly as programmed without downtime or middlemen. Its native currency is Ether (ETH).",
-          'defi': "DeFi or Decentralized Finance is like recreating financial services (lending, borrowing, trading) without banks or brokers. It uses smart contracts on blockchains like Ethereum to let people transact directly with each other. It's open to everyone with an internet connection!",
-          'nft': "NFTs are like digital certificates of ownership for unique items. They prove you own a specific digital artwork, collectible, or even virtual real estate. Each NFT has a unique ID that can't be duplicated, so it's perfect for proving authenticity in the digital world!",
-        },
-        heido: {
-          'bitcoin': "Bitcoin represents a peer-to-peer electronic cash system implementing a decentralized ledger technology called blockchain. It employs proof-of-work consensus to secure transactions and has a deflationary monetary policy with a capped supply of 21 million units. Its value proposition centers on censorship resistance and potential hedge against monetary inflation, though volatility remains significant.",
-          'ethereum': "Ethereum functions as a decentralized, Turing-complete computing platform enabling smart contract functionality. Unlike Bitcoin's UTXO model, Ethereum employs an account-based system with its native currency Ether (ETH) facilitating computational resources allocation. It's transitioning from proof-of-work to proof-of-stake consensus via the Beacon Chain, with further scalability solutions under development.",
-          'defi': "Decentralized Finance refers to the ecosystem of financial applications built on blockchain networks operating without central intermediaries. These protocols utilize smart contracts to facilitate lending, borrowing, trading, and derivatives. While offering unprecedented accessibility and composability, DeFi presents significant risks including smart contract vulnerabilities, oracle failures, governance attacks, and regulatory uncertainty.",
-          'nft': "Non-Fungible Tokens represent cryptographically unique digital assets that, unlike cryptocurrencies, cannot be mutually interchanged. Typically implemented using ERC-721 or ERC-1155 standards on Ethereum, NFTs contain metadata pointing to digital or physical assets. While enabling verifiable digital ownership and royalty structures, the market exhibits extreme volatility, copyright complexities, and environmental concerns due to underlying blockchain energy consumption.",
-        },
-      };
-      
-      // Simple keyword matching for demo purposes
-      const userQuery = inputMessage.toLowerCase();
-      let responseContent = '';
-      
-      Object.entries(aiResponses[activePersonality]).forEach(([keyword, response]) => {
-        if (userQuery.includes(keyword)) {
-          responseContent = response;
+    // Process inline code
+    content = content.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Process bold text (** **)
+    content = content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    
+    // Split text by double line breaks for paragraphs
+    const paragraphs = content.split(/\n\n+/);
+    
+    if (paragraphs.length > 1) {
+      return paragraphs.map((paragraph, i) => {
+        // Check for bullet points or numbered lists
+        if (paragraph.match(/^[*-] /m) || paragraph.match(/^\d+\. /m)) {
+          const isNumbered = paragraph.match(/^\d+\. /m);
+          const listItems = paragraph.split(/\n/).filter(line => line.trim());
+          
+          return (
+            <div key={i} className={i > 0 ? 'mt-3' : ''}>
+              {isNumbered ? (
+                <ol>
+                  {listItems.map((item, j) => (
+                    <li key={j} dangerouslySetInnerHTML={{ __html: item.replace(/^\d+\. /, '') }} />
+                  ))}
+                </ol>
+              ) : (
+                <ul>
+                  {listItems.map((item, j) => (
+                    <li key={j} dangerouslySetInnerHTML={{ __html: item.replace(/^[*-] /, '') }} />
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
         }
+        
+        // For each paragraph, check if it has single line breaks
+        const lines = paragraph.split(/\n/);
+        if (lines.length > 1) {
+          // If paragraph has line breaks, preserve them
+          return (
+            <p key={i} className={i > 0 ? 'mt-3' : ''}>
+              {lines.map((line, j) => (
+                <React.Fragment key={j}>
+                  <span dangerouslySetInnerHTML={{ __html: line }} />
+                  {j < lines.length - 1 && <br />}
+                </React.Fragment>
+              ))}
+            </p>
+          );
+        }
+        
+        // Regular paragraph
+        return <p key={i} className={i > 0 ? 'mt-3' : ''} dangerouslySetInnerHTML={{ __html: paragraph }} />;
       });
+    }
+    
+    // Check for bullet points or numbered lists
+    if (content.match(/^[*-] /m) || content.match(/^\d+\. /m)) {
+      const isNumbered = content.match(/^\d+\. /m);
+      const listItems = content.split(/\n/).filter(line => line.trim());
       
-      // Default response if no keyword match
-      if (!responseContent) {
-        responseContent = activePersonality === 'tobo'
-          ? "Great question! While I don't have specific information on that, I'd be happy to help you learn about popular topics like Bitcoin, Ethereum, DeFi, or NFTs. What interests you most?"
-          : "I appreciate your inquiry. To provide accurate information, I should note that this specific topic requires further research. However, I can offer detailed analysis on Bitcoin, Ethereum, DeFi protocols, or NFT markets if those subjects would be of interest.";
-      }
-      
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        user_id: 'system',
-        role: 'assistant',
-        content: responseContent,
-        personality: activePersonality,
-        created_at: new Date().toISOString(),
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-      setIsTyping(false);
-      
-      // Set flag to scroll to bottom after AI response
-      setShouldScroll(true);
-    }, 1500);
+      return (
+        <div>
+          {isNumbered ? (
+            <ol>
+              {listItems.map((item, j) => (
+                <li key={j} dangerouslySetInnerHTML={{ __html: item.replace(/^\d+\. /, '') }} />
+              ))}
+            </ol>
+          ) : (
+            <ul>
+              {listItems.map((item, j) => (
+                <li key={j} dangerouslySetInnerHTML={{ __html: item.replace(/^[*-] /, '') }} />
+              ))}
+            </ul>
+          )}
+        </div>
+      );
+    }
+    
+    // Check for single line breaks if no paragraphs
+    const lines = content.split(/\n/);
+    if (lines.length > 1) {
+      return (
+        <p>
+          {lines.map((line, i) => (
+            <React.Fragment key={i}>
+              <span dangerouslySetInnerHTML={{ __html: line }} />
+              {i < lines.length - 1 && <br />}
+            </React.Fragment>
+          ))}
+        </p>
+      );
+    }
+    
+    // Handle code blocks and inline code that were preprocessed
+    if (content.includes('<pre>') || content.includes('<code>')) {
+      return <div dangerouslySetInnerHTML={{ __html: content }} />;
+    }
+    
+    // No special formatting needed
+    return content;
   };
 
   if (loading || !user) {
@@ -230,210 +384,287 @@ export default function Chat() {
     visible: { opacity: 1, y: 0 }
   };
 
+  const isNewChat = messages.length <= 1 && messages[0]?.role === 'assistant';
+
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gradient-vibrant">AI Crypto Chat</h1>
-        <p className="mt-1 text-light-text-secondary dark:text-dark-text-secondary">
-          Chat with our AI assistants to learn about crypto concepts in a way that suits your learning style.
-        </p>
-      </div>
-
-      {/* Redesigned Personality Selector */}
-      <div className="mb-6 flex justify-center">
-        <div className="neo-glass px-1 py-1 rounded-full flex items-center transition-all duration-300 relative overflow-hidden">
-          {/* Improved Sliding background indicator */}
-          <motion.div 
-            className="absolute rounded-full bg-brand-primary/30 backdrop-blur-md border border-brand-primary/40 shadow-[0_0_8px_rgba(77,181,176,0.3)]"
-            initial={false}
-            animate={{
-              x: activePersonality === 'tobo' ? 0 : secondToggleRef.current ? secondToggleRef.current.offsetLeft - (firstToggleRef.current?.offsetLeft || 0) : 0,
-              width: activePersonality === 'tobo' 
-                ? firstToggleRef.current?.offsetWidth 
-                : secondToggleRef.current?.offsetWidth,
-              height: '90%',
-              top: '5%',
-            }}
-            transition={{ type: "spring", stiffness: 400, damping: 28 }}
-          />
-          
-          {/* Tobo Button */}
-          <button
-            ref={firstToggleRef}
-            onClick={() => switchPersonality('tobo')}
-            className="z-10 px-4 py-2 rounded-full flex items-center space-x-2 transition-all duration-300 relative"
-          >
-            <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border border-white/30 shadow-sm transition-all duration-300 ${
-              activePersonality === 'tobo' 
-                ? 'bg-brand-100 dark:bg-brand-800/50 scale-110 shadow-[0_0_10px_rgba(77,181,176,0.3)]' 
-                : 'bg-gray-100/70 dark:bg-gray-800/30'
-            }`}>
-              <Image 
-                src={personalityImages.tobo} 
-                alt="Tobo" 
-                width={32} 
-                height={32} 
-                className={`object-cover transition-transform duration-300 ${activePersonality === 'tobo' ? 'scale-110' : 'scale-100 opacity-80'}`}
-              />
-            </div>
-            <div>
-              <div className={`font-medium transition-all duration-300 ${activePersonality === 'tobo' ? 'text-brand-primary dark:text-brand-light' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}>Tobo</div>
-              <div className="text-xs opacity-70">Simple & Concise</div>
-            </div>
-          </button>
-          
-          {/* Heido Button */}
-          <button
-            ref={secondToggleRef}
-            onClick={() => switchPersonality('heido')}
-            className="z-10 px-4 py-2 rounded-full flex items-center space-x-2 transition-all duration-300"
-          >
-            <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border border-white/30 shadow-sm transition-all duration-300 ${
-              activePersonality === 'heido' 
-                ? 'bg-blue-100 dark:bg-blue-800/50 scale-110 shadow-[0_0_10px_rgba(77,181,176,0.3)]' 
-                : 'bg-gray-100/70 dark:bg-gray-800/30'
-            }`}>
-              <Image 
-                src={personalityImages.heido} 
-                alt="Heido" 
-                width={32} 
-                height={32} 
-                className={`object-cover transition-transform duration-300 ${activePersonality === 'heido' ? 'scale-110' : 'scale-100 opacity-80'}`}
-              />
-            </div>
-            <div>
-              <div className={`font-medium transition-all duration-300 ${activePersonality === 'heido' ? 'text-brand-primary dark:text-brand-light' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}>Heido</div>
-              <div className="text-xs opacity-70">Detailed & Analytical</div>
-            </div>
-          </button>
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="flex flex-col h-[calc(100vh-7rem)]">
+        {/* Personality Selector */}
+        <div className="mb-3 flex justify-center">
+          <div className="neo-glass px-1 py-1 rounded-full flex items-center transition-all duration-300 relative overflow-hidden">
+            {/* Improved Sliding background indicator */}
+            <motion.div 
+              className="absolute rounded-full bg-brand-primary/30 backdrop-blur-md border border-brand-primary/40 shadow-[0_0_8px_rgba(77,181,176,0.3)]"
+              initial={false}
+              animate={{
+                x: activePersonality === 'tobo' ? 0 : secondToggleRef.current ? secondToggleRef.current.offsetLeft - (firstToggleRef.current?.offsetLeft || 0) : 0,
+                width: activePersonality === 'tobo' 
+                  ? firstToggleRef.current?.offsetWidth 
+                  : secondToggleRef.current?.offsetWidth,
+                height: '90%',
+                top: '5%',
+              }}
+              transition={{ type: "spring", stiffness: 400, damping: 28 }}
+            />
+            
+            {/* Tobo Button */}
+            <button
+              ref={firstToggleRef}
+              onClick={() => handleSwitchPersonality('tobo')}
+              className="z-10 px-4 py-2 rounded-full flex items-center space-x-2 transition-all duration-300 relative"
+            >
+              <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border border-white/30 shadow-sm transition-all duration-300 ${
+                activePersonality === 'tobo' 
+                  ? 'bg-brand-100 dark:bg-brand-800/50 scale-110 shadow-[0_0_10px_rgba(77,181,176,0.3)]' 
+                  : 'bg-gray-100/70 dark:bg-gray-800/30'
+              }`}>
+                <Image 
+                  src={personalityImages.tobo} 
+                  alt="Tobo" 
+                  width={32} 
+                  height={32} 
+                  className={`object-cover transition-transform duration-300 ${activePersonality === 'tobo' ? 'scale-110' : 'scale-100 opacity-80'}`}
+                />
+              </div>
+              <div>
+                <div className={`font-medium transition-all duration-300 ${activePersonality === 'tobo' ? 'text-brand-primary dark:text-brand-light' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}>Tobot</div>
+                <div className="text-xs opacity-70">Simple & Concise</div>
+              </div>
+            </button>
+            
+            {/* Heido Button */}
+            <button
+              ref={secondToggleRef}
+              onClick={() => handleSwitchPersonality('heido')}
+              className="z-10 px-4 py-2 rounded-full flex items-center space-x-2 transition-all duration-300"
+            >
+              <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border border-white/30 shadow-sm transition-all duration-300 ${
+                activePersonality === 'heido' 
+                  ? 'bg-blue-100 dark:bg-blue-800/50 scale-110 shadow-[0_0_10px_rgba(77,181,176,0.3)]' 
+                  : 'bg-gray-100/70 dark:bg-gray-800/30'
+              }`}>
+                <Image 
+                  src={personalityImages.heido} 
+                  alt="Haidi" 
+                  width={32} 
+                  height={32} 
+                  className={`object-cover transition-transform duration-300 ${activePersonality === 'heido' ? 'scale-110' : 'scale-100 opacity-80'}`}
+                />
+              </div>
+              <div>
+                <div className={`font-medium transition-all duration-300 ${activePersonality === 'heido' ? 'text-brand-primary dark:text-brand-light' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}>Haidi</div>
+                <div className="text-xs opacity-70">Detailed & Analytical</div>
+              </div>
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Chat Container */}
-      <div className="flex flex-col rounded-xl h-[70vh] neo-glass overflow-hidden backdrop-blur-md relative neo-glass-before">
-        {/* Glassmorphic effect elements */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-24 -left-24 w-48 h-48 bg-brand-primary/5 dark:bg-brand-primary/10 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-brand-primary/5 dark:bg-brand-primary/10 rounded-full blur-3xl"></div>
-        </div>
-        
-        {/* Chat Messages */}
-        <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 scrollbar-thin">
-          <AnimatePresence initial={false}>
-            <div className="space-y-6">
-              {messages.map((message) => (
+        {/* Chat tabs and content */}
+        <div className="flex flex-col flex-1">
+          {/* Tab Navigation */}
+          <div className="flex mb-0 relative z-10">
+            <button 
+              onClick={() => setShowHistory(!showHistory)}
+              className={`px-4 py-2 rounded-t-xl neo-glass backdrop-blur-sm flex items-center space-x-1 border border-white/10 border-b-0 transition-all duration-200 ${showHistory ? 'bg-brand-primary/10' : 'hover:bg-white/5'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              <span>{showHistory ? 'Hide History' : 'History'}</span>
+            </button>
+            <button 
+              onClick={() => handleNewChat()}
+              className={`px-4 py-2 rounded-t-xl neo-glass backdrop-blur-sm flex items-center space-x-1 border border-white/10 border-b-0 ml-1 transition-all duration-200 ${!showHistory ? 'bg-brand-primary/10' : 'hover:bg-white/5'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>New Chat</span>
+            </button>
+          </div>
+
+          <div className="flex flex-1 gap-4">
+            {/* Chat History Drawer */}
+            <AnimatePresence>
+              {showHistory && (
                 <motion.div
-                  key={message.id}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  {...messageAnimation}
-                  layout
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "280px" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  className="h-full neo-glass rounded-tr-xl rounded-b-xl overflow-hidden backdrop-blur-md border border-white/10 flex-shrink-0"
                 >
-                  {message.role === 'assistant' && (
-                    <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center mr-2 flex-shrink-0 border border-white/20 dark:border-white/5">
-                      <Image 
-                        src={personalityImages[message.personality || 'tobo']} 
-                        alt={message.personality || 'AI'} 
-                        width={32} 
-                        height={32} 
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  
-                  <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                      message.role === 'user'
-                        ? 'glass-brand-effect text-white animate-blur-in'
-                        : message.personality === 'tobo'
-                        ? 'glass animate-blur-in'
-                        : 'glass animate-blur-in'
-                    }`}
-                  >
-                    <motion.div
-                      initial="hidden"
-                      animate="visible"
-                      variants={isLongMessage(message.content) ? wordAnimation : textAnimation}
-                    >
-                      {isLongMessage(message.content) ? (
-                        // For long messages, animate word by word
-                        <motion.div variants={wordAnimation}>
-                          {message.content.split(' ').map((word, index) => (
-                            <motion.span key={index} variants={wordItem} style={{ display: 'inline-block' }}>
-                              {word}&nbsp;
-                            </motion.span>
-                          ))}
-                        </motion.div>
-                      ) : (
-                        // For shorter messages, animate letter by letter
-                        message.content.split('').map((char, index) => (
-                          <motion.span key={index} variants={letterAnimation}>
-                            {char}
-                          </motion.span>
-                        ))
-                      )}
-                    </motion.div>
-                  </div>
-                  
-                  {message.role === 'user' && (
-                    <div className="w-8 h-8 rounded-full overflow-hidden bg-brand-primary/80 dark:bg-brand-primary/90 flex items-center justify-center ml-2 flex-shrink-0 text-white border border-white/20 dark:border-white/5">
-                      {user.email?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-              
-              {isTyping && (
-                <motion.div 
-                  className="flex justify-start"
-                  {...typingAnimation}
-                >
-                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center mr-2 flex-shrink-0 border border-white/20 dark:border-white/5">
-                    <Image 
-                      src={personalityImages[activePersonality]} 
-                      alt={activePersonality} 
-                      width={32} 
-                      height={32}
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="glass rounded-2xl px-4 py-3 relative backdrop-blur-md overflow-hidden">
-                    <div className="flex space-x-2 relative z-10">
-                      <div className="h-2 w-2 rounded-full bg-brand-primary/70 dark:bg-brand-primary/90 animate-bounce"></div>
-                      <div className="h-2 w-2 rounded-full bg-brand-primary/70 dark:bg-brand-primary/90 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="h-2 w-2 rounded-full bg-brand-primary/70 dark:bg-brand-primary/90 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                    </div>
-                    {/* Glassmorphic effect elements */}
-                    <div className="absolute inset-0 pointer-events-none">
-                      <div className="absolute -top-6 -right-6 w-12 h-12 bg-brand-primary/10 dark:bg-brand-primary/20 rounded-full blur-xl"></div>
-                      <div className="absolute -bottom-6 -left-6 w-12 h-12 bg-brand-primary/10 dark:bg-brand-primary/20 rounded-full blur-xl"></div>
-                    </div>
-                  </div>
+                  <ChatHistory onThreadSelect={handleThreadSelect} currentThreadId={threadId} />
                 </motion.div>
               )}
-              <div ref={messagesEndRef} />
-            </div>
-          </AnimatePresence>
-        </div>
+            </AnimatePresence>
 
-        {/* Chat Input */}
-        <div className="p-4 border-t border-white/10 dark:border-dark-bg-accent/10 backdrop-blur-md bg-white/5 dark:bg-dark-bg-primary/5">
-          <form onSubmit={handleSendMessage} className="flex space-x-2">
-            <input
-              ref={textInputRef}
-              type="text"
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="Ask about any crypto concept..."
-              className="flex-1 rounded-xl input focus:ring-brand-primary focus:ring-2 transition-all duration-300"
-            />
-            <button
-              type="submit"
-              disabled={!inputMessage.trim() || isTyping}
-              className="btn btn-primary rounded-xl relative overflow-hidden transition-all duration-300 hover:shadow-[0_0_15px_rgba(77,181,176,0.5)] group"
-            >
-              Send
-            </button>
-          </form>
+            {/* Chat Container */}
+            <div className="flex-1 flex flex-col rounded-tr-xl rounded-b-xl neo-glass overflow-hidden backdrop-blur-md relative neo-glass-before">
+              {/* Glassmorphic effect elements */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute -top-24 -left-24 w-48 h-48 bg-brand-primary/5 dark:bg-brand-primary/10 rounded-full blur-3xl"></div>
+                <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-brand-primary/5 dark:bg-brand-primary/10 rounded-full blur-3xl"></div>
+              </div>
+              
+              {/* Chat Messages */}
+              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 scrollbar-thin">
+                <AnimatePresence initial={false}>
+                  <div className="space-y-6">
+                    {messages.map((message) => {
+                      // Skip rendering temporary "..." messages when there's an actual typing indicator
+                      if (isTyping && message.content === "..." && message.role === "assistant") {
+                        return null;
+                      }
+                      
+                      return (
+                        <motion.div
+                          key={message.id}
+                          className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          {...messageAnimation}
+                          layout
+                        >
+                          {message.role === 'assistant' && (
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center mr-2 flex-shrink-0 border border-white/20 dark:border-white/5">
+                              <Image 
+                                src={personalityImages[message.personality || 'tobo']} 
+                                alt={message.personality || 'AI'} 
+                                width={32} 
+                                height={32} 
+                                className="object-cover"
+                              />
+                            </div>
+                          )}
+                          
+                          <div
+                            className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                              message.role === 'user'
+                                ? 'glass-brand-effect text-white animate-blur-in'
+                                : message.personality === 'tobo'
+                                ? 'glass animate-blur-in'
+                                : 'glass animate-blur-in'
+                            }`}
+                          >
+                            <motion.div
+                              initial="hidden"
+                              animate="visible"
+                              variants={isLongMessage(message.content) ? wordAnimation : textAnimation}
+                            >
+                              {isLongMessage(message.content) ? (
+                                // For long messages with better formatting
+                                <motion.div variants={wordAnimation} className={styles['message-content']}>
+                                  {formatMessageContent(message.content)}
+                                </motion.div>
+                              ) : (
+                                // For shorter messages with better formatting
+                                <div className={styles['message-content']}>
+                                  {formatMessageContent(message.content)}
+                                </div>
+                              )}
+                            </motion.div>
+                          </div>
+                          
+                          {message.role === 'user' && (
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-brand-primary/80 dark:bg-brand-primary/90 flex items-center justify-center ml-2 flex-shrink-0 text-white border border-white/20 dark:border-white/5">
+                              {user.email?.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                    
+                    {isTyping && (
+                      <motion.div 
+                        className="flex justify-start"
+                        {...typingAnimation}
+                      >
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center mr-2 flex-shrink-0 border border-white/20 dark:border-white/5">
+                          <Image 
+                            src={personalityImages[activePersonality]} 
+                            alt={activePersonality} 
+                            width={32} 
+                            height={32}
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="glass rounded-2xl px-4 py-3 relative backdrop-blur-md overflow-hidden">
+                          <div className="flex space-x-2 relative z-10">
+                            <div className="h-2 w-2 rounded-full bg-brand-primary/70 dark:bg-brand-primary/90 animate-bounce"></div>
+                            <div className="h-2 w-2 rounded-full bg-brand-primary/70 dark:bg-brand-primary/90 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                            <div className="h-2 w-2 rounded-full bg-brand-primary/70 dark:bg-brand-primary/90 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                          </div>
+                          {/* Glassmorphic effect elements */}
+                          <div className="absolute inset-0 pointer-events-none">
+                            <div className="absolute -top-6 -right-6 w-12 h-12 bg-brand-primary/10 dark:bg-brand-primary/20 rounded-full blur-xl"></div>
+                            <div className="absolute -bottom-6 -left-6 w-12 h-12 bg-brand-primary/10 dark:bg-brand-primary/20 rounded-full blur-xl"></div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Sample prompts for new chats */}
+                    {isNewChat && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5, duration: 0.5 }}
+                        className="mt-6"
+                      >
+                        <h3 className="text-center text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-3">
+                          Try asking one of these:
+                        </h3>
+                        <div className="flex flex-col gap-2 items-start mx-4">
+                          {randomPrompts.map((prompt, index) => (
+                            <motion.button
+                              key={index}
+                              className="text-left p-3 rounded-xl neo-glass backdrop-blur-sm border border-white/10 hover:border-brand-primary/30 hover:bg-brand-primary/5 transition-all duration-200 inline-block"
+                              whileHover={{ scale: 1.03, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => handlePromptClick(prompt.text)}
+                            >
+                              <span className={`text-sm font-medium ${
+                                prompt.personality === 'tobo' 
+                                  ? 'text-brand-primary dark:text-brand-light' 
+                                  : 'text-blue-500 dark:text-blue-300'
+                              }`}>
+                                {prompt.text}
+                              </span>
+                            </motion.button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                    
+                    <div ref={messagesEndRef} />
+                  </div>
+                </AnimatePresence>
+              </div>
+
+              {/* Chat Input */}
+              <div className="p-4 border-t border-white/10 dark:border-dark-bg-accent/10 backdrop-blur-md bg-white/5 dark:bg-dark-bg-primary/5">
+                <form onSubmit={handleSubmit} className="flex space-x-2">
+                  <input
+                    ref={textInputRef}
+                    type="text"
+                    value={inputMessage}
+                    onChange={handleInputChange}
+                    placeholder="Ask about any crypto concept..."
+                    className="flex-1 rounded-xl input focus:ring-brand-primary focus:ring-2 transition-all duration-300"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!inputMessage.trim() || isTyping}
+                    className="btn btn-primary rounded-xl relative overflow-hidden transition-all duration-300 hover:shadow-[0_0_15px_rgba(77,181,176,0.5)] group"
+                  >
+                    <span className="mr-1">Send</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
