@@ -92,6 +92,4 @@
   position: relative;
   /* Add minimum width */
   min-width: 3rem;
-  /* Ensure cursor stays with text as it grows */
-  display: inline-block;
 } 
