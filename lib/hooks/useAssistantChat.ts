@@ -32,6 +32,7 @@ export function useAssistantChat({
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isProcessingRef = useRef<boolean>(false);
   const pollRequestIdRef = useRef<number>(0);
+  const processedResponsesRef = useRef<Set<string>>(new Set());
   
   // Reset abort controller when component unmounts
   useEffect(() => {
@@ -112,14 +113,17 @@ export function useAssistantChat({
   // Poll for run status - modified to be more robust
   const pollRunStatus = useCallback(async (threadId: string, runId: string, typingMsgId: string, requestId: number) => {
     if (requestId !== pollRequestIdRef.current) {
+      console.log(`Skipping poll for outdated request ID ${requestId}`);
       return true;
     }
     
     try {
       const url = `/api/assistant/status?threadId=${threadId}&runId=${runId}&userId=${userId}&personality=${activePersonality}`;
+      console.log(`Polling ${url} for request ${requestId}`);
       const response = await fetch(url);
       
       if (requestId !== pollRequestIdRef.current) {
+        console.log(`Skipping response processing for outdated request ID ${requestId}`);
         return true;
       }
       
@@ -141,12 +145,26 @@ export function useAssistantChat({
       }
       
       if (data.status !== 'completed' && data.status !== 'failed') {
+        console.log(`Run status: ${data.status}, continuing to poll`);
         return false;
       }
       
       if (data.status === 'failed') {
+        console.error(`Run failed with error: ${data.error || 'Unknown error'}`);
         throw new Error(data.error || 'Assistant run failed');
       }
+      
+      const responseKey = `${threadId}-${runId}`;
+      
+      if (processedResponsesRef.current.has(responseKey)) {
+        console.log(`Already processed response for ${responseKey}, skipping duplicate`);
+        return true;
+      }
+      
+      processedResponsesRef.current.add(responseKey);
+      console.log(`Adding response to processed set: ${responseKey}`);
+      
+      console.log(`Processing completed response with content length: ${data.content?.length || 0}`);
       
       setMessages(prevMessages => {
         const newMessages = prevMessages.filter(msg => msg.id !== typingMsgId);
@@ -154,7 +172,7 @@ export function useAssistantChat({
         return [
           ...newMessages,
           {
-            id: Date.now().toString(),
+            id: `assistant-${Date.now()}`,
             user_id: 'system',
             role: 'assistant',
             content: data.content,
@@ -170,6 +188,7 @@ export function useAssistantChat({
       isProcessingRef.current = false;
       
       if (onResponse) {
+        console.log(`Calling onResponse callback for thread ${threadId}, run ${runId}`);
         onResponse();
       }
       
