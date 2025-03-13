@@ -9,6 +9,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Set max duration to improve server response time for streaming
 export const maxDuration = 60; // Set max duration to 60 seconds
 
 export async function GET(request: Request) {
