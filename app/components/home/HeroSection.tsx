@@ -34,17 +34,17 @@ export default function HeroSection() {
     <Section 
       background="none"
       spacing="none"
-      className="relative overflow-visible nav-section-fix"
+      className="relative nav-section-fix"
     >
-      {/* Enhanced background elements with more dynamic animations - extended beyond boundaries */}
-      <div className="absolute inset-0 z-0 overflow-visible will-change-opacity">
-        {/* Primary glow effects - extended reach and enhanced blur for seamless transitions */}
-        <div className="absolute top-[-35%] right-[10%] w-[900px] h-[900px] rounded-full bg-gradient-to-br from-brand-200/25 to-brand-300/5 dark:from-brand-700/15 dark:to-brand-900/5 blur-[150px] animate-pulse-slow will-change-transform"></div>
-        <div className="absolute bottom-[-40%] left-[5%] w-[800px] h-[800px] rounded-full bg-gradient-to-tr from-indigo-300/15 dark:from-indigo-700/15 to-blue-200/10 dark:to-blue-800/10 blur-[150px] animate-pulse-slow will-change-transform" style={{ animationDelay: '3s' }}></div>
+      {/* Enhanced background elements with more dynamic animations */}
+      <div className="absolute inset-0 z-0 will-change-opacity">
+        {/* Primary glow effects - fixed max-width and contained */}
+        <div className="absolute top-[-35%] right-[10%] max-w-full w-[900px] h-[900px] rounded-full bg-gradient-to-br from-brand-200/25 to-brand-300/5 dark:from-brand-700/15 dark:to-brand-900/5 blur-[150px] animate-pulse-slow will-change-transform"></div>
+        <div className="absolute bottom-[-40%] left-[5%] max-w-full w-[800px] h-[800px] rounded-full bg-gradient-to-tr from-indigo-300/15 dark:from-indigo-700/15 to-blue-200/10 dark:to-blue-800/10 blur-[150px] animate-pulse-slow will-change-transform" style={{ animationDelay: '3s' }}></div>
         
-        {/* Secondary accent glows - extended and positioned for smooth transitions */}
-        <div className="absolute top-[20%] left-[30%] w-[450px] h-[450px] rounded-full bg-gradient-to-r from-teal-200/12 dark:from-teal-700/8 to-cyan-300/4 dark:to-cyan-800/4 blur-[100px] animate-pulse-slow will-change-transform" style={{ animationDelay: '1.5s' }}></div>
-        <div className="absolute bottom-[-5%] right-[25%] w-[400px] h-[400px] rounded-full bg-gradient-to-l from-green-200/8 dark:from-green-800/4 to-emerald-200/4 dark:to-emerald-900/4 blur-[80px] animate-pulse-slow will-change-transform" style={{ animationDelay: '4.5s' }}></div>
+        {/* Secondary accent glows - max-width added */}
+        <div className="absolute top-[20%] left-[30%] max-w-full w-[450px] h-[450px] rounded-full bg-gradient-to-r from-teal-200/12 dark:from-teal-700/8 to-cyan-300/4 dark:to-cyan-800/4 blur-[100px] animate-pulse-slow will-change-transform" style={{ animationDelay: '1.5s' }}></div>
+        <div className="absolute bottom-[-5%] right-[25%] max-w-full w-[400px] h-[400px] rounded-full bg-gradient-to-l from-green-200/8 dark:from-green-800/4 to-emerald-200/4 dark:to-emerald-900/4 blur-[80px] animate-pulse-slow will-change-transform" style={{ animationDelay: '4.5s' }}></div>
         
         {/* Decorative elements with broader blur and better positioning for transitions */}
         <div className="absolute top-[15%] left-[15%] w-[2px] h-[250px] bg-gradient-to-b from-brand-300/30 via-brand-300/15 to-transparent blur-[4px] dark:from-brand-400/20 dark:via-brand-400/8"></div>
@@ -52,7 +52,7 @@ export default function HeroSection() {
         <div className="absolute top-[8%] right-[25%] w-[1.5px] h-[220px] bg-gradient-to-b from-brand-300/25 via-brand-300/12 to-transparent blur-[3.5px] dark:from-brand-400/12 dark:via-brand-400/6"></div>
         
         {/* Special boundary element for bottom transition */}
-        <div className="absolute bottom-[-10%] left-[40%] w-[600px] h-[300px] rounded-[100%] bg-gradient-to-b from-brand-200/5 to-transparent blur-[80px] dark:from-brand-700/5 pointer-events-none"></div>
+        <div className="absolute bottom-[-10%] left-[40%] max-w-full w-[600px] h-[300px] rounded-[100%] bg-gradient-to-b from-brand-200/5 to-transparent blur-[80px] dark:from-brand-700/5 pointer-events-none"></div>
       </div>
       
       <div ref={heroRef} className={`grid grid-cols-1 gap-16 md:grid-cols-2 md:gap-20 relative z-10 transition-all duration-1000 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'} mt-8 pt-4`}>

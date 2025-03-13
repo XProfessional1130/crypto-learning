@@ -11,7 +11,7 @@ import AuthCodeHandler from './components/auth/AuthCodeHandler';
 
 export default function Home() {
   return (
-    <div className="w-full relative overflow-hidden glow-overflow -mt-10">
+    <div className="w-full relative overflow-x-hidden overflow-y-hidden glow-overflow -mt-10">
       <AuthCodeHandler />
       
       {/* Unified background glow that spans the entire page */}
