@@ -35,6 +35,8 @@ export function useAssistantChat({
   const isProcessingRef = useRef<boolean>(false);
   const pollRequestIdRef = useRef<number>(0);
   const processedResponsesRef = useRef<Set<string>>(new Set());
+  const streamingRef = useRef<boolean>(false);
+  const eventSourceRef = useRef<EventSource | null>(null);
   
   // Reset abort controller when component unmounts
   useEffect(() => {
@@ -46,7 +48,12 @@ export function useAssistantChat({
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
       }
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
       isProcessingRef.current = false;
+      streamingRef.current = false;
     };
   }, []);
   
@@ -215,6 +222,112 @@ export function useAssistantChat({
       return true;
     }
   }, [activePersonality, userId, onResponse, onError]);
+
+  // Setup streaming connection
+  const setupStreamingConnection = useCallback((threadId: string, runId: string, typingMsgId: string) => {
+    // Close any existing EventSource
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
+    streamingRef.current = true;
+    
+    // Create a new EventSource connection
+    const streamUrl = `/api/assistant/stream?threadId=${threadId}&runId=${runId}&userId=${userId}&personality=${activePersonality}`;
+    const eventSource = new EventSource(streamUrl);
+    eventSourceRef.current = eventSource;
+    
+    let partialContent = '';
+    
+    // Setup event handlers
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // Handle different status types
+        switch (data.status) {
+          case 'streaming':
+            // Add the new content chunk
+            partialContent += data.content;
+            
+            // Update the message with the current content
+            setMessages(prevMessages => {
+              return prevMessages.map(msg => {
+                if (msg.id === typingMsgId) {
+                  return { ...msg, content: partialContent };
+                }
+                return msg;
+              });
+            });
+            
+            if (data.done) {
+              // Clean up when streaming is done
+              eventSource.close();
+              eventSourceRef.current = null;
+              streamingRef.current = false;
+              setIsTyping(false);
+            }
+            break;
+            
+          case 'completed':
+            // Cleanup
+            eventSource.close();
+            eventSourceRef.current = null;
+            streamingRef.current = false;
+            isProcessingRef.current = false;
+            setIsTyping(false);
+            
+            // Call onResponse if provided
+            if (onResponse) {
+              onResponse();
+            }
+            break;
+            
+          case 'error':
+          case 'failed':
+            console.error(`Error in streaming: ${data.error}`);
+            eventSource.close();
+            eventSourceRef.current = null;
+            streamingRef.current = false;
+            isProcessingRef.current = false;
+            setIsTyping(false);
+            
+            // Remove typing message and show error
+            setMessages(prevMessages => prevMessages.filter(msg => msg.id !== typingMsgId));
+            
+            if (onError) {
+              onError(new Error(data.error || 'Streaming failed'));
+            }
+            break;
+            
+          default:
+            // For processing, queued, etc. - just log the status
+            console.log(`Streaming status: ${data.status}`);
+        }
+      } catch (error) {
+        console.error('Error processing stream event:', error);
+      }
+    };
+    
+    eventSource.onerror = (error) => {
+      console.error('EventSource error:', error);
+      eventSource.close();
+      eventSourceRef.current = null;
+      streamingRef.current = false;
+      isProcessingRef.current = false;
+      setIsTyping(false);
+      
+      // Remove typing message
+      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== typingMsgId));
+      
+      if (onError) {
+        onError(new Error('Streaming connection failed'));
+      }
+    };
+    
+    return eventSource;
+  }, [activePersonality, userId, onResponse, onError]);
   
   // Send message to API
   const sendMessage = useCallback(async (content: string) => {
@@ -234,6 +347,12 @@ export function useAssistantChat({
         pollIntervalRef.current = null;
       }
       
+      // Close any existing EventSource
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
         user_id: userId,
@@ -251,126 +370,76 @@ export function useAssistantChat({
         onSend();
       }
       
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = new AbortController();
+      // Create a new typing message from the assistant
+      const typingId = `typing-${Date.now()}`;
+      setTypingMessageId(typingId);
       
-      const typingMessage: ChatMessage = {
-        id: `typing-${Date.now()}`,
-        user_id: 'system',
-        role: 'assistant',
-        content: '...',
+      setMessages(prevMessages => [
+        ...prevMessages,
+        {
+          id: typingId,
+          user_id: 'system',
+          role: 'assistant',
+          content: '',  // Empty content for clean start
+          personality: activePersonality,
+          created_at: new Date().toISOString(),
+        }
+      ]);
+      
+      // Increment the request ID
+      pollRequestIdRef.current += 1;
+      const currentRequestId = pollRequestIdRef.current;
+      
+      // Prepare the request body
+      const requestBody = {
+        message: content,
         personality: activePersonality,
-        created_at: new Date().toISOString(),
+        userId,
+        threadId: threadIdRef.current || undefined,
       };
       
-      setMessages(prevMessages => [...prevMessages, typingMessage]);
-      setTypingMessageId(typingMessage.id);
-      
+      // Submit message to API
       const response = await fetch('/api/assistant', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message: content,
-          threadId: threadIdRef.current,
-          personality: activePersonality,
-          userId,
-        }),
-        signal: abortControllerRef.current.signal,
+        body: JSON.stringify(requestBody),
       });
       
-      let data;
-      try {
-        const responseText = await response.text();
-        try {
-          data = JSON.parse(responseText);
-        } catch (parseError) {
-          console.error('Failed to parse response as JSON:', responseText);
-          throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`);
-        }
-        
-        if (!response.ok) {
-          throw new Error(data.error || `Server error: ${response.status}`);
-        }
-      } catch (error) {
-        throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to send message: ${errorText}`);
       }
       
-      if (data.threadId) {
-        threadIdRef.current = data.threadId;
+      const data = await response.json();
+      
+      if (!data.threadId || !data.runId) {
+        throw new Error('Invalid response from server: missing threadId or runId');
       }
       
-      if (data.status === 'processing' && data.runId && data.threadId) {
-        pollRequestIdRef.current += 1;
-        const currentRequestId = pollRequestIdRef.current;
-        
-        // SIMPLIFIED POLLING APPROACH - Use a single consistent polling method
-        // First poll immediately without an interval
-        const initialResult = await pollRunStatus(
-          data.threadId, 
-          data.runId, 
-          typingMessage.id, 
-          currentRequestId
-        );
-        
-        // If not done with the first poll, start an interval
-        if (!initialResult && currentRequestId === pollRequestIdRef.current) {
-          // Ensure no other interval is running
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-          }
-          
-          // Create a simple polling function that stops itself when done
-          pollIntervalRef.current = setInterval(async () => {
-            console.log(`Polling for response, request ID: ${currentRequestId}`);
-            
-            // If this isn't the current request anymore, stop polling
-            if (currentRequestId !== pollRequestIdRef.current) {
-              clearInterval(pollIntervalRef.current!);
-              pollIntervalRef.current = null;
-              return;
-            }
-            
-            try {
-              const isDone = await pollRunStatus(
-                data.threadId, 
-                data.runId, 
-                typingMessage.id, 
-                currentRequestId
-              );
-              
-              if (isDone) {
-                clearInterval(pollIntervalRef.current!);
-                pollIntervalRef.current = null;
-              }
-            } catch (error) {
-              console.error('Error in polling interval:', error);
-              clearInterval(pollIntervalRef.current!);
-              pollIntervalRef.current = null;
-            }
-          }, 1000);
-        }
+      // Update thread ID
+      threadIdRef.current = data.threadId;
+      
+      // Use streaming approach
+      setupStreamingConnection(data.threadId, data.runId, typingId);
+      
+    } catch (error) {
+      console.error('Error sending message:', error);
+      
+      if (typingMessageId) {
+        setMessages(prevMessages => prevMessages.filter(msg => msg.id !== typingMessageId));
+        setTypingMessageId(null);
       }
-    } catch (error: any) {
+      
       setIsTyping(false);
       isProcessingRef.current = false;
       
-      setMessages(prevMessages => 
-        prevMessages.filter(msg => !msg.id.startsWith('typing-'))
-      );
-      
-      setTypingMessageId(null);
-      
-      console.error('Error sending message:', error);
-      
-      if (error.name !== 'AbortError' && onError) {
-        onError(error);
+      if (onError) {
+        onError(error instanceof Error ? error : new Error(String(error)));
       }
     }
-  }, [activePersonality, userId, onError, pollRunStatus, isTyping, onSend]);
+  }, [activePersonality, isTyping, onError, onResponse, onSend, typingMessageId, userId, setupStreamingConnection]);
   
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInputMessage(e.target.value);
@@ -383,21 +452,18 @@ export function useAssistantChat({
     }
   }, [inputMessage, isTyping, sendMessage]);
   
-  // Get the current thread ID
-  const getThreadId = useCallback(() => threadIdRef.current, []);
-  
   return {
     messages,
     inputMessage,
     isTyping,
     activePersonality,
     threadId: threadIdRef.current,
-    getThreadId,
+    typingMessageId,
     handleInputChange,
     handleSubmit,
-    sendMessage,
     switchPersonality,
     setMessages,
     loadThread,
+    sendMessage,
   };
 } 

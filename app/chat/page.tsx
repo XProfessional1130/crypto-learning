@@ -79,6 +79,7 @@ export default function Chat() {
     isTyping,
     activePersonality,
     threadId,
+    typingMessageId,
     handleInputChange,
     handleSubmit,
     switchPersonality,
@@ -346,6 +347,14 @@ export default function Chat() {
     setErrorMessage(null);
   };
 
+  // Add a typing indicator ref
+  const typingIndicatorRef = useRef<HTMLDivElement>(null);
+
+  // Add a function to check if message is currently being typed
+  const isMessageStreaming = (message: ChatMessage) => {
+    return isTyping && typingMessageId === message.id;
+  };
+
   if (loading || !user) {
     return (
       <div className="flex min-h-[calc(100vh-16rem)] items-center justify-center">
@@ -555,10 +564,13 @@ export default function Chat() {
                 <AnimatePresence initial={false}>
                   <div className="space-y-6">
                     {messages.map((message) => {
-                      // Skip rendering temporary "..." messages when there's an actual typing indicator
-                      if (isTyping && message.content === "..." && message.role === "assistant") {
+                      // Skip rendering any temporary messages with no content when we're typing
+                      if (isTyping && (message.content === "..." || message.content === "") && message.role === "assistant" && message.id !== typingMessageId) {
                         return null;
                       }
+                      
+                      // Determine if this message is currently streaming
+                      const isStreaming = isMessageStreaming(message);
                       
                       return (
                         <motion.div
@@ -599,9 +611,48 @@ export default function Chat() {
                                   {formatMessageContent(message.content)}
                                 </motion.div>
                               ) : (
-                                // For shorter messages with better formatting
-                                <div className={styles['message-content']}>
-                                  {formatMessageContent(message.content)}
+                                // For short messages
+                                <div>
+                                  {message.content === "" && isStreaming ? (
+                                    <motion.span 
+                                      ref={typingIndicatorRef}
+                                      className="inline-block text-brand-primary"
+                                      initial={{ opacity: 0.3 }}
+                                      animate={{ opacity: 1 }}
+                                      transition={{ 
+                                        repeat: Infinity, 
+                                        duration: 0.8, 
+                                        repeatType: "reverse" 
+                                      }}
+                                    >
+                                      ▌
+                                    </motion.span>
+                                  ) : (
+                                    message.content.split(' ').map((word, i) => (
+                                      <motion.span
+                                        key={i}
+                                        variants={wordAnimation}
+                                        className="inline-block mr-1"
+                                      >
+                                        {word}
+                                      </motion.span>
+                                    ))
+                                  )}
+                                  {isStreaming && message.content !== "" && (
+                                    <motion.span 
+                                      ref={typingIndicatorRef}
+                                      className="inline-block ml-1 text-brand-primary"
+                                      initial={{ opacity: 0.3 }}
+                                      animate={{ opacity: 1 }}
+                                      transition={{ 
+                                        repeat: Infinity, 
+                                        duration: 0.8, 
+                                        repeatType: "reverse" 
+                                      }}
+                                    >
+                                      ▌
+                                    </motion.span>
+                                  )}
                                 </div>
                               )}
                             </motion.div>
@@ -616,35 +667,6 @@ export default function Chat() {
                       );
                     })}
                     
-                    {isTyping && (
-                      <motion.div 
-                        className="flex justify-start"
-                        {...typingAnimation}
-                      >
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center mr-2 flex-shrink-0 border border-white/20 dark:border-white/5">
-                          <Image 
-                            src={personalityImages[activePersonality]} 
-                            alt={activePersonality} 
-                            width={32} 
-                            height={32}
-                            className="object-cover"
-                          />
-                        </div>
-                        <div className="glass rounded-2xl px-4 py-3 relative backdrop-blur-md overflow-hidden">
-                          <div className="flex space-x-2 relative z-10">
-                            <div className="h-2 w-2 rounded-full bg-brand-primary/70 dark:bg-brand-primary/90 animate-bounce"></div>
-                            <div className="h-2 w-2 rounded-full bg-brand-primary/70 dark:bg-brand-primary/90 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                            <div className="h-2 w-2 rounded-full bg-brand-primary/70 dark:bg-brand-primary/90 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                          </div>
-                          {/* Glassmorphic effect elements */}
-                          <div className="absolute inset-0 pointer-events-none">
-                            <div className="absolute -top-6 -right-6 w-12 h-12 bg-brand-primary/10 dark:bg-brand-primary/20 rounded-full blur-xl"></div>
-                            <div className="absolute -bottom-6 -left-6 w-12 h-12 bg-brand-primary/10 dark:bg-brand-primary/20 rounded-full blur-xl"></div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-
                     {/* Sample prompts for new chats */}
                     {isNewChat && (
                       <motion.div 
