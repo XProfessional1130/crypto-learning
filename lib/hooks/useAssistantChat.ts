@@ -8,6 +8,7 @@ interface UseAssistantChatOptions {
   initialThreadId?: string | null;
   onError?: (error: Error) => void;
   onResponse?: () => void;
+  onSend?: () => void;
   userId: string;
 }
 
@@ -16,6 +17,7 @@ export function useAssistantChat({
   initialThreadId = null,
   onError,
   onResponse,
+  onSend,
   userId,
 }: UseAssistantChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -244,6 +246,11 @@ export function useAssistantChat({
       setInputMessage('');
       setIsTyping(true);
       
+      // Call onSend callback if provided
+      if (onSend) {
+        onSend();
+      }
+      
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -363,7 +370,7 @@ export function useAssistantChat({
         onError(error);
       }
     }
-  }, [activePersonality, userId, onError, pollRunStatus, isTyping]);
+  }, [activePersonality, userId, onError, pollRunStatus, isTyping, onSend]);
   
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInputMessage(e.target.value);

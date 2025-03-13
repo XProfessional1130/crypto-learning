@@ -100,6 +100,9 @@ export default function Chat() {
     onResponse: () => {
       setShouldScroll(true);
     },
+    onSend: () => {
+      setShouldScroll(true);
+    },
     onError: (error) => {
       console.error('Chat error:', error);
       // Show error message to user
