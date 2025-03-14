@@ -71,6 +71,7 @@ export default function Chat() {
   const [showHistory, setShowHistory] = useState(false);
   const [randomPrompts, setRandomPrompts] = useState<typeof samplePrompts>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [skipTyping, setSkipTyping] = useState(false);
   
   // Initialize chat with useAssistantChat hook
   const {
@@ -86,6 +87,7 @@ export default function Chat() {
     setMessages,
     loadThread,
     sendMessage,
+    skipTypingAnimation
   } = useAssistantChat({
     initialMessages: [
       {
@@ -376,6 +378,13 @@ export default function Chat() {
   const isMessageStreaming = (message: ChatMessage) => {
     return isTyping && typingMessageId === message.id;
   };
+  
+  // Helper to determine if a message is skippable (has content and is lengthy)
+  const isMessageSkippable = (message: ChatMessage) => {
+    // Message should be currently streaming, have content, and be potentially lengthy
+    // With slower typing, we should show the skip button earlier - lower threshold to 25 characters
+    return isMessageStreaming(message) && message.content.length > 0 && message.content.length > 25;
+  };
 
   // Ensure cursor stays visible when message is updating
   useEffect(() => {
@@ -383,6 +392,35 @@ export default function Chat() {
       setShouldScroll(true);
     }
   }, [isTyping, typingMessageId, messages]);
+
+  // Add keyboard event listener for skipping typing with Enter key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip typing when Enter is pressed and AI is typing
+      // Only allow skip when message has started typing and is likely to be lengthy
+      if (e.key === 'Enter' && isTyping && typingMessageId) {
+        // Find the current typing message
+        const typingMessage = messages.find(msg => msg.id === typingMessageId);
+        
+        // Only skip if message is skippable
+        if (typingMessage && isMessageSkippable(typingMessage)) {
+          e.preventDefault();
+          setSkipTyping(true);
+          skipTypingAnimation();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTyping, skipTypingAnimation, typingMessageId, messages]);
+
+  // Reset skip typing state when typing ends
+  useEffect(() => {
+    if (!isTyping) {
+      setSkipTyping(false);
+    }
+  }, [isTyping]);
 
   if (loading || !user) {
     return (
@@ -601,7 +639,7 @@ export default function Chat() {
                   <div className="space-y-6">
                     {messages.map((message) => {
                       // Skip rendering any temporary messages with no content when we're typing
-                      if (isTyping && (message.content === "..." || message.content === "") && message.role === "assistant" && message.id !== typingMessageId) {
+                      if (isTyping && message.content === "" && message.role === "assistant" && message.id !== typingMessageId) {
                         return null;
                       }
                       
@@ -706,6 +744,26 @@ export default function Chat() {
                                     </motion.span>
                                   )}
                                 </div>
+                              )}
+                              
+                              {/* Skip typing button - only show when message has content and is lengthy */}
+                              {isMessageSkippable(message) && (
+                                <motion.button
+                                  onClick={() => {
+                                    setSkipTyping(true);
+                                    skipTypingAnimation();
+                                  }}
+                                  className="inline-flex items-center mt-2 text-xs py-1.5 px-3 bg-gray-200 dark:bg-gray-800 rounded-md text-gray-600 dark:text-gray-300 opacity-90 hover:opacity-100 hover:bg-gray-300 dark:hover:bg-gray-700 transition-all shadow-sm"
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  transition={{ delay: 0.3 }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                                    <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                                    <line x1="19" y1="5" x2="19" y2="19"></line>
+                                  </svg>
+                                  Skip (press Enter)
+                                </motion.button>
                               )}
                             </motion.div>
                           </div>

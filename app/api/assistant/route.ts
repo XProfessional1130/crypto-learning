@@ -105,11 +105,11 @@ export async function POST(request: Request) {
       };
     }
     
-    // Add user message to thread
-    await addMessageToThread(currentThreadId, message);
+    // Start adding message to thread (don't await yet)
+    const messagePromise = addMessageToThread(currentThreadId, message);
     
-    // Save the user message to our database
-    await saveChatMessage({
+    // Start saving the user message (don't await yet)
+    const savePromise = saveChatMessage({
       user_id: userId,
       role: 'user',
       content: message,
@@ -117,6 +117,9 @@ export async function POST(request: Request) {
       assistant_id: assistantId,
       created_at: new Date().toISOString(),
     });
+    
+    // Await both operations in parallel
+    await Promise.all([messagePromise, savePromise]);
     
     // Create a run to process the thread
     const run = await openai.beta.threads.runs.create(

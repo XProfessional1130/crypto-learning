@@ -97,49 +97,88 @@ export async function GET(request: Request) {
         safeEnqueue(
           new TextEncoder().encode(`data: ${JSON.stringify({ status: 'connected' })}\n\n`)
         );
-
-        // First check if run is already completed
-        let runStatus;
-        try {
-          runStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
-        } catch (error: any) {
-          console.error('Error retrieving run status:', error);
-          safeEnqueue(
-            new TextEncoder().encode(`data: ${JSON.stringify({
-              status: 'error',
-              error: `Failed to retrieve OpenAI run status: ${error.message || 'Unknown error'}`
-            })}\n\n`)
-          );
-          safeClose();
-          return;
-        }
         
-        if (runStatus.status === 'failed') {
-          safeEnqueue(
-            new TextEncoder().encode(`data: ${JSON.stringify({
-              status: 'failed',
-              error: runStatus.last_error?.message || 'Run failed'
-            })}\n\n`)
-          );
-          safeClose();
-          return;
-        }
-
-        // If run isn't completed yet, we need to start polling
-        let completed = runStatus.status === 'completed';
-        let lastFetchedMessageId = null;
-        let processingStartedAt = Date.now();
-        const maxProcessingTime = 45000; // 45 seconds max to allow for other operations within the 60s limit
-
-        // Send a processing message
+        // Send a processing message immediately to improve perceived latency
         safeEnqueue(
           new TextEncoder().encode(`data: ${JSON.stringify({ status: 'processing' })}\n\n`)
         );
+        
+        // Check run status immediately to see if it's already processed
+        let initialRunStatus;
+        try {
+          initialRunStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
+          
+          // If run is already completed from the start, handle it right away
+          if (initialRunStatus.status === 'completed') {
+            // Send status update
+            safeEnqueue(
+              new TextEncoder().encode(`data: ${JSON.stringify({ status: 'completed' })}\n\n`)
+            );
+            
+            // Go directly to fetch messages
+            const messages = await openai.beta.threads.messages.list(threadId, { order: 'desc', limit: 1 });
+            const assistantMessage = messages.data.find(msg => msg.role === 'assistant');
+            
+            if (assistantMessage && assistantMessage.content && assistantMessage.content.length > 0) {
+              const contentPart = assistantMessage.content[0];
+              if (contentPart.type === 'text') {
+                fullMessage = contentPart.text.value;
+                
+                // Stream the full content directly without typing effect for completed runs
+                safeEnqueue(
+                  new TextEncoder().encode(`data: ${JSON.stringify({
+                    status: 'streaming',
+                    content: fullMessage,
+                    done: true
+                  })}\n\n`)
+                );
+                
+                safeEnqueue(
+                  new TextEncoder().encode(`data: ${JSON.stringify({
+                    status: 'completed',
+                    threadId,
+                    fullContent: fullMessage
+                  })}\n\n`)
+                );
+                
+                safeClose();
+                return;
+              }
+            }
+          } else if (initialRunStatus.status === 'failed') {
+            safeEnqueue(
+              new TextEncoder().encode(`data: ${JSON.stringify({
+                status: 'failed',
+                error: initialRunStatus.last_error?.message || 'Run failed'
+              })}\n\n`)
+            );
+            safeClose();
+            return;
+          }
+        } catch (error) {
+          // Ignore error from initial check, we'll retry in polling
+          console.warn('Initial run status check failed, will retry in polling:', error);
+        }
+
+        // If run isn't completed yet, we need to start polling
+        let completed = initialRunStatus?.status === 'completed';
+        let lastFetchedMessageId = null;
+        let processingStartedAt = Date.now();
+        const maxProcessingTime = 45000; // 45 seconds max to allow for other operations within the 60s limit
+        
+        // Use shorter first polling interval for better responsiveness
+        const initialPollingInterval = 500; // 500ms initial poll
+        const subsequentPollingInterval = 1000; // 1000ms for following polls
+        
+        // Wait for first poll (shorter interval)
+        if (!completed && !isControllerClosed) {
+          await new Promise(resolve => setTimeout(resolve, initialPollingInterval));
+        }
 
         // Poll until completion or timeout
         while (!completed && Date.now() - processingStartedAt < maxProcessingTime && !isControllerClosed) {
-          // Polling interval
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Polling interval (longer for subsequent polls)
+          await new Promise(resolve => setTimeout(resolve, subsequentPollingInterval));
           
           // Retrieve run status
           try {
@@ -233,26 +272,68 @@ export async function GET(request: Request) {
           if (contentPart.type === 'text') {
             fullMessage = contentPart.text.value;
             
-            // Stream the content character by character
+            // Stream the content in larger chunks for better performance
             let currentIndex = 0;
-            const chunkSize = 1; // Reduce chunk size to one character at a time for smoother effect
+            // Use larger chunks for faster rendering while maintaining typing appearance
+            const chunkSize = 2; // Reduced to 2 characters per chunk for more natural feel
             
-            while (currentIndex < fullMessage.length && !isControllerClosed) {
-              const end = Math.min(currentIndex + chunkSize, fullMessage.length);
-              const chunk = fullMessage.substring(currentIndex, end);
-              
+            // Calculate approximate word boundaries for more natural streaming
+            const totalLength = fullMessage.length;
+            
+            // For very short messages, just send it all at once
+            if (totalLength < 30) {
               safeEnqueue(
                 new TextEncoder().encode(`data: ${JSON.stringify({
                   status: 'streaming',
-                  content: chunk,
-                  done: end === fullMessage.length
+                  content: fullMessage,
+                  done: true
                 })}\n\n`)
               );
+            } else {
+              // Calculate typing delay based on message length to approximate 2x reading speed
+              // Average reading speed is ~250 wpm, or ~1000 chars/minute
+              // For 2x reading speed, we want ~30-35ms per character
+              const baseDelayMs = 30; // Base delay of 30ms per character (for 2x reading speed)
               
-              currentIndex = end;
+              // Function to determine if we should pause longer at punctuation
+              const shouldPauseAtPosition = (position: number): number => {
+                if (position >= fullMessage.length) return 0;
+                
+                // Add natural pauses at sentence endings and commas
+                const char = fullMessage[position];
+                if (char === '.' || char === '!' || char === '?') {
+                  // End of sentence pause
+                  return 100; // Add 100ms at end of sentences
+                } else if (char === ',') {
+                  // Comma pause
+                  return 50; // Add 50ms at commas
+                } else if (char === '\n') {
+                  // New line pause
+                  return 80; // Add 80ms at new lines
+                }
+                return 0;
+              };
               
-              // Add small delay between chunks for typing effect
-              await new Promise(resolve => setTimeout(resolve, 40)); // Slightly faster typing speed for better flow
+              while (currentIndex < totalLength && !isControllerClosed) {
+                const end = Math.min(currentIndex + chunkSize, totalLength);
+                const chunk = fullMessage.substring(currentIndex, end);
+                
+                safeEnqueue(
+                  new TextEncoder().encode(`data: ${JSON.stringify({
+                    status: 'streaming',
+                    content: chunk,
+                    done: end === totalLength
+                  })}\n\n`)
+                );
+                
+                // Determine if we should add an extra pause at this position
+                const extraPauseMs = shouldPauseAtPosition(currentIndex);
+                
+                currentIndex = end;
+                
+                // Wait the calculated amount of time before the next chunk
+                await new Promise(resolve => setTimeout(resolve, baseDelayMs + extraPauseMs));
+              }
             }
           }
         }

@@ -225,60 +225,82 @@ export function useAssistantChat({
 
   // Setup streaming connection
   const setupStreamingConnection = useCallback((threadId: string, runId: string, typingMsgId: string) => {
-    // Close any existing EventSource
+    // First ensure any existing connection is properly closed
     if (eventSourceRef.current) {
+      console.log('Closing existing EventSource connection before starting new one');
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
-
+    
+    // Set streaming flag
     streamingRef.current = true;
     
-    // Add retry counters
     let retryCount = 0;
     const maxRetries = 3;
-    let isFirstConnect = true;
+    let receivedFirstMessage = false;
+    let connectionTimeoutId: NodeJS.Timeout | null = null;
+    let partialContent = '';
+    let isDone = false;
+    
+    const endpoint = `/api/assistant/stream?threadId=${threadId}&runId=${runId}&userId=${userId}&personality=${activePersonality}`;
     
     const connectEventSource = () => {
       // Create a new EventSource connection
-      const streamUrl = `/api/assistant/stream?threadId=${threadId}&runId=${runId}&userId=${userId}&personality=${activePersonality}`;
-      const eventSource = new EventSource(streamUrl);
+      const eventSource = new EventSource(endpoint);
       eventSourceRef.current = eventSource;
       
-      let partialContent = '';
-      let isDone = false;
-      let receivedFirstMessage = false;
-      let connectionTimeoutId: NodeJS.Timeout | null = null;
-      
-      // Set connection timeout - if we don't get a message within 10 seconds, retry
+      // Set a timeout to detect initial connection issues
       connectionTimeoutId = setTimeout(() => {
-        if (!receivedFirstMessage && eventSourceRef.current === eventSource) {
-          console.warn('Connection timeout - no message received within 10 seconds');
+        console.log('Connection timeout - no messages received.');
+        
+        if (eventSource && eventSource.readyState !== 2) { // 2 = CLOSED
           eventSource.close();
           
-          if (retryCount < maxRetries) {
-            retryCount++;
-            console.log(`Retrying connection (${retryCount}/${maxRetries})...`);
-            connectEventSource();
-          } else {
-            streamingRef.current = false;
-            isProcessingRef.current = false;
-            setIsTyping(false);
+          if (eventSourceRef.current === eventSource) {
+            eventSourceRef.current = null;
             
-            setMessages(prevMessages => prevMessages.filter(msg => msg.id !== typingMsgId));
-            
-            if (onError) {
-              onError(new Error('Connection timeout after multiple retries'));
+            // Try to reconnect if we haven't reached max retries
+            if (retryCount < maxRetries) {
+              retryCount++;
+              console.log(`Connection timeout. Retrying (${retryCount}/${maxRetries})...`);
+              connectEventSource();
+            } else {
+              console.error('Max retries reached. Unable to establish connection.');
+              
+              // Clean up properly
+              streamingRef.current = false;
+              isProcessingRef.current = false;
+              setIsTyping(false);
+              
+              // Update the message with error
+              if (typingMsgId) {
+                setMessages(prevMessages => {
+                  return prevMessages.map(msg => {
+                    if (msg.id === typingMsgId) {
+                      return { 
+                        ...msg, 
+                        content: 'Error: Unable to connect to server. Please try again.' 
+                      };
+                    }
+                    return msg;
+                  });
+                });
+              }
+              
+              if (onError) {
+                onError(new Error('Connection timeout - unable to establish connection'));
+              }
             }
           }
         }
-      }, 10000);
+      }, 10000); // 10 second timeout
       
       // Event for when connection is established
       eventSource.onopen = () => {
         console.log('EventSource connection opened');
         
         // If this is a reconnection, just silently continue without showing any message
-        isFirstConnect = false;
+        receivedFirstMessage = true;
       };
       
       // Setup event handlers
@@ -305,21 +327,35 @@ export function useAssistantChat({
               console.log('Stream connection established');
               break;
               
+            case 'processing':
+              // Update the UI to show processing state - no content changes needed here
+              // We'll let the initial empty message with just the cursor remain
+              break;
+              
             case 'streaming':
               // Add the new content chunk
               partialContent += data.content;
               // Track if this is the last chunk
               isDone = data.done;
               
-              // Update the message with the current content
-              setMessages(prevMessages => {
-                return prevMessages.map(msg => {
-                  if (msg.id === typingMsgId) {
-                    return { ...msg, content: partialContent };
-                  }
-                  return msg;
+              // Don't update the UI for each tiny chunk, which can cause performance issues
+              // Instead, use a throttled update approach for smoother rendering
+              // For slower typing, we can update more frequently
+              const shouldUpdateNow = isDone || data.content.includes('\n') || 
+                                     partialContent.length % 10 === 0 || // Update every 10 chars instead of 20 
+                                     data.content.length > 3;           // Update on larger chunks
+              
+              if (shouldUpdateNow) {
+                // Update the message with the current content
+                setMessages(prevMessages => {
+                  return prevMessages.map(msg => {
+                    if (msg.id === typingMsgId) {
+                      return { ...msg, content: partialContent };
+                    }
+                    return msg;
+                  });
                 });
-              });
+              }
               
               // Only clear typing state when we're completely done
               if (isDone) {
@@ -330,12 +366,12 @@ export function useAssistantChat({
                   }
                   streamingRef.current = false;
                   setIsTyping(false);
-                }, 1000); // Longer delay to ensure cursor is visible at the end
+                }, 500); // Shorter delay to improve responsiveness
               }
               break;
               
             case 'completed':
-              // Cleanup after a longer delay to ensure cursor is seen at the end
+              // Cleanup after a shorter delay for improved responsiveness
               setTimeout(() => {
                 if (eventSourceRef.current) {
                   eventSourceRef.current.close();
@@ -350,7 +386,7 @@ export function useAssistantChat({
                 if (onResponse) {
                   onResponse();
                 }
-              }, 1000); // Longer delay to ensure cursor is visible at the end
+              }, 300); // Shorter delay for better responsiveness
               break;
               
             case 'error':
@@ -455,21 +491,36 @@ export function useAssistantChat({
       return eventSource;
     };
     
-    // Start the initial connection
-    const eventSource = connectEventSource();
-    return eventSource;
-  }, [activePersonality, userId, onResponse, onError]);
+    connectEventSource();
+    
+    // Return cleanup function (not used directly but good practice)
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      
+      if (connectionTimeoutId) {
+        clearTimeout(connectionTimeoutId);
+      }
+      
+      streamingRef.current = false;
+    };
+  }, [activePersonality, userId, setMessages, setIsTyping, onError, onResponse]);
   
   // Send message to API
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
     
-    if (isProcessingRef.current || isTyping) {
-      console.log('Message already being processed, ignoring duplicate send');
+    // More robust check to prevent multiple active requests
+    if (streamingRef.current || isProcessingRef.current || isTyping) {
+      console.log('Message already being processed or streaming in progress, ignoring request');
       return;
     }
     
+    // Set processing flag immediately to prevent race conditions
     isProcessingRef.current = true;
+    streamingRef.current = true;
     
     try {
       // Always clear any existing interval first
@@ -505,66 +556,129 @@ export function useAssistantChat({
       const typingId = `typing-${Date.now()}`;
       setTypingMessageId(typingId);
       
+      // Add a typing indicator with empty content to show just the cursor immediately
       setMessages(prevMessages => [
         ...prevMessages,
         {
           id: typingId,
           user_id: 'system',
           role: 'assistant',
-          content: '',  // Empty content for clean start
+          content: '',  // Start with empty content to show just the cursor
           personality: activePersonality,
           created_at: new Date().toISOString(),
         }
       ]);
-      
-      // Increment the request ID
-      pollRequestIdRef.current += 1;
-      const currentRequestId = pollRequestIdRef.current;
-      
-      // Prepare the request body
-      const requestBody = {
-        message: content,
-        personality: activePersonality,
-        userId,
-        threadId: threadIdRef.current || undefined,
-      };
-      
-      // Submit message to API
-      const response = await fetch('/api/assistant', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to send message: ${errorText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (!data.threadId || !data.runId) {
-        throw new Error('Invalid response from server: missing threadId or runId');
-      }
-      
-      // Update thread ID
-      threadIdRef.current = data.threadId;
-      
-      // Use streaming approach
-      setupStreamingConnection(data.threadId, data.runId, typingId);
+
+      // Use a smaller timeout to improve responsiveness
+      setTimeout(async () => {
+        try {
+          // Increment the request ID
+          pollRequestIdRef.current += 1;
+          const currentRequestId = pollRequestIdRef.current;
+          
+          // Double-check that we're still in processing state (user didn't cancel)
+          if (!isProcessingRef.current) {
+            console.log('Request was cancelled before API call');
+            return;
+          }
+          
+          // Prepare the request body
+          const requestBody = {
+            message: content,
+            personality: activePersonality,
+            userId,
+            threadId: threadIdRef.current || undefined,
+          };
+          
+          // Submit message to API with a timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout
+          
+          try {
+            const response = await fetch('/api/assistant', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(requestBody),
+              signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`Failed to send message: ${errorText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.threadId || !data.runId) {
+              throw new Error('Invalid response from server: missing threadId or runId');
+            }
+            
+            // Update thread ID
+            threadIdRef.current = data.threadId;
+            
+            // Setup streaming connection
+            setupStreamingConnection(data.threadId, data.runId, typingId);
+          } catch (fetchError) {
+            // Handle API errors or timeouts
+            clearTimeout(timeoutId);
+            throw fetchError;
+          }
+        } catch (error) {
+          console.error('Error in API call:', error);
+          
+          // Clean up the typing message
+          if (typingMessageId) {
+            setMessages(prevMessages => {
+              // Instead of removing, change to an error message
+              return prevMessages.map(msg => {
+                if (msg.id === typingMessageId) {
+                  return {
+                    ...msg,
+                    content: `Error: ${error instanceof Error ? error.message : 'Failed to get response'}. Please try again.`
+                  };
+                }
+                return msg;
+              });
+            });
+          }
+          
+          // Reset all state
+          setIsTyping(false);
+          isProcessingRef.current = false;
+          streamingRef.current = false;
+          
+          if (onError) {
+            onError(error instanceof Error ? error : new Error(String(error)));
+          }
+        }
+      }, 50); // Smaller delay for better responsiveness
       
     } catch (error) {
       console.error('Error sending message:', error);
       
+      // Clean up the typing message
       if (typingMessageId) {
-        setMessages(prevMessages => prevMessages.filter(msg => msg.id !== typingMessageId));
-        setTypingMessageId(null);
+        setMessages(prevMessages => {
+          return prevMessages.map(msg => {
+            if (msg.id === typingMessageId) {
+              return {
+                ...msg,
+                content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`
+              };
+            }
+            return msg;
+          });
+        });
       }
       
+      // Reset all state
       setIsTyping(false);
       isProcessingRef.current = false;
+      streamingRef.current = false;
       
       if (onError) {
         onError(error instanceof Error ? error : new Error(String(error)));
@@ -583,6 +697,103 @@ export function useAssistantChat({
     }
   }, [inputMessage, isTyping, sendMessage]);
   
+  // Skip the typing animation and immediately show the full message
+  const skipTypingAnimation = useCallback(() => {
+    console.log('Skipping typing animation');
+    
+    // Only attempt to skip if there's actually streaming in progress
+    if (!eventSourceRef.current || !streamingRef.current || !typingMessageId) {
+      console.log('No active streaming to skip');
+      return;
+    }
+    
+    try {
+      // First check if we already have a typing message with some content
+      if (typingMessageId) {
+        const typingMessage = messages.find(msg => msg.id === typingMessageId);
+        
+        // With slower typing, we should allow skipping with less initial content
+        if (!typingMessage || typingMessage.content.length < 5) {
+          console.log('Not enough content to skip yet, waiting for more...');
+          return;
+        }
+      }
+      
+      // Set a timeout to ensure the skip request doesn't hang
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout
+      
+      // Try to gather the full content from the API
+      fetch(`/api/assistant/stream/skip?threadId=${threadIdRef.current}&userId=${userId}&personality=${activePersonality}`, {
+        signal: controller.signal
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Skip request failed with status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          clearTimeout(timeoutId);
+          
+          // If we have the full message content, update the current typing message
+          if (data.fullContent && typingMessageId) {
+            // Only update if the full content is actually longer than what we have
+            setMessages(prevMessages => {
+              const typingMsg = prevMessages.find(msg => msg.id === typingMessageId);
+              const currentLength = typingMsg?.content?.length || 0;
+              
+              // Only update if we got something longer back
+              if (data.fullContent.length > currentLength) {
+                return prevMessages.map(msg => {
+                  if (msg.id === typingMessageId) {
+                    return { ...msg, content: data.fullContent };
+                  }
+                  return msg;
+                });
+              }
+              return prevMessages;
+            });
+          }
+          
+          // Clean up the streaming state regardless of the result
+          if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+            eventSourceRef.current = null;
+          }
+          streamingRef.current = false;
+          isProcessingRef.current = false;
+          setIsTyping(false);
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          console.error('Error skipping typing animation:', error);
+          
+          // Even on error, we should stop the streaming to improve UX
+          if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+            eventSourceRef.current = null;
+          }
+          
+          // Keep any partial content we've received so far
+          streamingRef.current = false;
+          isProcessingRef.current = false;
+          setIsTyping(false);
+        });
+    } catch (error) {
+      // Fallback approach - just stop typing but keep partial content
+      console.error('Error in skip typing:', error);
+      
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      streamingRef.current = false;
+      isProcessingRef.current = false;
+      setIsTyping(false);
+    }
+  }, [userId, activePersonality, typingMessageId, messages, setMessages]);
+  
   return {
     messages,
     inputMessage,
@@ -596,5 +807,6 @@ export function useAssistantChat({
     setMessages,
     loadThread,
     sendMessage,
+    skipTypingAnimation
   };
 } 
