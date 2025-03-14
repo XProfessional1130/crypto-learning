@@ -449,6 +449,16 @@ export default function Chat() {
     setSelectorKey(prev => prev + 1);
   }, [activePersonality]);
 
+  // Add a useEffect to update selectorKey when fullscreen mode is toggled
+  useEffect(() => {
+    if (isFullScreen) {
+      // Small delay to ensure DOM elements are rendered before measuring
+      setTimeout(() => {
+        setSelectorKey(prev => prev + 1);
+      }, 100);
+    }
+  }, [isFullScreen]);
+
   // Use useLayoutEffect to ensure measurements are taken before render
   useLayoutEffect(() => {
     // Small delay to ensure DOM is fully rendered
@@ -930,22 +940,21 @@ export default function Chat() {
                   {/* Sliding background indicator in fullscreen */}
                   <motion.div 
                     className="absolute rounded-full bg-brand-primary/30 backdrop-blur-md border border-brand-primary/40 shadow-[0_0_8px_rgba(77,181,176,0.3)]"
-                    initial={{
-                      x: activePersonality === 'tobo' ? 0 : 140, // Approximate initial position
-                      width: 140, // Approximate initial width
-                      height: '100%',
-                      top: '0%',
-                    }}
-                    animate={{
-                      x: activePersonality === 'tobo' ? 0 : fullscreenSecondToggleRef.current ? fullscreenSecondToggleRef.current.offsetLeft - (fullscreenFirstToggleRef.current?.offsetLeft || 0) : 0,
+                    layout
+                    style={{
                       width: activePersonality === 'tobo' 
-                        ? fullscreenFirstToggleRef.current?.offsetWidth || 0
-                        : fullscreenSecondToggleRef.current?.offsetWidth || 0,
+                        ? fullscreenFirstToggleRef.current?.offsetWidth || 140
+                        : fullscreenSecondToggleRef.current?.offsetWidth || 140,
                       height: '100%',
-                      top: '0%',
+                      left: activePersonality === 'tobo' 
+                        ? 0 
+                        : fullscreenSecondToggleRef.current?.offsetLeft || 140
                     }}
-                    transition={{ type: "spring", stiffness: 400, damping: 28 }}
-                    key={`fullscreen-selector-${selectorKey}`}
+                    transition={{ 
+                      type: "tween", 
+                      duration: 0.3,
+                      ease: "easeOut"
+                    }}
                   />
                   
                   {/* Tobo Button */}
