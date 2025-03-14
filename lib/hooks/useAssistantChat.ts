@@ -338,26 +338,17 @@ export function useAssistantChat({
               // Track if this is the last chunk
               isDone = data.done;
               
-              // For smoother character-by-character typing, update on every character
-              // for short messages, but throttle slightly for longer ones
-              const messageLength = partialContent.length;
-              const shouldUpdateNow = isDone || 
-                                     data.content.includes('\n') || 
-                                     messageLength < 200 || // Update immediately for shorter messages
-                                     data.content.length > 3 || // Update on larger chunks
-                                     messageLength % 5 === 0; // For longer messages, update every 5 chars
-              
-              if (shouldUpdateNow) {
-                // Update the message with the current content
-                setMessages(prevMessages => {
-                  return prevMessages.map(msg => {
-                    if (msg.id === typingMsgId) {
-                      return { ...msg, content: partialContent };
-                    }
-                    return msg;
-                  });
+              // For truly character-by-character typing, update immediately for every character
+              // This ensures each character appears the moment it's received, creating a fluid typing effect
+              // ALWAYS update immediately to create a natural typing flow, performance is fine for character-by-character
+              setMessages(prevMessages => {
+                return prevMessages.map(msg => {
+                  if (msg.id === typingMsgId) {
+                    return { ...msg, content: partialContent };
+                  }
+                  return msg;
                 });
-              }
+              });
               
               // Only clear typing state when we're completely done
               if (isDone) {

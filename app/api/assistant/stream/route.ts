@@ -317,14 +317,14 @@ export async function GET(request: Request) {
             
             // Stream the content in larger chunks for better performance
             let currentIndex = 0;
-            // Use single character chunks for smoother letter-by-letter animation
-            const chunkSize = 1; // Exactly 1 character per chunk for smooth letter-by-letter typing
+            // Always use single character chunks for smooth typing
+            const chunkSize = 1;
             
             // Calculate approximate word boundaries for more natural streaming
             const totalLength = fullMessage.length;
             
             // For very short messages, just send it all at once
-            if (totalLength < 30) {
+            if (totalLength < 20) {  // Reduced from 30
               safeEnqueue(
                 new TextEncoder().encode(`data: ${JSON.stringify({
                   status: 'streaming',
@@ -333,71 +333,94 @@ export async function GET(request: Request) {
                 })}\n\n`)
               );
             } else {
-              // Calculate typing delay based on message length for consistent speed
-              // Use constant timing for smoother appearance
-              const baseDelayMs = 30; // Keep the 30ms base delay for consistent speed
+              // Typing speed calculations with natural variation
+              const getTypeSpeed = (): number => {
+                // Base delay with slight randomness for human-like variation
+                // Average human typing speed is around 40-60 words per minute
+                // At ~5 chars per word, that's 200-300 chars per minute
+                // Which works out to ~25-35ms per character
+                const baseSpeeds = [25, 27, 28, 30, 32]; // Slightly varied base speeds
+                const baseDelay = baseSpeeds[Math.floor(Math.random() * baseSpeeds.length)];
+                
+                // Add tiny random variations (-5ms to +5ms) to make it look less mechanical
+                return baseDelay + (Math.random() * 8 - 4); 
+              };
               
-              // Function to determine if we should pause longer at punctuation
-              const shouldPauseAtPosition = (position: number): number => {
+              // Function for natural pauses at punctuation and word boundaries
+              const getPauseTime = (position: number): number => {
                 if (position >= fullMessage.length) return 0;
                 
-                // More subtle pauses for smoother appearance
                 const char = fullMessage[position];
-                if (char === '.' || char === '!' || char === '?') {
-                  // End of sentence pause - reduced slightly
-                  return 80; // Reduced from 100ms for smoother flow
-                } else if (char === ',') {
-                  // Comma pause - very subtle
-                  return 40; // Reduced from 50ms for smoother flow
-                } else if (char === '\n') {
-                  // New line pause
-                  return 60; // Reduced from 80ms for smoother flow
+                const nextChar = position < fullMessage.length - 1 ? fullMessage[position + 1] : '';
+                
+                // Longer pauses at sentence endings
+                if ((char === '.' || char === '!' || char === '?') && (nextChar === ' ' || nextChar === '\n')) {
+                  // Natural sentence ending pause (70-100ms)
+                  return 70 + Math.floor(Math.random() * 30);
+                } 
+                // Medium pauses at punctuation
+                else if (char === ',' || char === ';' || char === ':') {
+                  // Brief pause (30-50ms)
+                  return 30 + Math.floor(Math.random() * 20);
+                } 
+                // Short pauses at natural word boundaries
+                else if (char === ' ') {
+                  // Very brief pause between words (10-20ms)
+                  return 10 + Math.floor(Math.random() * 10);
+                }
+                // Extra pauses at paragraph breaks
+                else if (char === '\n') {
+                  // Paragraph break (100-150ms)
+                  return 100 + Math.floor(Math.random() * 50);
                 }
                 return 0;
               };
               
-              // To prevent performance issues with very large messages, we'll batch multiple characters 
-              // into a single update when the message is large
-              const useBatchUpdates = totalLength > 1000;
-              let batchContent = '';
-              const batchInterval = 12; // Update UI every 12 chars for very long messages
+              // For performance optimization on very long messages
+              const batchSize = totalLength > 1000 ? 3 : 1;  // Use micro-batches for very long messages
+              let batchedChars = '';
               
-              // Stream characters one by one
+              // Stream characters with variable timing for natural effect
               while (currentIndex < totalLength && !isControllerClosed) {
+                // Get next character
                 const end = Math.min(currentIndex + chunkSize, totalLength);
-                const chunk = fullMessage.substring(currentIndex, end);
+                const char = fullMessage.substring(currentIndex, end);
                 
-                if (useBatchUpdates) {
-                  // For long messages, accumulate characters and send in small batches
-                  batchContent += chunk;
-                  if (batchContent.length >= batchInterval || end === totalLength) {
+                // For very long messages, batch characters but keep it small
+                if (totalLength > 1000) {
+                  batchedChars += char;
+                  
+                  if (batchedChars.length >= batchSize || end === totalLength) {
                     safeEnqueue(
                       new TextEncoder().encode(`data: ${JSON.stringify({
                         status: 'streaming',
-                        content: batchContent,
+                        content: batchedChars,
                         done: end === totalLength
                       })}\n\n`)
                     );
-                    batchContent = '';
+                    batchedChars = '';
                   }
                 } else {
-                  // For shorter messages, send each character for smooth animation
+                  // For normal messages, send each character individually
                   safeEnqueue(
                     new TextEncoder().encode(`data: ${JSON.stringify({
                       status: 'streaming',
-                      content: chunk,
+                      content: char,
                       done: end === totalLength
                     })}\n\n`)
                   );
                 }
                 
-                // Determine if we should add an extra pause at this position
-                const extraPauseMs = shouldPauseAtPosition(currentIndex);
-                
+                // Move to next character
                 currentIndex = end;
                 
-                // Wait the calculated amount of time before the next character
-                await new Promise(resolve => setTimeout(resolve, baseDelayMs + extraPauseMs));
+                // Calculate natural delays with human-like variation
+                const typeSpeed = getTypeSpeed();
+                const pauseTime = getPauseTime(currentIndex - 1);
+                const totalDelay = typeSpeed + pauseTime;
+                
+                // Wait variable time before next character for natural feel
+                await new Promise(resolve => setTimeout(resolve, totalDelay));
               }
             }
           }
