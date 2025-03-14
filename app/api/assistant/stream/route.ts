@@ -95,6 +95,9 @@ export async function GET(request: Request) {
           }
         };
 
+        // Add a tracking variable for how much content we've already sent
+        let alreadySentChars = 0;
+
         // Send initial connection established message IMMEDIATELY
         safeEnqueue(
           new TextEncoder().encode(`data: ${JSON.stringify({ status: 'connected' })}\n\n`)
@@ -172,6 +175,9 @@ export async function GET(request: Request) {
                         done: false
                       })}\n\n`)
                     );
+                    
+                    // Track how many characters we've already sent to avoid duplication
+                    alreadySentChars = previewLength;
                     
                     // Update full message but don't send the rest yet
                     fullMessage = contentPart.text.value;
@@ -251,10 +257,13 @@ export async function GET(request: Request) {
         if (assistantMessage.content && assistantMessage.content.length > 0 && !isControllerClosed) {
           const contentPart = assistantMessage.content[0];
           if (contentPart.type === 'text') {
+            // Get the full message from the assistant
             fullMessage = contentPart.text.value;
             
             // Stream the content in larger chunks for better performance
-            let currentIndex = 0;
+            // Start from the position after what we've already sent to avoid duplication
+            let currentIndex = alreadySentChars;
+            
             // Always use single character chunks for smooth typing
             const chunkSize = 1;
             
