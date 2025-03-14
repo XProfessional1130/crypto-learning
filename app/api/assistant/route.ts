@@ -4,9 +4,11 @@ import { AssistantChatRequest, ThreadInfo } from '@/types/ai';
 import { getAssistantId, createThread, addMessageToThread } from '@/lib/services/openai-assistant';
 import { saveChatMessage, getRecentConversations, getChatByThread } from '@/lib/services/chat-history';
 
-// Initialize OpenAI client
+// Initialize OpenAI client with optimized settings
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  maxRetries: 1, // Reduce retries for faster error detection
+  timeout: 15000, // 15 second timeout
 });
 
 // Store thread IDs for users
@@ -105,15 +107,10 @@ export async function POST(request: Request) {
       };
     }
     
-    // Start parallel operations
-    const operations = [];
-    
-    // 1. Add message to thread (don't wait for this to complete)
+    // Add message to thread first - but don't await it
     const addMessagePromise = addMessageToThread(currentThreadId, message);
-    operations.push(addMessagePromise);
     
-    // 2. Start creating a run immediately - this is what causes most of the delay
-    // We'll start this right away but won't wait for it to complete before returning
+    // Start creating a run immediately
     const runPromise = openai.beta.threads.runs.create(
       currentThreadId,
       {
@@ -121,7 +118,7 @@ export async function POST(request: Request) {
       }
     );
     
-    // 3. Save user message to database (low priority, don't block on this)
+    // Save user message to database (in background)
     const saveMessagePromise = saveChatMessage({
       user_id: userId,
       role: 'user',
@@ -130,19 +127,44 @@ export async function POST(request: Request) {
       assistant_id: assistantId,
       created_at: new Date().toISOString(),
     });
-    operations.push(saveMessagePromise);
     
-    // IMPORTANT: Return response immediately with threadId and a placeholder runId
-    // This allows the client to start setting up streaming connection right away
-    // We'll resolve the actual runId through the streaming connection
+    // Set a timeout to avoid waiting too long for the runId
+    let runId: string;
+    try {
+      // Try to get the runId with a timeout
+      const runPromiseWithTimeout = Promise.race([
+        runPromise,
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Run creation timed out')), 3000)
+        )
+      ]);
+      
+      // Wait for the run to be created, but with a timeout
+      const run = await runPromiseWithTimeout as any;
+      runId = run.id;
+    } catch (timeoutError) {
+      console.log('Run creation timed out, returning temporary ID');
+      // Generate a temporary ID and initiate background processing
+      runId = `temp-${Date.now()}`;
+      
+      // Continue run creation in the background
+      runPromise.then(run => {
+        console.log(`Run created in background: ${run.id} (replacing temp ${runId})`);
+        // The client will reconnect when it doesn't find the temp ID
+      }).catch(error => {
+        console.error('Background run creation failed:', error);
+      });
+    }
+    
+    // Return response immediately with threadId and runId
+    // Don't wait for all operations to complete
     return NextResponse.json({ 
       status: 'processing', 
       threadId: currentThreadId,
-      runId: await runPromise.then(run => run.id)
+      runId
     });
     
-    // Note: We don't wait for operations to complete before returning
-    // They'll continue running in the background
+    // Background operations will continue running
     
   } catch (error: any) {
     console.error('Error in assistant API:', error);
