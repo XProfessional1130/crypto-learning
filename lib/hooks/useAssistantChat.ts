@@ -563,7 +563,6 @@ export function useAssistantChat({
         onSend();
       }
       
-      // Fire API request immediately without the delay
       // Increment the request ID
       pollRequestIdRef.current += 1;
       const currentRequestId = pollRequestIdRef.current;
@@ -574,7 +573,24 @@ export function useAssistantChat({
         return;
       }
       
-      // Start API request immediately
+      // Set a timeout to show "thinking" dots if API call takes too long
+      // IMPORTANT: Use the captured typingId, NOT the typingMessageId state
+      // This ensures we only update the current typing message, not any previous ones
+      const currentTypingId = typingId;
+      const thinkingIndicatorTimeout = setTimeout(() => {
+        if (isProcessingRef.current) {
+          // Update the typing message to show thinking dots
+          setMessages(prevMessages => {
+            return prevMessages.map(msg => {
+              if (msg.id === currentTypingId) {
+                return {...msg, content: '...'};
+              }
+              return msg;
+            });
+          });
+        }
+      }, 1000); // Show thinking indicator after 1 second
+      
       try {
         // Prepare the request body
         const requestBody = {
@@ -586,7 +602,7 @@ export function useAssistantChat({
         
         // Submit message to API with a timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout (reduced from 30s)
         
         const response = await fetch('/api/assistant', {
           method: 'POST',
@@ -598,6 +614,7 @@ export function useAssistantChat({
         });
         
         clearTimeout(timeoutId);
+        clearTimeout(thinkingIndicatorTimeout); // Clear the thinking dots timeout
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -616,9 +633,67 @@ export function useAssistantChat({
         // Now set streaming flag - we're transitioning from processing to streaming
         streamingRef.current = true;
         
-        // Setup streaming connection
-        setupStreamingConnection(data.threadId, data.runId, typingId);
+        // Check if we got a temporary runId (starts with 'temp-')
+        if (data.runId.startsWith('temp-')) {
+          console.log('Received temporary runId, waiting for real one to be available');
+          
+          // Set a retry mechanism for temporary runIds
+          let retryCount = 0;
+          const maxRetries = 10;
+          const retryDelay = 500; // 500ms between retries
+          
+          const checkForRealRunId = async () => {
+            try {
+              // Check status endpoint to see if a real runId is available
+              const statusResponse = await fetch(`/api/assistant/status?threadId=${data.threadId}&runId=${data.runId}&userId=${userId}&personality=${activePersonality}`);
+              
+              // If status returns 404, the temp runId wasn't found, so try a different endpoint
+              if (statusResponse.status === 404 || statusResponse.status === 400) {
+                // Try to get the latest run for this thread
+                const runsResponse = await fetch(`/api/assistant/runs?threadId=${data.threadId}&userId=${userId}`);
+                if (runsResponse.ok) {
+                  const runsData = await runsResponse.json();
+                  if (runsData.runs && runsData.runs.length > 0) {
+                    // Use the most recent run
+                    const realRunId = runsData.runs[0].id;
+                    console.log(`Found real runId ${realRunId} to replace temp ${data.runId}`);
+                    // Setup streaming with the real runId
+                    setupStreamingConnection(data.threadId, realRunId, currentTypingId);
+                    return true;
+                  }
+                }
+              }
+              
+              // If we've reached max retries, fall back to polling
+              if (++retryCount >= maxRetries) {
+                console.log(`Max retries (${maxRetries}) reached, falling back to polling`);
+                return false;
+              }
+              
+              // Wait before trying again
+              await new Promise(resolve => setTimeout(resolve, retryDelay));
+              return await checkForRealRunId();
+            } catch (error) {
+              console.warn('Error checking for real runId:', error);
+              if (++retryCount >= maxRetries) return false;
+              await new Promise(resolve => setTimeout(resolve, retryDelay));
+              return await checkForRealRunId();
+            }
+          };
+          
+          // Start checking for a real runId
+          const foundRealId = await checkForRealRunId();
+          if (!foundRealId) {
+            // Fall back to standard polling if we couldn't find a real runId
+            setupStreamingConnection(data.threadId, data.runId, currentTypingId);
+          }
+        } else {
+          // Normal case - we got a real runId right away
+          setupStreamingConnection(data.threadId, data.runId, currentTypingId);
+        }
       } catch (fetchError) {
+        clearTimeout(thinkingIndicatorTimeout); // Clear the thinking dots timeout
+        
         // Handle API errors or timeouts
         console.error('Error in API call:', fetchError);
         
@@ -674,7 +749,7 @@ export function useAssistantChat({
         onError(error instanceof Error ? error : new Error(String(error)));
       }
     }
-  }, [activePersonality, isTyping, onError, onResponse, onSend, typingMessageId, userId, setupStreamingConnection]);
+  }, [activePersonality, isTyping, onError, onSend, typingMessageId, userId, setupStreamingConnection]);
   
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInputMessage(e.target.value);
@@ -790,7 +865,7 @@ export function useAssistantChat({
     isTyping,
     activePersonality,
     threadId: threadIdRef.current,
-    typingMessageId,
+    typingMessageId: typingMessageId,
     handleInputChange,
     handleSubmit,
     switchPersonality,
