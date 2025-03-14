@@ -166,15 +166,26 @@ export async function GET(request: Request) {
         let processingStartedAt = Date.now();
         const maxProcessingTime = 45000; // 45 seconds max to allow for other operations within the 60s limit
         
-        // Use shorter first polling interval for better responsiveness
-        const initialPollingInterval = 500; // 500ms initial poll
-        const subsequentPollingInterval = 1000; // 1000ms for following polls
+        // Use shorter polling intervals for better responsiveness
+        const initialPollingInterval = 300; // 300ms initial poll (was 500ms)
+        const subsequentPollingInterval = 800; // 800ms for following polls (was 1000ms)
+        
+        // Send another processing message to keep the UI responsive
+        safeEnqueue(
+          new TextEncoder().encode(`data: ${JSON.stringify({ 
+            status: 'processing',
+            message: 'Thinking...'
+          })}\n\n`)
+        );
         
         // Wait for first poll (shorter interval)
         if (!completed && !isControllerClosed) {
           await new Promise(resolve => setTimeout(resolve, initialPollingInterval));
         }
 
+        // Add early content streaming
+        let earlyStreamAttempt = false;
+        
         // Poll until completion or timeout
         while (!completed && Date.now() - processingStartedAt < maxProcessingTime && !isControllerClosed) {
           // Polling interval (longer for subsequent polls)
@@ -206,6 +217,38 @@ export async function GET(request: Request) {
             safeEnqueue(
               new TextEncoder().encode(`data: ${JSON.stringify({ status: currentStatus.status })}\n\n`)
             );
+            
+            // After a few seconds, try to get early messages even if the run isn't complete
+            if (!earlyStreamAttempt && Date.now() - processingStartedAt > 3000) {
+              earlyStreamAttempt = true;
+              
+              try {
+                // Check if there are any early messages we can start streaming
+                const earlyMessages = await openai.beta.threads.messages.list(threadId, { order: 'desc', limit: 1 });
+                const latestMessage = earlyMessages.data[0];
+                
+                // If we have a fresh assistant message, start streaming it early
+                if (latestMessage && latestMessage.role === 'assistant' && latestMessage.content && latestMessage.content.length > 0) {
+                  const contentPart = latestMessage.content[0];
+                  if (contentPart.type === 'text' && contentPart.text.value.trim().length > 0) {
+                    // Send the first part as an early response to improve perceived latency
+                    safeEnqueue(
+                      new TextEncoder().encode(`data: ${JSON.stringify({
+                        status: 'streaming',
+                        content: contentPart.text.value,
+                        done: false
+                      })}\n\n`)
+                    );
+                    
+                    // Update full message
+                    fullMessage = contentPart.text.value;
+                  }
+                }
+              } catch (earlyError) {
+                // Just log and continue if early streaming fails
+                console.warn('Early streaming attempt failed:', earlyError);
+              }
+            }
           } catch (error: any) {
             console.error('Error during status polling:', error);
             
@@ -218,7 +261,7 @@ export async function GET(request: Request) {
             );
             
             // Wait a little longer before next attempt
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 1500));
           }
         }
 
@@ -274,8 +317,8 @@ export async function GET(request: Request) {
             
             // Stream the content in larger chunks for better performance
             let currentIndex = 0;
-            // Use larger chunks for faster rendering while maintaining typing appearance
-            const chunkSize = 2; // Reduced to 2 characters per chunk for more natural feel
+            // Use single character chunks for smoother letter-by-letter animation
+            const chunkSize = 1; // Exactly 1 character per chunk for smooth letter-by-letter typing
             
             // Calculate approximate word boundaries for more natural streaming
             const totalLength = fullMessage.length;
@@ -290,48 +333,70 @@ export async function GET(request: Request) {
                 })}\n\n`)
               );
             } else {
-              // Calculate typing delay based on message length to approximate 2x reading speed
-              // Average reading speed is ~250 wpm, or ~1000 chars/minute
-              // For 2x reading speed, we want ~30-35ms per character
-              const baseDelayMs = 30; // Base delay of 30ms per character (for 2x reading speed)
+              // Calculate typing delay based on message length for consistent speed
+              // Use constant timing for smoother appearance
+              const baseDelayMs = 30; // Keep the 30ms base delay for consistent speed
               
               // Function to determine if we should pause longer at punctuation
               const shouldPauseAtPosition = (position: number): number => {
                 if (position >= fullMessage.length) return 0;
                 
-                // Add natural pauses at sentence endings and commas
+                // More subtle pauses for smoother appearance
                 const char = fullMessage[position];
                 if (char === '.' || char === '!' || char === '?') {
-                  // End of sentence pause
-                  return 100; // Add 100ms at end of sentences
+                  // End of sentence pause - reduced slightly
+                  return 80; // Reduced from 100ms for smoother flow
                 } else if (char === ',') {
-                  // Comma pause
-                  return 50; // Add 50ms at commas
+                  // Comma pause - very subtle
+                  return 40; // Reduced from 50ms for smoother flow
                 } else if (char === '\n') {
                   // New line pause
-                  return 80; // Add 80ms at new lines
+                  return 60; // Reduced from 80ms for smoother flow
                 }
                 return 0;
               };
               
+              // To prevent performance issues with very large messages, we'll batch multiple characters 
+              // into a single update when the message is large
+              const useBatchUpdates = totalLength > 1000;
+              let batchContent = '';
+              const batchInterval = 12; // Update UI every 12 chars for very long messages
+              
+              // Stream characters one by one
               while (currentIndex < totalLength && !isControllerClosed) {
                 const end = Math.min(currentIndex + chunkSize, totalLength);
                 const chunk = fullMessage.substring(currentIndex, end);
                 
-                safeEnqueue(
-                  new TextEncoder().encode(`data: ${JSON.stringify({
-                    status: 'streaming',
-                    content: chunk,
-                    done: end === totalLength
-                  })}\n\n`)
-                );
+                if (useBatchUpdates) {
+                  // For long messages, accumulate characters and send in small batches
+                  batchContent += chunk;
+                  if (batchContent.length >= batchInterval || end === totalLength) {
+                    safeEnqueue(
+                      new TextEncoder().encode(`data: ${JSON.stringify({
+                        status: 'streaming',
+                        content: batchContent,
+                        done: end === totalLength
+                      })}\n\n`)
+                    );
+                    batchContent = '';
+                  }
+                } else {
+                  // For shorter messages, send each character for smooth animation
+                  safeEnqueue(
+                    new TextEncoder().encode(`data: ${JSON.stringify({
+                      status: 'streaming',
+                      content: chunk,
+                      done: end === totalLength
+                    })}\n\n`)
+                  );
+                }
                 
                 // Determine if we should add an extra pause at this position
                 const extraPauseMs = shouldPauseAtPosition(currentIndex);
                 
                 currentIndex = end;
                 
-                // Wait the calculated amount of time before the next chunk
+                // Wait the calculated amount of time before the next character
                 await new Promise(resolve => setTimeout(resolve, baseDelayMs + extraPauseMs));
               }
             }

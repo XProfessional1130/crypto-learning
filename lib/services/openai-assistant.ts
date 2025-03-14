@@ -1,16 +1,21 @@
 import OpenAI from 'openai';
 import { AIPersonality } from '@/types/ai';
 
-// Initialize OpenAI client
+// Initialize OpenAI client with optimized fetch options
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  maxRetries: 2, // Reduce max retries to avoid long waits
+  timeout: 15000, // 15 second timeout
 });
 
-// Map personality types to assistant IDs from environment variables
+// Cache assistant IDs to avoid repeated environment variable lookups
 const ASSISTANT_IDS: Record<AIPersonality, string> = {
   tobo: process.env.OPENAI_ASSISTANT_ID_TOBO || '',
   heido: process.env.OPENAI_ASSISTANT_ID_HEIDO || '',
 };
+
+// Create a cache for thread creation to avoid redundant calls
+const threadCache = new Map<string, string>();
 
 /**
  * Get the OpenAI Assistant ID for the given personality
@@ -62,7 +67,7 @@ export async function addMessageToThread(threadId: string, content: string) {
  */
 export async function runAssistantOnThread(threadId: string, assistantId: string) {
   try {
-    // Create a run
+    // Create a run with optimized parameters
     const run = await openai.beta.threads.runs.create(
       threadId,
       {

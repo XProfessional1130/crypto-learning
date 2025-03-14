@@ -338,12 +338,14 @@ export function useAssistantChat({
               // Track if this is the last chunk
               isDone = data.done;
               
-              // Don't update the UI for each tiny chunk, which can cause performance issues
-              // Instead, use a throttled update approach for smoother rendering
-              // For slower typing, we can update more frequently
-              const shouldUpdateNow = isDone || data.content.includes('\n') || 
-                                     partialContent.length % 10 === 0 || // Update every 10 chars instead of 20 
-                                     data.content.length > 3;           // Update on larger chunks
+              // For smoother character-by-character typing, update on every character
+              // for short messages, but throttle slightly for longer ones
+              const messageLength = partialContent.length;
+              const shouldUpdateNow = isDone || 
+                                     data.content.includes('\n') || 
+                                     messageLength < 200 || // Update immediately for shorter messages
+                                     data.content.length > 3 || // Update on larger chunks
+                                     messageLength % 5 === 0; // For longer messages, update every 5 chars
               
               if (shouldUpdateNow) {
                 // Update the message with the current content
@@ -520,7 +522,6 @@ export function useAssistantChat({
     
     // Set processing flag immediately to prevent race conditions
     isProcessingRef.current = true;
-    streamingRef.current = true;
     
     try {
       // Always clear any existing interval first
@@ -543,22 +544,14 @@ export function useAssistantChat({
         created_at: new Date().toISOString(),
       };
       
-      setMessages(prevMessages => [...prevMessages, userMessage]);
-      setInputMessage('');
-      setIsTyping(true);
-      
-      // Call onSend callback if provided
-      if (onSend) {
-        onSend();
-      }
-      
       // Create a new typing message from the assistant
       const typingId = `typing-${Date.now()}`;
       setTypingMessageId(typingId);
       
-      // Add a typing indicator with empty content to show just the cursor immediately
+      // Update UI state immediately to give instant feedback
       setMessages(prevMessages => [
-        ...prevMessages,
+        ...prevMessages, 
+        userMessage,
         {
           id: typingId,
           user_id: 'system',
@@ -568,95 +561,99 @@ export function useAssistantChat({
           created_at: new Date().toISOString(),
         }
       ]);
-
-      // Use a smaller timeout to improve responsiveness
-      setTimeout(async () => {
-        try {
-          // Increment the request ID
-          pollRequestIdRef.current += 1;
-          const currentRequestId = pollRequestIdRef.current;
-          
-          // Double-check that we're still in processing state (user didn't cancel)
-          if (!isProcessingRef.current) {
-            console.log('Request was cancelled before API call');
-            return;
-          }
-          
-          // Prepare the request body
-          const requestBody = {
-            message: content,
-            personality: activePersonality,
-            userId,
-            threadId: threadIdRef.current || undefined,
-          };
-          
-          // Submit message to API with a timeout
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout
-          
-          try {
-            const response = await fetch('/api/assistant', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(requestBody),
-              signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            
-            if (!response.ok) {
-              const errorText = await response.text();
-              throw new Error(`Failed to send message: ${errorText}`);
-            }
-            
-            const data = await response.json();
-            
-            if (!data.threadId || !data.runId) {
-              throw new Error('Invalid response from server: missing threadId or runId');
-            }
-            
-            // Update thread ID
-            threadIdRef.current = data.threadId;
-            
-            // Setup streaming connection
-            setupStreamingConnection(data.threadId, data.runId, typingId);
-          } catch (fetchError) {
-            // Handle API errors or timeouts
-            clearTimeout(timeoutId);
-            throw fetchError;
-          }
-        } catch (error) {
-          console.error('Error in API call:', error);
-          
-          // Clean up the typing message
-          if (typingMessageId) {
-            setMessages(prevMessages => {
-              // Instead of removing, change to an error message
-              return prevMessages.map(msg => {
-                if (msg.id === typingMessageId) {
-                  return {
-                    ...msg,
-                    content: `Error: ${error instanceof Error ? error.message : 'Failed to get response'}. Please try again.`
-                  };
-                }
-                return msg;
-              });
-            });
-          }
-          
-          // Reset all state
-          setIsTyping(false);
-          isProcessingRef.current = false;
-          streamingRef.current = false;
-          
-          if (onError) {
-            onError(error instanceof Error ? error : new Error(String(error)));
-          }
-        }
-      }, 50); // Smaller delay for better responsiveness
       
+      setInputMessage('');
+      setIsTyping(true);
+      
+      // Call onSend callback if provided
+      if (onSend) {
+        onSend();
+      }
+      
+      // Fire API request immediately without the delay
+      // Increment the request ID
+      pollRequestIdRef.current += 1;
+      const currentRequestId = pollRequestIdRef.current;
+      
+      // Double-check that we're still in processing state (user didn't cancel)
+      if (!isProcessingRef.current) {
+        console.log('Request was cancelled before API call');
+        return;
+      }
+      
+      // Start API request immediately
+      try {
+        // Prepare the request body
+        const requestBody = {
+          message: content,
+          personality: activePersonality,
+          userId,
+          threadId: threadIdRef.current || undefined,
+        };
+        
+        // Submit message to API with a timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout
+        
+        const response = await fetch('/api/assistant', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to send message: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.threadId || !data.runId) {
+          throw new Error('Invalid response from server: missing threadId or runId');
+        }
+        
+        // Update thread ID
+        threadIdRef.current = data.threadId;
+        
+        // Now set streaming flag - we're transitioning from processing to streaming
+        streamingRef.current = true;
+        
+        // Setup streaming connection
+        setupStreamingConnection(data.threadId, data.runId, typingId);
+      } catch (fetchError) {
+        // Handle API errors or timeouts
+        console.error('Error in API call:', fetchError);
+        
+        // Clean up the typing message
+        if (typingMessageId) {
+          setMessages(prevMessages => {
+            // Instead of removing, change to an error message
+            return prevMessages.map(msg => {
+              if (msg.id === typingMessageId) {
+                return {
+                  ...msg,
+                  content: `Error: ${fetchError instanceof Error ? fetchError.message : 'Failed to get response'}. Please try again.`
+                };
+              }
+              return msg;
+            });
+          });
+        }
+        
+        // Reset all state
+        setIsTyping(false);
+        isProcessingRef.current = false;
+        streamingRef.current = false;
+        
+        if (onError) {
+          onError(fetchError instanceof Error ? fetchError : new Error(String(fetchError)));
+        }
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       

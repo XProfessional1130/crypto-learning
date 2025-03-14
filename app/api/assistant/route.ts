@@ -105,32 +105,39 @@ export async function POST(request: Request) {
       };
     }
     
-    // Start adding message to thread (don't await yet)
-    const messagePromise = addMessageToThread(currentThreadId, message);
+    // Start parallel operations
+    const operations = [];
     
-    // Start saving the user message (don't await yet)
-    const savePromise = saveChatMessage({
+    // 1. Add message to thread
+    operations.push(addMessageToThread(currentThreadId, message));
+    
+    // 2. Start creating a run immediately (don't await yet)
+    // This is the slowest operation, so start it early
+    const runPromise = openai.beta.threads.runs.create(
+      currentThreadId,
+      {
+        assistant_id: assistantId,
+      }
+    );
+    operations.push(runPromise);
+    
+    // 3. Save user message to database (low priority)
+    operations.push(saveChatMessage({
       user_id: userId,
       role: 'user',
       content: message,
       thread_id: currentThreadId,
       assistant_id: assistantId,
       created_at: new Date().toISOString(),
-    });
+    }));
     
-    // Await both operations in parallel
-    await Promise.all([messagePromise, savePromise]);
+    // Wait for all operations to complete
+    const results = await Promise.all(operations);
     
-    // Create a run to process the thread
-    const run = await openai.beta.threads.runs.create(
-      currentThreadId,
-      {
-        assistant_id: assistantId,
-      }
-    );
+    // The run is the second item in our results array
+    const run = results[1];
     
-    // Instead of waiting for completion, return the thread and run IDs
-    // The client will poll for updates
+    // Return immediately with threadId and runId
     return NextResponse.json({ 
       status: 'processing', 
       threadId: currentThreadId,
