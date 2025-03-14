@@ -669,10 +669,10 @@ export default function Chat() {
                               message.role === 'user'
                                 ? 'max-w-[80%] glass-brand-effect text-white animate-blur-in'
                                 : message.personality === 'tobo'
-                                ? `${isStreaming && message.content === '' ? 'max-w-[40%]' : 'max-w-[80%]'} glass animate-blur-in`
-                                : `${isStreaming && message.content === '' ? 'max-w-[40%]' : 'max-w-[80%]'} glass animate-blur-in`
+                                ? `${(isStreaming && message.content === '') || message.content === '...' ? 'max-w-[15%]' : 'max-w-[80%]'} glass animate-blur-in`
+                                : `${(isStreaming && message.content === '') || message.content === '...' ? 'max-w-[15%]' : 'max-w-[80%]'} glass animate-blur-in`
                             } rounded-2xl px-4 py-3`}
-                            style={{ minWidth: isStreaming && message.content === '' ? '8rem' : '10rem' }}
+                            style={{ minWidth: (isStreaming && message.content === '') || message.content === '...' ? '5.5rem' : '10rem' }}
                           >
                             <motion.div
                               initial="hidden"
