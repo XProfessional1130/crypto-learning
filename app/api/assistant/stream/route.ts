@@ -4,9 +4,11 @@ import { getAssistantId } from '@/lib/services/openai-assistant';
 import { saveChatMessage } from '@/lib/services/chat-history';
 import { AIPersonality } from '@/types/ai';
 
-// Initialize OpenAI client
+// Initialize OpenAI client with optimized client settings
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  maxRetries: 1, // Reduce retries for faster error detection
+  timeout: 10000, // 10 second timeout to avoid long waits
 });
 
 // Set max duration to comply with Vercel hobby plan limits
@@ -93,105 +95,34 @@ export async function GET(request: Request) {
           }
         };
 
-        // Send initial connection established message
+        // Send initial connection established message IMMEDIATELY
         safeEnqueue(
           new TextEncoder().encode(`data: ${JSON.stringify({ status: 'connected' })}\n\n`)
         );
         
-        // Send a processing message immediately to improve perceived latency
-        safeEnqueue(
-          new TextEncoder().encode(`data: ${JSON.stringify({ status: 'processing' })}\n\n`)
-        );
-        
-        // Check run status immediately to see if it's already processed
-        let initialRunStatus;
-        try {
-          initialRunStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
-          
-          // If run is already completed from the start, handle it right away
-          if (initialRunStatus.status === 'completed') {
-            // Send status update
-            safeEnqueue(
-              new TextEncoder().encode(`data: ${JSON.stringify({ status: 'completed' })}\n\n`)
-            );
-            
-            // Go directly to fetch messages
-            const messages = await openai.beta.threads.messages.list(threadId, { order: 'desc', limit: 1 });
-            const assistantMessage = messages.data.find(msg => msg.role === 'assistant');
-            
-            if (assistantMessage && assistantMessage.content && assistantMessage.content.length > 0) {
-              const contentPart = assistantMessage.content[0];
-              if (contentPart.type === 'text') {
-                fullMessage = contentPart.text.value;
-                
-                // Stream the full content directly without typing effect for completed runs
-                safeEnqueue(
-                  new TextEncoder().encode(`data: ${JSON.stringify({
-                    status: 'streaming',
-                    content: fullMessage,
-                    done: true
-                  })}\n\n`)
-                );
-                
-                safeEnqueue(
-                  new TextEncoder().encode(`data: ${JSON.stringify({
-                    status: 'completed',
-                    threadId,
-                    fullContent: fullMessage
-                  })}\n\n`)
-                );
-                
-                safeClose();
-                return;
-              }
-            }
-          } else if (initialRunStatus.status === 'failed') {
-            safeEnqueue(
-              new TextEncoder().encode(`data: ${JSON.stringify({
-                status: 'failed',
-                error: initialRunStatus.last_error?.message || 'Run failed'
-              })}\n\n`)
-            );
-            safeClose();
-            return;
-          }
-        } catch (error) {
-          // Ignore error from initial check, we'll retry in polling
-          console.warn('Initial run status check failed, will retry in polling:', error);
-        }
-
-        // If run isn't completed yet, we need to start polling
-        let completed = initialRunStatus?.status === 'completed';
-        let lastFetchedMessageId = null;
-        let processingStartedAt = Date.now();
-        const maxProcessingTime = 45000; // 45 seconds max to allow for other operations within the 60s limit
-        
-        // Use shorter polling intervals for better responsiveness
-        const initialPollingInterval = 300; // 300ms initial poll (was 500ms)
-        const subsequentPollingInterval = 800; // 800ms for following polls (was 1000ms)
-        
-        // Send another processing message to keep the UI responsive
+        // Send a processing message IMMEDIATELY to improve perceived latency
         safeEnqueue(
           new TextEncoder().encode(`data: ${JSON.stringify({ 
             status: 'processing',
-            message: 'Thinking...'
+            message: 'Processing your request...'
           })}\n\n`)
         );
         
-        // Wait for first poll (shorter interval)
-        if (!completed && !isControllerClosed) {
-          await new Promise(resolve => setTimeout(resolve, initialPollingInterval));
-        }
-
-        // Add early content streaming
-        let earlyStreamAttempt = false;
+        // Use shorter polling intervals for better responsiveness
+        const initialPollingInterval = 200; // 200ms initial poll (was 300ms)
+        const subsequentPollingInterval = 600; // 600ms for following polls (was 800ms)
+        
+        // Start polling immediately
+        let completed = false;
+        let processingStartedAt = Date.now();
+        const maxProcessingTime = 45000; // 45 seconds max
+        
+        // Wait very briefly before first poll - just enough time for the UI to update
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // Poll until completion or timeout
         while (!completed && Date.now() - processingStartedAt < maxProcessingTime && !isControllerClosed) {
-          // Polling interval (longer for subsequent polls)
-          await new Promise(resolve => setTimeout(resolve, subsequentPollingInterval));
-          
-          // Retrieve run status
+          // Retrieve run status with shorter timeout
           try {
             const currentStatus = await openai.beta.threads.runs.retrieve(threadId, runId);
             
@@ -218,10 +149,8 @@ export async function GET(request: Request) {
               new TextEncoder().encode(`data: ${JSON.stringify({ status: currentStatus.status })}\n\n`)
             );
             
-            // After a few seconds, try to get early messages even if the run isn't complete
-            if (!earlyStreamAttempt && Date.now() - processingStartedAt > 3000) {
-              earlyStreamAttempt = true;
-              
+            // After just 2 seconds, try to get early messages even if the run isn't complete
+            if (Date.now() - processingStartedAt > 2000) {
               try {
                 // Check if there are any early messages we can start streaming
                 const earlyMessages = await openai.beta.threads.messages.list(threadId, { order: 'desc', limit: 1 });
@@ -242,6 +171,9 @@ export async function GET(request: Request) {
                     
                     // Update full message
                     fullMessage = contentPart.text.value;
+                    
+                    // Break out of poll loop since we have content to show
+                    break;
                   }
                 }
               } catch (earlyError) {
@@ -252,17 +184,19 @@ export async function GET(request: Request) {
           } catch (error: any) {
             console.error('Error during status polling:', error);
             
-            // Don't immediately fail - try a few more times
+            // Don't immediately fail - try again
             safeEnqueue(
               new TextEncoder().encode(`data: ${JSON.stringify({
                 status: 'polling_error',
                 error: `Error checking run status: ${error.message}. Will retry.`
               })}\n\n`)
             );
-            
-            // Wait a little longer before next attempt
-            await new Promise(resolve => setTimeout(resolve, 1500));
           }
+          
+          // Wait before next poll - use shorter interval for initial polls
+          const pollWaitTime = Date.now() - processingStartedAt < 2000 ? 
+            initialPollingInterval : subsequentPollingInterval;
+          await new Promise(resolve => setTimeout(resolve, pollWaitTime));
         }
 
         if (!completed && !isControllerClosed) {

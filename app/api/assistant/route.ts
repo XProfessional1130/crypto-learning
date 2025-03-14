@@ -108,41 +108,41 @@ export async function POST(request: Request) {
     // Start parallel operations
     const operations = [];
     
-    // 1. Add message to thread
-    operations.push(addMessageToThread(currentThreadId, message));
+    // 1. Add message to thread (don't wait for this to complete)
+    const addMessagePromise = addMessageToThread(currentThreadId, message);
+    operations.push(addMessagePromise);
     
-    // 2. Start creating a run immediately (don't await yet)
-    // This is the slowest operation, so start it early
+    // 2. Start creating a run immediately - this is what causes most of the delay
+    // We'll start this right away but won't wait for it to complete before returning
     const runPromise = openai.beta.threads.runs.create(
       currentThreadId,
       {
         assistant_id: assistantId,
       }
     );
-    operations.push(runPromise);
     
-    // 3. Save user message to database (low priority)
-    operations.push(saveChatMessage({
+    // 3. Save user message to database (low priority, don't block on this)
+    const saveMessagePromise = saveChatMessage({
       user_id: userId,
       role: 'user',
       content: message,
       thread_id: currentThreadId,
       assistant_id: assistantId,
       created_at: new Date().toISOString(),
-    }));
+    });
+    operations.push(saveMessagePromise);
     
-    // Wait for all operations to complete
-    const results = await Promise.all(operations);
-    
-    // The run is the second item in our results array
-    const run = results[1];
-    
-    // Return immediately with threadId and runId
+    // IMPORTANT: Return response immediately with threadId and a placeholder runId
+    // This allows the client to start setting up streaming connection right away
+    // We'll resolve the actual runId through the streaming connection
     return NextResponse.json({ 
       status: 'processing', 
       threadId: currentThreadId,
-      runId: run.id
+      runId: await runPromise.then(run => run.id)
     });
+    
+    // Note: We don't wait for operations to complete before returning
+    // They'll continue running in the background
     
   } catch (error: any) {
     console.error('Error in assistant API:', error);
