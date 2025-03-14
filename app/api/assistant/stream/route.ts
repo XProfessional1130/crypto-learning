@@ -160,16 +160,20 @@ export async function GET(request: Request) {
                 if (latestMessage && latestMessage.role === 'assistant' && latestMessage.content && latestMessage.content.length > 0) {
                   const contentPart = latestMessage.content[0];
                   if (contentPart.type === 'text' && contentPart.text.value.trim().length > 0) {
-                    // Send the first part as an early response to improve perceived latency
+                    // Only send the first few characters to start the typing effect
+                    // Instead of sending the whole message at once
+                    const previewLength = Math.min(5, contentPart.text.value.length);
+                    const previewContent = contentPart.text.value.substring(0, previewLength);
+                    
                     safeEnqueue(
                       new TextEncoder().encode(`data: ${JSON.stringify({
                         status: 'streaming',
-                        content: contentPart.text.value,
+                        content: previewContent,
                         done: false
                       })}\n\n`)
                     );
                     
-                    // Update full message
+                    // Update full message but don't send the rest yet
                     fullMessage = contentPart.text.value;
                     
                     // Break out of poll loop since we have content to show
@@ -259,13 +263,31 @@ export async function GET(request: Request) {
             
             // For very short messages, just send it all at once
             if (totalLength < 20) {  // Reduced from 30
-              safeEnqueue(
-                new TextEncoder().encode(`data: ${JSON.stringify({
-                  status: 'streaming',
-                  content: fullMessage,
-                  done: true
-                })}\n\n`)
-              );
+              // Instead of sending all at once, still do character-by-character typing
+              // but use a faster typing speed to keep it snappy
+              // This ensures consistent behavior across all message lengths
+              const fastTypeSpeed = () => 15 + (Math.random() * 5); // 15-20ms per character for short messages
+              
+              while (currentIndex < totalLength && !isControllerClosed) {
+                // Get next character
+                const end = Math.min(currentIndex + chunkSize, totalLength);
+                const char = fullMessage.substring(currentIndex, end);
+                
+                // Send character
+                safeEnqueue(
+                  new TextEncoder().encode(`data: ${JSON.stringify({
+                    status: 'streaming',
+                    content: char,
+                    done: end === totalLength
+                  })}\n\n`)
+                );
+                
+                // Move to next character
+                currentIndex = end;
+                
+                // Use fast typing for short messages
+                await new Promise(resolve => setTimeout(resolve, fastTypeSpeed()));
+              }
             } else {
               // Typing speed calculations with natural variation
               const getTypeSpeed = (): number => {

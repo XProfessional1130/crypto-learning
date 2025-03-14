@@ -333,24 +333,26 @@ export function useAssistantChat({
               break;
               
             case 'streaming':
-              // Add the new content chunk
-              partialContent += data.content;
-              // Track if this is the last chunk
-              isDone = data.done;
+              // Add the new content chunk to what we have so far
+              partialContent += data.content || '';
               
-              // For truly character-by-character typing, update immediately for every character
-              // This ensures each character appears the moment it's received, creating a fluid typing effect
-              // ALWAYS update immediately to create a natural typing flow, performance is fine for character-by-character
+              // Track if this is the last chunk
+              isDone = !!data.done;
+              
+              // Update UI with the cumulative content - each time we get a new chunk, 
+              // update the whole typing message with all the content received so far
               setMessages(prevMessages => {
+                // Find and replace the typing message with updated content
                 return prevMessages.map(msg => {
                   if (msg.id === typingMsgId) {
+                    // Use the cumulative content built in partialContent
                     return { ...msg, content: partialContent };
                   }
                   return msg;
                 });
               });
               
-              // Only clear typing state when we're completely done
+              // Only clear typing state when explicitly done
               if (isDone) {
                 setTimeout(() => {
                   if (eventSourceRef.current) {
@@ -359,7 +361,7 @@ export function useAssistantChat({
                   }
                   streamingRef.current = false;
                   setIsTyping(false);
-                }, 500); // Shorter delay to improve responsiveness
+                }, 300); // Shorter delay to improve responsiveness
               }
               break;
               
