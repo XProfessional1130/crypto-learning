@@ -700,7 +700,7 @@ export default function Chat() {
                                 </motion.div>
                               ) : (
                                 // For short messages
-                                <div className={styles.smoothMessage}>
+                                <div className={`${styles['message-content']} ${styles.smoothMessage}`}>
                                   {message.content === "" && isStreaming ? (
                                     <motion.span 
                                       ref={typingIndicatorRef}
