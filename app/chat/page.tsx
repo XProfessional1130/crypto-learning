@@ -683,7 +683,7 @@ export default function Chat() {
                                 // For long messages with better formatting
                                 <motion.div variants={wordAnimation} className={`${styles['message-content']} ${styles.smoothMessage}`}>
                                   {formatMessageContent(message.content)}
-                                  {isStreaming && (
+                                  {isStreaming && message.content === "" && (
                                     <motion.span 
                                       className={styles.bouncingDots}
                                       style={{ 
@@ -732,14 +732,7 @@ export default function Chat() {
                                   )}
 
                                   {isStreaming && message.content !== "" && message.content !== "..." && (
-                                    <motion.span 
-                                      ref={typingIndicatorRef}
-                                      className={styles.bouncingDots}
-                                    >
-                                      <span className={`${styles.dot} ${styles.dot1}`}></span>
-                                      <span className={`${styles.dot} ${styles.dot2}`}></span>
-                                      <span className={`${styles.dot} ${styles.dot3}`}></span>
-                                    </motion.span>
+                                    <></>
                                   )}
                                 </div>
                               )}
