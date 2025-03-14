@@ -20,6 +20,11 @@ const DataPrefetcher = dynamic(() => import('./components/DataPrefetcher'), {
   ssr: false 
 });
 
+// Dynamically import GlobalChat to prevent SSR issues
+const GlobalChat = dynamic(() => import('@/components/GlobalChat'), {
+  ssr: false
+});
+
 // Split metadata according to Next.js requirements
 export const metadata: Metadata = {
   title: "LearningCrypto Platform",
@@ -60,9 +65,13 @@ export default function RootLayout({
               <AuthTokenScript />
               <CoinDataInitializer />
               
-              {/* Background elements - more isolated now */}
+              {/* Data Prefetcher and other app components */}
+              <DataPrefetcher />
+              
+              {/* App shell with background elements */}
               <BackgroundElements />
-
+              
+              {/* Main layout */}
               <div className="min-h-screen flex flex-col relative z-0 pt-20">
                 <Navigation />
                 <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in scrollbar-custom">
@@ -70,7 +79,9 @@ export default function RootLayout({
                 </main>
                 <Footer />
               </div>
-              <DataPrefetcher />
+              
+              {/* Global Chat Component */}
+              <GlobalChat />
             </ThemeProvider>
           </AuthProvider>
         </QueryProvider>

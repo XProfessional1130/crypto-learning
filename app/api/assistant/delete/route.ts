@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { createServiceClient } from '@/lib/supabase';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -39,9 +40,20 @@ export async function DELETE(request: Request) {
     }
     
     // 2. Delete the thread from our database
-    // In a real implementation, you would have database code here to remove the thread
-    // For example:
-    // await db.thread.delete({ where: { threadId, userId } });
+    const supabase = createServiceClient();
+    const { error } = await supabase
+      .from('chat_messages')
+      .delete()
+      .eq('user_id', userId)
+      .eq('thread_id', threadId);
+      
+    if (error) {
+      console.error('Error deleting thread from database:', error);
+      return NextResponse.json(
+        { error: error.message || 'Failed to delete thread from database' },
+        { status: 500 }
+      );
+    }
     
     // 3. Return success
     return NextResponse.json({ 

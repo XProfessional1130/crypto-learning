@@ -9,25 +9,24 @@ import AuthButtons from './navigation/AuthButtons';
 import ThemeToggle from './ThemeToggle';
 import ThemeLogo from './ThemeLogo';
 import { supabase } from '@/lib/supabase';
-
-// Navigation items - moved outside component to avoid recreation on each render
-const navItems = [
-  { name: 'Home', href: '/', public: true },
-  { name: 'Dashboard', href: '/dashboard', public: false },
-  { name: 'Hub', href: '/lc-dashboard', public: false },
-  { name: 'Chat', href: '/chat', public: false },
-  { name: 'Resources', href: '/resources', public: true },
-  { name: 'Discounts', href: '/discounts', public: true },
-  { name: 'About', href: '/about', public: true },
-];
+import { useTheme } from '@/lib/theme-context';
+import { NAV_ITEMS } from '@/lib/config/navigation';
 
 export default function Navigation() {
-  // Always initialize with the same state values on both server and client
-  const { user, signOut } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const { user, loading, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
+  
+  // Filter navigation items based on authentication status
+  const navItems = NAV_ITEMS.filter(item => 
+    item.public || (user && !item.public)
+  );
+
+  // Always initialize with the same state values on both server and client
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // Mark as mounted to enable client-side behaviors
   useEffect(() => {
@@ -59,7 +58,7 @@ export default function Navigation() {
         // Only update state if scroll position crossed our threshold
         if ((currentScrollY > 20 && lastScrollY <= 20) || 
             (currentScrollY <= 20 && lastScrollY > 20)) {
-          setScrolled(isScrolled);
+          setIsScrolled(isScrolled);
         }
         
         lastScrollY = currentScrollY;
@@ -78,7 +77,7 @@ export default function Navigation() {
         cancelAnimationFrame(rafId);
       }
     };
-  }, [scrolled, mounted]);
+  }, [isScrolled, mounted]);
 
   const handleSignOut = useCallback(async () => {
     try {
@@ -103,14 +102,14 @@ export default function Navigation() {
   return (
     <nav 
       className={`fixed inset-x-0 top-0 z-40 transition-all duration-500 ${
-        scrolled 
+        isScrolled 
           ? 'backdrop-blur-xl bg-white/15 dark:bg-black/20 border-b border-gray-300/40 dark:border-white/10 shadow-lg' 
           : 'backdrop-blur-md bg-white/10 dark:bg-black/10 border-b border-gray-300/20 dark:border-transparent'
       }`}
     >
       {/* Glassmorphic effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-400/50 dark:via-white/20 to-transparent transition-opacity duration-500 ${scrolled ? 'opacity-100' : 'opacity-30'}`}></div>
+        <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-400/50 dark:via-white/20 to-transparent transition-opacity duration-500 ${isScrolled ? 'opacity-100' : 'opacity-30'}`}></div>
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-gray-400/40 dark:via-white/10 to-transparent"></div>
         
         {/* Glow spots - fixed for mobile */}

@@ -12,6 +12,19 @@ interface UseAssistantChatOptions {
   userId: string;
 }
 
+// Error handling utility
+const createErrorHandler = (
+  callback?: (error: Error) => void,
+  context: string = 'assistant operation'
+) => {
+  return (error: unknown) => {
+    console.error(`Error in ${context}:`, error);
+    if (callback) {
+      callback(error instanceof Error ? error : new Error(String(error)));
+    }
+  };
+};
+
 export function useAssistantChat({
   initialMessages = [],
   initialThreadId = null,
@@ -20,6 +33,7 @@ export function useAssistantChat({
   onSend,
   userId,
 }: UseAssistantChatOptions) {
+  // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -29,7 +43,8 @@ export function useAssistantChat({
       : 'tobo'
   );
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Refs for persistent state between renders
   const threadIdRef = useRef<string | null>(initialThreadId);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isProcessingRef = useRef<boolean>(false);
@@ -38,19 +53,17 @@ export function useAssistantChat({
   const streamingRef = useRef<boolean>(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   
-  // Reset abort controller when component unmounts
+  // Create error handler with context
+  const handleError = useCallback(createErrorHandler(onError, 'assistant chat'), [onError]);
+  
+  // Clean up resources when component unmounts
   useEffect(() => {
     return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
       }
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
-        eventSourceRef.current = null;
       }
       isProcessingRef.current = false;
       streamingRef.current = false;
@@ -60,14 +73,8 @@ export function useAssistantChat({
   // Switch personality
   const switchPersonality = useCallback((personality: AIPersonality) => {
     if (personality === activePersonality) return;
-    
     setActivePersonality(personality);
-    
-    // Reset thread ID when switching personalities
     threadIdRef.current = null;
-    
-    // We don't automatically add a welcome message here anymore
-    // The component using this hook will handle that if needed
   }, [activePersonality]);
   
   // Load a specific thread
@@ -75,7 +82,6 @@ export function useAssistantChat({
     try {
       setIsTyping(true);
       
-      // Fetch messages for this thread
       const response = await fetch(`/api/assistant?userId=${userId}&threadId=${threadId}`);
       
       if (!response.ok) {
@@ -102,7 +108,6 @@ export function useAssistantChat({
         // Update messages state
         setMessages(sortedMessages);
         
-        // Call onResponse if provided
         if (onResponse) {
           onResponse();
         }
@@ -111,70 +116,59 @@ export function useAssistantChat({
       setIsTyping(false);
     } catch (error) {
       setIsTyping(false);
-      console.error('Error loading thread:', error);
-      
-      if (onError) {
-        onError(error instanceof Error ? error : new Error(String(error)));
-      }
+      handleError(error);
     }
-  }, [userId, onResponse, onError]);
+  }, [userId, onResponse, handleError]);
   
-  // Poll for run status - modified to be more robust
+  // Poll for run status - simplified version
   const pollRunStatus = useCallback(async (threadId: string, runId: string, typingMsgId: string, requestId: number) => {
+    // Skip polling if this is an outdated request
     if (requestId !== pollRequestIdRef.current) {
-      console.log(`Skipping poll for outdated request ID ${requestId}`);
       return true;
     }
     
     try {
       const url = `/api/assistant/status?threadId=${threadId}&runId=${runId}&userId=${userId}&personality=${activePersonality}`;
-      console.log(`Polling ${url} for request ${requestId}`);
       const response = await fetch(url);
       
+      // Skip processing if this is an outdated request
       if (requestId !== pollRequestIdRef.current) {
-        console.log(`Skipping response processing for outdated request ID ${requestId}`);
         return true;
       }
       
+      // Parse and validate response
       let data;
+      const responseText = await response.text();
       try {
-        const responseText = await response.text();
-        try {
-          data = JSON.parse(responseText);
-        } catch (parseError) {
-          console.error('Failed to parse status response as JSON:', responseText);
-          throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`);
-        }
-        
-        if (!response.ok) {
-          throw new Error(data.error || `Server error: ${response.status}`);
-        }
-      } catch (error) {
-        throw error;
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`);
       }
       
+      if (!response.ok) {
+        throw new Error(data.error || `Server error: ${response.status}`);
+      }
+      
+      // Continue polling if not complete
       if (data.status !== 'completed' && data.status !== 'failed') {
-        console.log(`Run status: ${data.status}, continuing to poll`);
         return false;
       }
       
+      // Handle failure
       if (data.status === 'failed') {
-        console.error(`Run failed with error: ${data.error || 'Unknown error'}`);
         throw new Error(data.error || 'Assistant run failed');
       }
       
+      // Check if we already processed this response
       const responseKey = `${threadId}-${runId}`;
-      
       if (processedResponsesRef.current.has(responseKey)) {
-        console.log(`Already processed response for ${responseKey}, skipping duplicate`);
         return true;
       }
       
+      // Mark as processed
       processedResponsesRef.current.add(responseKey);
-      console.log(`Adding response to processed set: ${responseKey}`);
       
-      console.log(`Processing completed response with content length: ${data.content?.length || 0}`);
-      
+      // Update messages
       setMessages(prevMessages => {
         const newMessages = prevMessages.filter(msg => msg.id !== typingMsgId);
         
@@ -192,19 +186,18 @@ export function useAssistantChat({
         ];
       });
       
+      // Reset state
       setTypingMessageId(null);
       setIsTyping(false);
       isProcessingRef.current = false;
       
       if (onResponse) {
-        console.log(`Calling onResponse callback for thread ${threadId}, run ${runId}`);
         onResponse();
       }
       
       return true;
     } catch (error) {
-      console.error('Error polling run status:', error);
-      
+      // Only handle errors for current requests
       if (requestId === pollRequestIdRef.current) {
         setMessages(prevMessages => 
           prevMessages.filter(msg => msg.id !== typingMsgId)
@@ -214,65 +207,50 @@ export function useAssistantChat({
         setIsTyping(false);
         isProcessingRef.current = false;
         
-        if (onError) {
-          onError(error instanceof Error ? error : new Error(String(error)));
-        }
+        handleError(error);
       }
       
       return true;
     }
-  }, [activePersonality, userId, onResponse, onError]);
+  }, [activePersonality, userId, onResponse, handleError]);
 
-  // Setup streaming connection
+  // Setup streaming connection - simplified
   const setupStreamingConnection = useCallback((threadId: string, runId: string, typingMsgId: string) => {
-    // First ensure any existing connection is properly closed
+    // Close existing connection if any
     if (eventSourceRef.current) {
-      console.log('Closing existing EventSource connection before starting new one');
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
     
-    // Set streaming flag
     streamingRef.current = true;
     
-    let retryCount = 0;
     const maxRetries = 3;
-    let receivedFirstMessage = false;
-    let connectionTimeoutId: NodeJS.Timeout | null = null;
+    let retryCount = 0;
     let partialContent = '';
-    let isDone = false;
+    let connectionTimeoutId: NodeJS.Timeout | null = null;
     
     const endpoint = `/api/assistant/stream?threadId=${threadId}&runId=${runId}&userId=${userId}&personality=${activePersonality}`;
     
+    // Connect and setup event handlers
     const connectEventSource = () => {
-      // Create a new EventSource connection
-      const eventSource = new EventSource(endpoint);
-      eventSourceRef.current = eventSource;
-      
-      // Set a timeout to detect initial connection issues
-      connectionTimeoutId = setTimeout(() => {
-        console.log('Connection timeout - no messages received.');
+      try {
+        const eventSource = new EventSource(endpoint);
+        eventSourceRef.current = eventSource;
         
-        if (eventSource && eventSource.readyState !== 2) { // 2 = CLOSED
-          eventSource.close();
-          
-          if (eventSourceRef.current === eventSource) {
-            eventSourceRef.current = null;
+        // Set connection timeout
+        connectionTimeoutId = setTimeout(() => {
+          if (eventSource.readyState !== 2) { // Not CLOSED
+            eventSource.close();
             
-            // Try to reconnect if we haven't reached max retries
             if (retryCount < maxRetries) {
               retryCount++;
-              console.log(`Connection timeout. Retrying (${retryCount}/${maxRetries})...`);
               connectEventSource();
             } else {
-              console.error('Max retries reached. Unable to establish connection.');
-              
-              // Clean up properly
               streamingRef.current = false;
               isProcessingRef.current = false;
               setIsTyping(false);
               
-              // Update the message with error
+              // Show error message
               if (typingMsgId) {
                 setMessages(prevMessages => {
                   return prevMessages.map(msg => {
@@ -287,208 +265,181 @@ export function useAssistantChat({
                 });
               }
               
-              if (onError) {
-                onError(new Error('Connection timeout - unable to establish connection'));
-              }
+              handleError(new Error('Connection timeout - unable to establish connection'));
             }
           }
-        }
-      }, 10000); // 10 second timeout
-      
-      // Event for when connection is established
-      eventSource.onopen = () => {
-        console.log('EventSource connection opened');
+        }, 10000); // 10 second timeout
         
-        // If this is a reconnection, just silently continue without showing any message
-        receivedFirstMessage = true;
-      };
-      
-      // Setup event handlers
-      eventSource.onmessage = (event) => {
-        try {
-          // Clear the connection timeout since we received a message
+        // Event handlers
+        eventSource.onopen = () => {
+          console.log('EventSource connection opened');
+        };
+        
+        eventSource.onmessage = (event) => {
+          // Clear timeout when we receive a message
           if (connectionTimeoutId) {
             clearTimeout(connectionTimeoutId);
             connectionTimeoutId = null;
           }
-          
-          receivedFirstMessage = true;
           
           // Skip heartbeat messages
           if (event.data.startsWith(':') || event.data.trim() === '') {
             return;
           }
           
-          const data = JSON.parse(event.data);
-          
-          // Handle different status types
-          switch (data.status) {
-            case 'connected':
-              console.log('Stream connection established');
-              break;
-              
-            case 'processing':
-              // Update the UI to show processing state - no content changes needed here
-              // We'll let the initial empty message with just the cursor remain
-              break;
-              
-            case 'streaming':
-              // Add the new content chunk to what we have so far
-              partialContent += data.content || '';
-              
-              // Track if this is the last chunk
-              isDone = !!data.done;
-              
-              // Update UI with the cumulative content - each time we get a new chunk, 
-              // update the whole typing message with all the content received so far
-              setMessages(prevMessages => {
-                // Find and replace the typing message with updated content
-                return prevMessages.map(msg => {
-                  if (msg.id === typingMsgId) {
-                    // Use the cumulative content built in partialContent
-                    return { ...msg, content: partialContent };
-                  }
-                  return msg;
+          try {
+            const data = JSON.parse(event.data);
+            
+            switch (data.status) {
+              case 'streaming':
+                // Add new content
+                partialContent += data.content || '';
+                
+                // Update message with cumulative content
+                setMessages(prevMessages => {
+                  return prevMessages.map(msg => {
+                    if (msg.id === typingMsgId) {
+                      return { ...msg, content: partialContent };
+                    }
+                    return msg;
+                  });
                 });
-              });
-              
-              // Only clear typing state when explicitly done
-              if (isDone) {
+                
+                // Close connection when done
+                if (data.done) {
+                  setTimeout(() => {
+                    if (eventSourceRef.current) {
+                      eventSourceRef.current.close();
+                      eventSourceRef.current = null;
+                    }
+                    streamingRef.current = false;
+                    setIsTyping(false);
+                  }, 300);
+                }
+                break;
+                
+              case 'completed':
                 setTimeout(() => {
                   if (eventSourceRef.current) {
                     eventSourceRef.current.close();
                     eventSourceRef.current = null;
                   }
+                  
                   streamingRef.current = false;
+                  isProcessingRef.current = false;
                   setIsTyping(false);
-                }, 300); // Shorter delay to improve responsiveness
-              }
-              break;
-              
-            case 'completed':
-              // Cleanup after a shorter delay for improved responsiveness
-              setTimeout(() => {
-                if (eventSourceRef.current) {
-                  eventSourceRef.current.close();
-                  eventSourceRef.current = null;
-                }
+                  
+                  if (onResponse) {
+                    onResponse();
+                  }
+                }, 300);
+                break;
                 
+              case 'error':
+              case 'failed':
+                eventSource.close();
+                eventSourceRef.current = null;
                 streamingRef.current = false;
                 isProcessingRef.current = false;
                 setIsTyping(false);
                 
-                // Call onResponse if provided
-                if (onResponse) {
-                  onResponse();
+                // Show error message
+                setMessages(prevMessages => {
+                  return prevMessages.map(msg => {
+                    if (msg.id === typingMsgId) {
+                      return { 
+                        ...msg, 
+                        content: `Error: ${data.error || 'An unknown error occurred'}. Please try again.` 
+                      };
+                    }
+                    return msg;
+                  });
+                });
+                
+                handleError(new Error(data.error || 'Streaming failed'));
+                break;
+            }
+          } catch (error) {
+            console.error('Error processing stream event:', error);
+          }
+        };
+        
+        // Error handling
+        eventSource.onerror = (error) => {
+          if (connectionTimeoutId) {
+            clearTimeout(connectionTimeoutId);
+            connectionTimeoutId = null;
+          }
+          
+          eventSource.close();
+          
+          if (eventSourceRef.current === eventSource) {
+            eventSourceRef.current = null;
+            
+            if (retryCount < maxRetries) {
+              retryCount++;
+              const retryDelay = Math.min(1000 * Math.pow(2, retryCount - 1), 10000);
+              setTimeout(() => {
+                if (streamingRef.current) {
+                  connectEventSource();
                 }
-              }, 300); // Shorter delay for better responsiveness
-              break;
-              
-            case 'error':
-            case 'failed':
-              console.error(`Error in streaming: ${data.error}`);
-              eventSource.close();
-              eventSourceRef.current = null;
+              }, retryDelay);
+            } else {
               streamingRef.current = false;
               isProcessingRef.current = false;
               setIsTyping(false);
               
-              // Update the message with error instead of removing
               setMessages(prevMessages => {
                 return prevMessages.map(msg => {
                   if (msg.id === typingMsgId) {
                     return { 
                       ...msg, 
-                      content: `Error: ${data.error || 'An unknown error occurred'}. Please try again.` 
+                      content: partialContent ? 
+                        `${partialContent}\n\n(Connection failed. The response may be incomplete.)` : 
+                        'Connection failed. Please try again.' 
                     };
                   }
                   return msg;
                 });
               });
               
-              if (onError) {
-                onError(new Error(data.error || 'Streaming failed'));
-              }
-              break;
-              
-            case 'polling_error':
-              // Just log polling errors but don't fail the connection
-              console.warn(`Polling error: ${data.error}`);
-              break;
-              
-            default:
-              // For processing, queued, etc. - just log the status
-              console.log(`Streaming status: ${data.status}`);
+              handleError(new Error('Streaming connection failed after multiple attempts'));
+            }
           }
-        } catch (error) {
-          console.error('Error processing stream event:', error);
-        }
-      };
-      
-      eventSource.onerror = (error) => {
-        console.error('EventSource error:', error);
+        };
         
-        // Clear connection timeout if it exists
-        if (connectionTimeoutId) {
-          clearTimeout(connectionTimeoutId);
-          connectionTimeoutId = null;
-        }
-        
-        // Close the current connection
-        eventSource.close();
-        
-        // Only handle error if this is still the current eventSource
-        if (eventSourceRef.current === eventSource) {
-          eventSourceRef.current = null;
+        return eventSource;
+      } catch (error) {
+        // Handle connection error
+        if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(() => connectEventSource(), 1000);
+        } else {
+          streamingRef.current = false;
+          isProcessingRef.current = false;
+          setIsTyping(false);
           
-          // Try to reconnect if we haven't reached max retries
-          if (retryCount < maxRetries) {
-            retryCount++;
-            console.log(`Connection error. Retrying (${retryCount}/${maxRetries})...`);
-            
-            // Wait a bit before reconnecting (use exponential backoff)
-            const retryDelay = Math.min(1000 * Math.pow(2, retryCount - 1), 10000);
-            setTimeout(() => {
-              // Only reconnect if we're still in streaming mode
-              if (streamingRef.current) {
-                connectEventSource();
-              }
-            }, retryDelay);
-            
-            // No reconnection message - silently try to reconnect
-          } else {
-            streamingRef.current = false;
-            isProcessingRef.current = false;
-            setIsTyping(false);
-            
-            // Only show error message when all reconnection attempts fail
+          if (typingMsgId) {
             setMessages(prevMessages => {
               return prevMessages.map(msg => {
                 if (msg.id === typingMsgId) {
                   return { 
                     ...msg, 
-                    content: partialContent ? 
-                      `${partialContent}\n\n(Connection failed. The response may be incomplete.)` : 
-                      'Connection failed. Please try again.' 
+                    content: 'Error: Unable to connect to server. Please try again.' 
                   };
                 }
                 return msg;
               });
             });
-            
-            if (onError) {
-              onError(new Error('Streaming connection failed after multiple attempts'));
-            }
           }
+          
+          handleError(new Error('Failed to create EventSource connection'));
         }
-      };
-      
-      return eventSource;
+      }
     };
     
     connectEventSource();
     
-    // Return cleanup function (not used directly but good practice)
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -501,34 +452,30 @@ export function useAssistantChat({
       
       streamingRef.current = false;
     };
-  }, [activePersonality, userId, setMessages, setIsTyping, onError, onResponse]);
+  }, [activePersonality, userId, handleError, onResponse]);
   
   // Send message to API
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim()) return;
-    
-    // More robust check to prevent multiple active requests
-    if (streamingRef.current || isProcessingRef.current || isTyping) {
-      console.log('Message already being processed or streaming in progress, ignoring request');
+    if (!content.trim() || streamingRef.current || isProcessingRef.current || isTyping) {
       return;
     }
     
-    // Set processing flag immediately to prevent race conditions
+    // Set processing flag
     isProcessingRef.current = true;
     
+    // Clean up existing connections
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    
     try {
-      // Always clear any existing interval first
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-      
-      // Close any existing EventSource
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
-      
+      // Create user message
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
         user_id: userId,
@@ -537,11 +484,11 @@ export function useAssistantChat({
         created_at: new Date().toISOString(),
       };
       
-      // Create a new typing message from the assistant
+      // Create typing message
       const typingId = `typing-${Date.now()}`;
       setTypingMessageId(typingId);
       
-      // Update UI state immediately to give instant feedback
+      // Update UI immediately
       setMessages(prevMessages => [
         ...prevMessages, 
         userMessage,
@@ -549,7 +496,7 @@ export function useAssistantChat({
           id: typingId,
           user_id: 'system',
           role: 'assistant',
-          content: '',  // Start with empty content to show just the cursor
+          content: '',
           personality: activePersonality,
           created_at: new Date().toISOString(),
         }
@@ -558,28 +505,23 @@ export function useAssistantChat({
       setInputMessage('');
       setIsTyping(true);
       
-      // Call onSend callback if provided
       if (onSend) {
         onSend();
       }
       
-      // Increment the request ID
+      // Update request ID
       pollRequestIdRef.current += 1;
       const currentRequestId = pollRequestIdRef.current;
       
-      // Double-check that we're still in processing state (user didn't cancel)
+      // Check if processing was cancelled
       if (!isProcessingRef.current) {
-        console.log('Request was cancelled before API call');
         return;
       }
       
-      // Set a timeout to show "thinking" dots if API call takes too long
-      // IMPORTANT: Use the captured typingId, NOT the typingMessageId state
-      // This ensures we only update the current typing message, not any previous ones
+      // Show thinking indicator if API call takes too long
       const currentTypingId = typingId;
       const thinkingIndicatorTimeout = setTimeout(() => {
         if (isProcessingRef.current) {
-          // Update the typing message to show thinking dots
           setMessages(prevMessages => {
             return prevMessages.map(msg => {
               if (msg.id === currentTypingId) {
@@ -589,10 +531,10 @@ export function useAssistantChat({
             });
           });
         }
-      }, 1000); // Show thinking indicator after 1 second
+      }, 1000);
       
       try {
-        // Prepare the request body
+        // Send API request
         const requestBody = {
           message: content,
           personality: activePersonality,
@@ -600,9 +542,9 @@ export function useAssistantChat({
           threadId: threadIdRef.current || undefined,
         };
         
-        // Submit message to API with a timeout
+        // Use timeout to prevent hanging requests
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout (reduced from 30s)
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
         
         const response = await fetch('/api/assistant', {
           method: 'POST',
@@ -614,7 +556,7 @@ export function useAssistantChat({
         });
         
         clearTimeout(timeoutId);
-        clearTimeout(thinkingIndicatorTimeout); // Clear the thinking dots timeout
+        clearTimeout(thinkingIndicatorTimeout);
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -627,80 +569,57 @@ export function useAssistantChat({
           throw new Error('Invalid response from server: missing threadId or runId');
         }
         
-        // Update thread ID
+        // Store thread ID
         threadIdRef.current = data.threadId;
         
-        // Now set streaming flag - we're transitioning from processing to streaming
+        // Start streaming
         streamingRef.current = true;
         
-        // Check if we got a temporary runId (starts with 'temp-')
+        // Handle temporary run IDs
         if (data.runId.startsWith('temp-')) {
-          console.log('Received temporary runId, waiting for real one to be available');
+          let resolved = false;
           
-          // Set a retry mechanism for temporary runIds
-          let retryCount = 0;
-          const maxRetries = 10;
-          const retryDelay = 500; // 500ms between retries
-          
-          const checkForRealRunId = async () => {
+          // Try to resolve the real run ID
+          for (let retryCount = 0; retryCount < 10 && !resolved; retryCount++) {
             try {
-              // Check status endpoint to see if a real runId is available
+              // Check if a real run ID is available
               const statusResponse = await fetch(`/api/assistant/status?threadId=${data.threadId}&runId=${data.runId}&userId=${userId}&personality=${activePersonality}`);
               
-              // If status returns 404, the temp runId wasn't found, so try a different endpoint
               if (statusResponse.status === 404 || statusResponse.status === 400) {
-                // Try to get the latest run for this thread
+                // Get the latest run for this thread
                 const runsResponse = await fetch(`/api/assistant/runs?threadId=${data.threadId}&userId=${userId}`);
                 if (runsResponse.ok) {
                   const runsData = await runsResponse.json();
                   if (runsData.runs && runsData.runs.length > 0) {
                     // Use the most recent run
-                    const realRunId = runsData.runs[0].id;
-                    console.log(`Found real runId ${realRunId} to replace temp ${data.runId}`);
-                    // Setup streaming with the real runId
-                    setupStreamingConnection(data.threadId, realRunId, currentTypingId);
-                    return true;
+                    setupStreamingConnection(data.threadId, runsData.runs[0].id, currentTypingId);
+                    resolved = true;
+                    break;
                   }
                 }
               }
               
-              // If we've reached max retries, fall back to polling
-              if (++retryCount >= maxRetries) {
-                console.log(`Max retries (${maxRetries}) reached, falling back to polling`);
-                return false;
-              }
-              
-              // Wait before trying again
-              await new Promise(resolve => setTimeout(resolve, retryDelay));
-              return await checkForRealRunId();
+              // Wait before retrying
+              await new Promise(resolve => setTimeout(resolve, 500));
             } catch (error) {
               console.warn('Error checking for real runId:', error);
-              if (++retryCount >= maxRetries) return false;
-              await new Promise(resolve => setTimeout(resolve, retryDelay));
-              return await checkForRealRunId();
             }
-          };
+          }
           
-          // Start checking for a real runId
-          const foundRealId = await checkForRealRunId();
-          if (!foundRealId) {
-            // Fall back to standard polling if we couldn't find a real runId
+          // Use the temp ID if we couldn't resolve a real one
+          if (!resolved) {
             setupStreamingConnection(data.threadId, data.runId, currentTypingId);
           }
         } else {
-          // Normal case - we got a real runId right away
+          // Normal case with real run ID
           setupStreamingConnection(data.threadId, data.runId, currentTypingId);
         }
       } catch (fetchError) {
-        clearTimeout(thinkingIndicatorTimeout); // Clear the thinking dots timeout
+        clearTimeout(thinkingIndicatorTimeout);
         
-        // Handle API errors or timeouts
-        console.error('Error in API call:', fetchError);
-        
-        // Clean up the typing message
+        // Show error message
         if (typingMessageId) {
           setMessages(prevMessages => {
-            // Instead of removing, change to an error message
             return prevMessages.map(msg => {
               if (msg.id === typingMessageId) {
                 return {
@@ -713,19 +632,15 @@ export function useAssistantChat({
           });
         }
         
-        // Reset all state
+        // Reset state
         setIsTyping(false);
         isProcessingRef.current = false;
         streamingRef.current = false;
         
-        if (onError) {
-          onError(fetchError instanceof Error ? fetchError : new Error(String(fetchError)));
-        }
+        handleError(fetchError);
       }
     } catch (error) {
-      console.error('Error sending message:', error);
-      
-      // Clean up the typing message
+      // Handle any overall errors
       if (typingMessageId) {
         setMessages(prevMessages => {
           return prevMessages.map(msg => {
@@ -740,21 +655,21 @@ export function useAssistantChat({
         });
       }
       
-      // Reset all state
+      // Reset state
       setIsTyping(false);
       isProcessingRef.current = false;
       streamingRef.current = false;
       
-      if (onError) {
-        onError(error instanceof Error ? error : new Error(String(error)));
-      }
+      handleError(error);
     }
-  }, [activePersonality, isTyping, onError, onSend, typingMessageId, userId, setupStreamingConnection]);
+  }, [activePersonality, isTyping, handleError, onSend, typingMessageId, userId, setupStreamingConnection]);
   
+  // Input change handler
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInputMessage(e.target.value);
   }, []);
   
+  // Form submit handler
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (inputMessage.trim() && !isTyping) {
@@ -762,33 +677,24 @@ export function useAssistantChat({
     }
   }, [inputMessage, isTyping, sendMessage]);
   
-  // Skip the typing animation and immediately show the full message
+  // Skip typing animation
   const skipTypingAnimation = useCallback(() => {
-    console.log('Skipping typing animation');
-    
-    // Only attempt to skip if there's actually streaming in progress
-    if (!eventSourceRef.current || !streamingRef.current || !typingMessageId) {
-      console.log('No active streaming to skip');
+    // Only skip if there's streaming in progress
+    if (!streamingRef.current || !typingMessageId) {
       return;
     }
     
     try {
-      // First check if we already have a typing message with some content
-      if (typingMessageId) {
-        const typingMessage = messages.find(msg => msg.id === typingMessageId);
-        
-        // With slower typing, we should allow skipping with less initial content
-        if (!typingMessage || typingMessage.content.length < 5) {
-          console.log('Not enough content to skip yet, waiting for more...');
-          return;
-        }
+      // Close existing connection
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
       }
       
-      // Set a timeout to ensure the skip request doesn't hang
+      // Get full content via API
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       
-      // Try to gather the full content from the API
       fetch(`/api/assistant/stream/skip?threadId=${threadIdRef.current}&userId=${userId}&personality=${activePersonality}`, {
         signal: controller.signal
       })
@@ -801,14 +707,12 @@ export function useAssistantChat({
         .then(data => {
           clearTimeout(timeoutId);
           
-          // If we have the full message content, update the current typing message
+          // Update message with full content if it's longer
           if (data.fullContent && typingMessageId) {
-            // Only update if the full content is actually longer than what we have
             setMessages(prevMessages => {
               const typingMsg = prevMessages.find(msg => msg.id === typingMessageId);
               const currentLength = typingMsg?.content?.length || 0;
               
-              // Only update if we got something longer back
               if (data.fullContent.length > currentLength) {
                 return prevMessages.map(msg => {
                   if (msg.id === typingMessageId) {
@@ -821,11 +725,7 @@ export function useAssistantChat({
             });
           }
           
-          // Clean up the streaming state regardless of the result
-          if (eventSourceRef.current) {
-            eventSourceRef.current.close();
-            eventSourceRef.current = null;
-          }
+          // Reset state
           streamingRef.current = false;
           isProcessingRef.current = false;
           setIsTyping(false);
@@ -834,30 +734,44 @@ export function useAssistantChat({
           clearTimeout(timeoutId);
           console.error('Error skipping typing animation:', error);
           
-          // Even on error, we should stop the streaming to improve UX
-          if (eventSourceRef.current) {
-            eventSourceRef.current.close();
-            eventSourceRef.current = null;
-          }
-          
-          // Keep any partial content we've received so far
+          // Even on error, stop typing
           streamingRef.current = false;
           isProcessingRef.current = false;
           setIsTyping(false);
         });
     } catch (error) {
-      // Fallback approach - just stop typing but keep partial content
+      // Fallback error handling - stop typing but keep content
       console.error('Error in skip typing:', error);
       
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
+      
+      // Preserve any existing content
+      if (typingMessageId) {
+        const typingMessage = messages.find(msg => msg.id === typingMessageId);
+        if (typingMessage && typingMessage.content) {
+          setMessages(prevMessages => {
+            return prevMessages.map(msg => {
+              if (msg.id === typingMessageId) {
+                return {
+                  ...msg,
+                  content: `${typingMessage.content}\n\n(Error: Connection was interrupted. Content may be incomplete.)`
+                };
+              }
+              return msg;
+            });
+          });
+        }
+      }
+      
+      // Reset state
       streamingRef.current = false;
       isProcessingRef.current = false;
       setIsTyping(false);
     }
-  }, [userId, activePersonality, typingMessageId, messages, setMessages]);
+  }, [activePersonality, isTyping, messages, typingMessageId, userId]);
   
   return {
     messages,
@@ -865,7 +779,7 @@ export function useAssistantChat({
     isTyping,
     activePersonality,
     threadId: threadIdRef.current,
-    typingMessageId: typingMessageId,
+    typingMessageId,
     handleInputChange,
     handleSubmit,
     switchPersonality,

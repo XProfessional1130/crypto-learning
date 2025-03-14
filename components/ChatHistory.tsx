@@ -127,11 +127,6 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
   if (loading) {
     return (
       <div className="flex flex-col h-full">
-        <div className="p-3 border-b border-white/10">
-          <h3 className="font-medium text-light-text-primary dark:text-dark-text-primary">
-            Chat History
-          </h3>
-        </div>
         <div className="p-4 flex-1">
           <div className="animate-pulse space-y-4">
             {[1, 2, 3].map((i) => (
@@ -146,11 +141,6 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
   if (error) {
     return (
       <div className="flex flex-col h-full">
-        <div className="p-3 border-b border-white/10">
-          <h3 className="font-medium text-light-text-primary dark:text-dark-text-primary">
-            Chat History
-          </h3>
-        </div>
         <div className="p-4 text-red-500 flex items-center justify-center flex-1">
           <div className="text-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto mb-2 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -171,10 +161,7 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-white/10 flex flex-col">
-        <h3 className="font-medium text-light-text-primary dark:text-dark-text-primary mb-2">
-          Chat History
-        </h3>
+      <div className="p-3 border-b border-white/10">
         <div className="relative">
           <input
             type="text"
@@ -261,7 +248,7 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
                     currentThreadId === thread.threadId 
                       ? 'bg-brand-primary/10 shadow-sm border border-brand-primary/20' 
                       : 'hover:bg-white/5 dark:hover:bg-dark-bg-secondary/30 border border-transparent'
-                  } group-hover:border-red-500/20`}
+                  } relative group`}
                 >
                   <div className="flex items-start">
                     <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100/20 dark:bg-gray-800/30 flex items-center justify-center mr-2 flex-shrink-0 border border-white/10 dark:border-white/5">
@@ -274,14 +261,14 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
                       />
                     </div>
                     
-                    <div className="flex-1 min-w-0 pr-6">
+                    <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-center">
                         <span className={`font-medium text-sm truncate ${
                           currentThreadId === thread.threadId 
                             ? 'text-brand-primary dark:text-brand-light' 
                             : 'text-light-text-primary dark:text-dark-text-primary'
                         }`}>
-                          {thread.personality === 'tobo' ? 'Tobot' : 'Haidi'}
+                          {thread.personality === 'tobo' ? 'Tobot' : 'Haido'}
                         </span>
                         <span className="text-xs text-light-text-secondary/70 dark:text-dark-text-secondary/70 ml-2 flex-shrink-0">
                           {formatDate(thread.latestMessage.created_at)}
@@ -292,40 +279,41 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
                         {thread.preview}
                       </p>
                     </div>
-                  </div>
-                </button>
-                
-                {/* Delete button - Updated to clearly show which conversation it deletes */}
-                <button
-                  onClick={(e) => handleDelete(e, thread.threadId)}
-                  disabled={deleting === thread.threadId}
-                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200 
-                    ${deleting === thread.threadId 
-                      ? 'bg-red-500/40 border-red-500/60 shadow-[0_0_8px_rgba(239,68,68,0.4)]' 
-                      : 'opacity-90 hover:opacity-100 hover:bg-red-500/30 hover:border-red-500/50 hover:shadow-[0_0_5px_rgba(239,68,68,0.3)] bg-red-500/20 border border-red-500/30'
-                    } z-10`}
-                  aria-label="Delete conversation"
-                  onMouseEnter={() => {
-                    const button = document.getElementById(`thread-${thread.threadId}`);
-                    if (button) button.classList.add('border-red-500/30', 'bg-red-500/5');
-                  }}
-                  onMouseLeave={() => {
-                    const button = document.getElementById(`thread-${thread.threadId}`);
-                    if (button) button.classList.remove('border-red-500/30', 'bg-red-500/5');
-                  }}
-                >
-                  {deleting === thread.threadId ? (
-                    <div className="flex flex-col items-center">
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
+                    
+                    {/* New inline delete button */}
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      className="ml-2 flex-shrink-0 self-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 relative"
+                      title="Delete conversation"
+                    >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Stop event propagation
+                          if (window.confirm("Are you sure you want to delete this conversation? This cannot be undone.")) {
+                            handleDelete(e, thread.threadId);
+                          }
+                        }}
+                        disabled={deleting === thread.threadId}
+                        className={`p-1.5 rounded-full transition-all duration-200 ${
+                          deleting === thread.threadId
+                            ? 'bg-red-500/20'
+                            : 'hover:bg-red-500/20 hover:scale-110'
+                        }`}
+                        aria-label="Delete conversation"
+                      >
+                        {deleting === thread.threadId ? (
+                          <svg className="animate-spin h-4 w-4 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        )}
+                      </button>
                     </div>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  )}
+                  </div>
                 </button>
               </motion.div>
             ))}
