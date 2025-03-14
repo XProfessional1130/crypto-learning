@@ -67,6 +67,8 @@ export default function Chat() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const firstToggleRef = useRef<HTMLButtonElement>(null);
   const secondToggleRef = useRef<HTMLButtonElement>(null);
+  const fullscreenFirstToggleRef = useRef<HTMLButtonElement>(null);
+  const fullscreenSecondToggleRef = useRef<HTMLButtonElement>(null);
   const [shouldScroll, setShouldScroll] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [randomPrompts, setRandomPrompts] = useState<typeof samplePrompts>([]);
@@ -904,10 +906,10 @@ export default function Chat() {
                     className="absolute rounded-full bg-brand-primary/30 backdrop-blur-md border border-brand-primary/40 shadow-[0_0_8px_rgba(77,181,176,0.3)]"
                     initial={false}
                     animate={{
-                      x: activePersonality === 'tobo' ? 0 : secondToggleRef.current ? 140 : 140,
+                      x: activePersonality === 'tobo' ? 0 : fullscreenSecondToggleRef.current ? fullscreenSecondToggleRef.current.offsetLeft - (fullscreenFirstToggleRef.current?.offsetLeft || 0) : 0,
                       width: activePersonality === 'tobo' 
-                        ? firstToggleRef.current?.offsetWidth || 140
-                        : secondToggleRef.current?.offsetWidth || 140,
+                        ? fullscreenFirstToggleRef.current?.offsetWidth || 0
+                        : fullscreenSecondToggleRef.current?.offsetWidth || 0,
                       height: '100%',
                       top: '0%',
                     }}
@@ -916,6 +918,7 @@ export default function Chat() {
                   
                   {/* Tobo Button */}
                   <button
+                    ref={fullscreenFirstToggleRef}
                     onClick={() => handleSwitchPersonality('tobo')}
                     className="z-10 px-4 py-2 rounded-full flex items-center space-x-2 transition-all duration-300 relative"
                   >
@@ -940,6 +943,7 @@ export default function Chat() {
                   
                   {/* Heido Button */}
                   <button
+                    ref={fullscreenSecondToggleRef}
                     onClick={() => handleSwitchPersonality('heido')}
                     className="z-10 px-4 py-2 rounded-full flex items-center space-x-2 transition-all duration-300"
                   >
