@@ -112,16 +112,19 @@ export async function GET(request: Request) {
         );
         
         // Use shorter polling intervals for better responsiveness
-        const initialPollingInterval = 200; // 200ms initial poll (was 300ms)
-        const subsequentPollingInterval = 600; // 600ms for following polls (was 800ms)
-        
-        // Start polling immediately
-        let completed = false;
         let processingStartedAt = Date.now();
         const maxProcessingTime = 45000; // 45 seconds max
         
-        // Wait very briefly before first poll - just enough time for the UI to update
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait very briefly before first poll - reduce to 50ms for faster first check
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // More aggressive polling strategy
+        const initialPollingInterval = 300; // Faster initial polling (was 500)
+        const subsequentPollingInterval = 800; // Slightly faster subsequent polling (was 1000)
+        const earlyContentCheckThreshold = 1000; // Check for early content after just 1 second (was 2000)
+        
+        // Start polling immediately
+        let completed = false;
         
         // Poll until completion or timeout
         while (!completed && Date.now() - processingStartedAt < maxProcessingTime && !isControllerClosed) {
@@ -152,8 +155,8 @@ export async function GET(request: Request) {
               new TextEncoder().encode(`data: ${JSON.stringify({ status: currentStatus.status })}\n\n`)
             );
             
-            // After just 2 seconds, try to get early messages even if the run isn't complete
-            if (Date.now() - processingStartedAt > 2000) {
+            // After just 1 second, try to get early messages even if the run isn't complete
+            if (Date.now() - processingStartedAt > earlyContentCheckThreshold) {
               try {
                 // Check if there are any early messages we can start streaming
                 const earlyMessages = await openai.beta.threads.messages.list(threadId, { order: 'desc', limit: 1 });
@@ -163,21 +166,16 @@ export async function GET(request: Request) {
                 if (latestMessage && latestMessage.role === 'assistant' && latestMessage.content && latestMessage.content.length > 0) {
                   const contentPart = latestMessage.content[0];
                   if (contentPart.type === 'text' && contentPart.text.value.trim().length > 0) {
-                    // Only send the first few characters to start the typing effect
-                    // Instead of sending the whole message at once
-                    const previewLength = Math.min(5, contentPart.text.value.length);
+                    // Even minimal content is worth showing - lower the bar for what constitutes a meaningful preview
+                    // Show at least the first character
+                    const previewLength = Math.min(1, contentPart.text.value.length);
                     const previewContent = contentPart.text.value.substring(0, previewLength);
                     
-                    safeEnqueue(
-                      new TextEncoder().encode(`data: ${JSON.stringify({
-                        status: 'streaming',
-                        content: previewContent,
-                        done: false
-                      })}\n\n`)
-                    );
+                    // Don't send the first character as separate content initially
+                    // Just set up variables to prepare for full streaming later
                     
                     // Track how many characters we've already sent to avoid duplication
-                    alreadySentChars = previewLength;
+                    alreadySentChars = 0; // Reset to 0 to avoid the double-first-letter issue
                     
                     // Update full message but don't send the rest yet
                     fullMessage = contentPart.text.value;
@@ -203,9 +201,12 @@ export async function GET(request: Request) {
             );
           }
           
-          // Wait before next poll - use shorter interval for initial polls
-          const pollWaitTime = Date.now() - processingStartedAt < 2000 ? 
-            initialPollingInterval : subsequentPollingInterval;
+          // Wait before next poll - use even shorter interval for very initial polls
+          const pollWaitTime = Date.now() - processingStartedAt < 1000 ? 
+            200 : // Very fast polling in the first second
+            (Date.now() - processingStartedAt < 3000 ? 
+              initialPollingInterval : // Fast polling in the first 3 seconds
+              subsequentPollingInterval); // Normal polling after that
           await new Promise(resolve => setTimeout(resolve, pollWaitTime));
         }
 

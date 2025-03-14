@@ -12,6 +12,46 @@
   vertical-align: baseline;
 }
 
+/* Bouncing dots typing indicator */
+.bouncingDots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 2px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #4DB5B0; /* Brand color */
+  display: inline-block;
+  box-shadow: 0 0 4px rgba(77, 181, 176, 0.6); /* Add a glow effect */
+}
+
+.dot1 {
+  animation: bounce 1.2s -0.4s infinite;
+}
+
+.dot2 {
+  animation: bounce 1.2s -0.2s infinite;
+}
+
+.dot3 {
+  animation: bounce 1.2s 0s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
 .message-content p {
   margin-bottom: 0.75rem;
 }

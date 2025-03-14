@@ -685,17 +685,16 @@ export default function Chat() {
                                   {formatMessageContent(message.content)}
                                   {isStreaming && (
                                     <motion.span 
-                                      className={`${styles.typingCursor} text-brand-primary inline-block`}
-                                      style={{ position: 'absolute' }}
-                                      initial={{ opacity: 0.3 }}
-                                      animate={{ opacity: 1 }}
-                                      transition={{ 
-                                        repeat: Infinity, 
-                                        duration: 0.8, 
-                                        repeatType: "reverse" 
+                                      className={styles.bouncingDots}
+                                      style={{ 
+                                        display: 'inline-flex',
+                                        verticalAlign: 'middle',
+                                        marginLeft: '2px'
                                       }}
                                     >
-                                      ▌
+                                      <span className={`${styles.dot} ${styles.dot1}`}></span>
+                                      <span className={`${styles.dot} ${styles.dot2}`}></span>
+                                      <span className={`${styles.dot} ${styles.dot3}`}></span>
                                     </motion.span>
                                   )}
                                 </motion.div>
@@ -705,16 +704,20 @@ export default function Chat() {
                                   {message.content === "" && isStreaming ? (
                                     <motion.span 
                                       ref={typingIndicatorRef}
-                                      className="inline-block text-brand-primary"
-                                      initial={{ opacity: 0.3 }}
-                                      animate={{ opacity: 1 }}
-                                      transition={{ 
-                                        repeat: Infinity, 
-                                        duration: 0.8, 
-                                        repeatType: "reverse" 
-                                      }}
+                                      className={styles.bouncingDots}
                                     >
-                                      ▌
+                                      <span className={`${styles.dot} ${styles.dot1}`}></span>
+                                      <span className={`${styles.dot} ${styles.dot2}`}></span>
+                                      <span className={`${styles.dot} ${styles.dot3}`}></span>
+                                    </motion.span>
+                                  ) : message.content === "..." ? (
+                                    <motion.span 
+                                      ref={typingIndicatorRef}
+                                      className={styles.bouncingDots}
+                                    >
+                                      <span className={`${styles.dot} ${styles.dot1}`}></span>
+                                      <span className={`${styles.dot} ${styles.dot2}`}></span>
+                                      <span className={`${styles.dot} ${styles.dot3}`}></span>
                                     </motion.span>
                                   ) : (
                                     message.content.split(' ').map((word, i) => (
@@ -728,19 +731,14 @@ export default function Chat() {
                                     ))
                                   )}
 
-                                  {isStreaming && message.content !== "" && (
+                                  {isStreaming && message.content !== "" && message.content !== "..." && (
                                     <motion.span 
                                       ref={typingIndicatorRef}
-                                      className="inline-block ml-1 text-brand-primary"
-                                      initial={{ opacity: 0.3 }}
-                                      animate={{ opacity: 1 }}
-                                      transition={{ 
-                                        repeat: Infinity, 
-                                        duration: 0.8, 
-                                        repeatType: "reverse" 
-                                      }}
+                                      className={styles.bouncingDots}
                                     >
-                                      ▌
+                                      <span className={`${styles.dot} ${styles.dot1}`}></span>
+                                      <span className={`${styles.dot} ${styles.dot2}`}></span>
+                                      <span className={`${styles.dot} ${styles.dot3}`}></span>
                                     </motion.span>
                                   )}
                                 </div>
