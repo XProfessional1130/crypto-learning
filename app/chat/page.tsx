@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { ChatMessage } from '@/types';
@@ -76,6 +76,7 @@ export default function Chat() {
   const [skipTyping, setSkipTyping] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [selectorKey, setSelectorKey] = useState(0);
   
   // Initialize chat with useAssistantChat hook
   const {
@@ -442,6 +443,25 @@ export default function Chat() {
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
 
+  // Ensure the selector is properly positioned on initial render and when switching personalities
+  useEffect(() => {
+    // Force a re-render of the selector after component is mounted
+    setSelectorKey(prev => prev + 1);
+  }, [activePersonality]);
+
+  // Use useLayoutEffect to ensure measurements are taken before render
+  useLayoutEffect(() => {
+    // Small delay to ensure DOM is fully rendered
+    const timer = setTimeout(() => {
+      if (firstToggleRef.current && secondToggleRef.current) {
+        // Force a re-render after we ensure refs are available
+        setSelectorKey(prev => prev + 1);
+      }
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
   if (loading || !user) {
     return (
       <div className="flex min-h-[calc(100vh-16rem)] items-center justify-center">
@@ -519,7 +539,12 @@ export default function Chat() {
             {/* Improved Sliding background indicator */}
             <motion.div 
               className="absolute rounded-full bg-brand-primary/30 backdrop-blur-md border border-brand-primary/40 shadow-[0_0_8px_rgba(77,181,176,0.3)]"
-              initial={false}
+              initial={{
+                x: activePersonality === 'tobo' ? 0 : 140, // Approximate initial position
+                width: 140, // Approximate initial width
+                height: '100%',
+                top: '0%',
+              }}
               animate={{
                 x: activePersonality === 'tobo' ? 0 : secondToggleRef.current ? secondToggleRef.current.offsetLeft - (firstToggleRef.current?.offsetLeft || 0) : 0,
                 width: activePersonality === 'tobo' 
@@ -529,6 +554,7 @@ export default function Chat() {
                 top: '0%',
               }}
               transition={{ type: "spring", stiffness: 400, damping: 28 }}
+              key={`selector-${selectorKey}`}
             />
             
             {/* Tobo Button */}
@@ -904,7 +930,12 @@ export default function Chat() {
                   {/* Sliding background indicator in fullscreen */}
                   <motion.div 
                     className="absolute rounded-full bg-brand-primary/30 backdrop-blur-md border border-brand-primary/40 shadow-[0_0_8px_rgba(77,181,176,0.3)]"
-                    initial={false}
+                    initial={{
+                      x: activePersonality === 'tobo' ? 0 : 140, // Approximate initial position
+                      width: 140, // Approximate initial width
+                      height: '100%',
+                      top: '0%',
+                    }}
                     animate={{
                       x: activePersonality === 'tobo' ? 0 : fullscreenSecondToggleRef.current ? fullscreenSecondToggleRef.current.offsetLeft - (fullscreenFirstToggleRef.current?.offsetLeft || 0) : 0,
                       width: activePersonality === 'tobo' 
@@ -914,6 +945,7 @@ export default function Chat() {
                       top: '0%',
                     }}
                     transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                    key={`fullscreen-selector-${selectorKey}`}
                   />
                   
                   {/* Tobo Button */}
