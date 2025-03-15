@@ -36,42 +36,7 @@ export default function HeroSection() {
       spacing="none"
       className="relative nav-section-fix"
     >
-      {/* Background elements with mobile performance optimizations */}
-      <div className="absolute inset-0 z-0 will-change-transform contain-paint">
-        {/* Primary glow effects - optimized for mobile */}
-        <div 
-          className="absolute top-[-35%] right-[10%] max-w-full w-[900px] h-[900px] rounded-full bg-gradient-to-br from-brand-200/25 to-brand-300/5 dark:from-brand-700/15 dark:to-brand-900/5 blur-[150px] animate-pulse-slow" 
-          style={{ 
-            willChange: 'transform',
-            transform: 'translateZ(0)',
-            backfaceVisibility: 'hidden'
-          }}
-        ></div>
-        <div 
-          className="absolute bottom-[-40%] left-[5%] max-w-full w-[800px] h-[800px] rounded-full bg-gradient-to-tr from-indigo-300/15 dark:from-indigo-700/15 to-blue-200/10 dark:to-blue-800/10 blur-[150px] animate-pulse-slow" 
-          style={{ 
-            animationDelay: '3s',
-            willChange: 'transform',
-            transform: 'translateZ(0)',
-            backfaceVisibility: 'hidden'
-          }}
-        ></div>
-        
-        {/* Secondary accent glows - optimized for mobile */}
-        <div 
-          className="absolute top-[20%] left-[30%] max-w-full w-[450px] h-[450px] rounded-full bg-gradient-to-r from-teal-200/12 dark:from-teal-700/8 to-cyan-300/4 dark:to-cyan-800/4 blur-[100px] animate-pulse-slow" 
-          style={{ 
-            animationDelay: '1.5s',
-            willChange: 'transform',
-            transform: 'translateZ(0)',
-            backfaceVisibility: 'hidden'
-          }}
-        ></div>
-        
-        {/* Decorative elements - static to avoid animation jank on mobile */}
-        <div className="absolute top-[15%] left-[15%] w-[2px] h-[250px] bg-gradient-to-b from-brand-300/30 via-brand-300/15 to-transparent blur-[4px] dark:from-brand-400/20 dark:via-brand-400/8"></div>
-        <div className="absolute top-[8%] right-[25%] w-[1.5px] h-[220px] bg-gradient-to-b from-brand-300/25 via-brand-300/12 to-transparent blur-[3.5px] dark:from-brand-400/12 dark:via-brand-400/6"></div>
-      </div>
+      {/* Background elements removed to use main homepage background */}
       
       <div 
         ref={heroRef} 
@@ -259,16 +224,6 @@ export default function HeroSection() {
                 </div>
               </div>
             </div>
-            
-            {/* Decorative elements - optimized for mobile */}
-            <div 
-              className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-gradient-to-br from-brand-200 to-brand-300 dark:from-brand-800 dark:to-brand-700 blur-xl opacity-40 dark:opacity-25 animate-pulse-slow"
-              style={{ 
-                willChange: 'transform',
-                transform: 'translateZ(0)',
-                backfaceVisibility: 'hidden'
-              }}
-            ></div>
           </div>
         </div>
       </div>
