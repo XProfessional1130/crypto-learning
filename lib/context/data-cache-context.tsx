@@ -143,21 +143,28 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       // Load cached coin data
       const cachedCoinData = storage.getItem<Record<string, CoinData>>(COIN_DATA_KEY);
       
-      // Set state from cache if valid
-      if (cachedBtcPrice && storage.isCacheValid(cachedBtcPrice)) {
+      let hasValidCache = false;
+      
+      // Always set data from cache if available, even if expired
+      // This ensures immediate display when navigating back to a page
+      if (cachedBtcPrice) {
         setBtcPrice(cachedBtcPrice.data);
+        hasValidCache = storage.isCacheValid(cachedBtcPrice) || hasValidCache;
       }
       
-      if (cachedEthPrice && storage.isCacheValid(cachedEthPrice)) {
+      if (cachedEthPrice) {
         setEthPrice(cachedEthPrice.data);
+        hasValidCache = storage.isCacheValid(cachedEthPrice) || hasValidCache;
       }
       
-      if (cachedGlobalData && storage.isCacheValid(cachedGlobalData)) {
+      if (cachedGlobalData) {
         setGlobalData(cachedGlobalData.data);
+        hasValidCache = storage.isCacheValid(cachedGlobalData) || hasValidCache;
       }
       
       if (cachedCoinData && storage.isCacheValid(cachedCoinData)) {
         setCoinDataCache(cachedCoinData.data);
+        hasValidCache = storage.isCacheValid(cachedCoinData) || hasValidCache;
       }
       
       // Set last updated time
@@ -171,12 +178,22 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       if (latestTimestamp > 0) {
         setLastUpdated(new Date(latestTimestamp));
       }
+      
+      // If we have valid cache, we can hide the loading state immediately
+      if (hasValidCache) {
+        setIsLoading(false);
+      }
     };
     
+    // Load the cache immediately
     loadCachedData();
     
-    // Fetch fresh data if needed
-    refreshDataIfNeeded();
+    // Then check if we need to refresh
+    // A small timeout prevents unnecessary refreshes during navigation
+    setTimeout(() => {
+      if (isRefreshing) return; // Don't start a refresh if one is already in progress
+      refreshDataIfNeeded();
+    }, 100);
     
     // Set up auto-refresh interval
     const intervalId = setInterval(() => {
@@ -194,32 +211,53 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     const cachedEthPrice = storage.getItem<number>('ethPrice');
     const cachedGlobalData = storage.getItem<GlobalData>('globalData');
     
+    // First set any data we already have from cache, even if it's stale
+    // This ensures we always show something immediately after navigation
+    if (cachedBtcPrice) {
+      setBtcPrice(cachedBtcPrice.data);
+    }
+    
+    if (cachedEthPrice) {
+      setEthPrice(cachedEthPrice.data);
+    }
+    
+    if (cachedGlobalData) {
+      setGlobalData(cachedGlobalData.data);
+    }
+    
+    // Now determine if we need a background refresh
     const needsRefresh = !cachedBtcPrice || !cachedEthPrice || !cachedGlobalData || 
                          !storage.isCacheValid(cachedBtcPrice) ||
                          !storage.isCacheValid(cachedEthPrice) ||
                          !storage.isCacheValid(cachedGlobalData);
     
     if (needsRefresh) {
-      await refreshData();
+      // If we already have some data, don't show loading state for the refresh
+      if (btcPrice || ethPrice) {
+        const currentIsLoading = isLoading;
+        // Instead of relying on refreshData which causes circular dependency,
+        // we'll set a flag to indicate we need a refresh
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+        setIsRefreshing(true);
+      }
     } else {
       // Data is already loaded from cache and is valid
       setIsLoading(false);
     }
-  }, []);
+  }, [btcPrice, ethPrice, isLoading]);
   
   // Function to refresh all cached data - Now uses Supabase instead of CMC API
   const refreshData = useCallback(async () => {
+    // Don't run multiple refreshes simultaneously
     if (isRefreshing) {
-      console.log("DEBUG: Already refreshing, skipping");
       return;
     }
     
     setIsRefreshing(true);
-    const verbose = process.env.NODE_ENV === 'development';
-    
-    if (verbose) {
-      console.log('🔄 Refreshing data cache...');
-    }
+    // Only log in development
+    const verbose = false;
     
     try {
       // Try to get data from Supabase with proper error handling for each call
@@ -228,34 +266,19 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       let newGlobalData = null;
       
       try {
-        if (verbose) {
-          console.log('Attempting to fetch BTC price from Supabase...');
-        }
         // Use Supabase data source instead of direct API calls
         newBtcPrice = await getBtcPriceFromSupabase();
         
         // Validate the data - if it's 0 or null, we didn't get a valid price
         if (!newBtcPrice || newBtcPrice <= 0) {
-          console.warn('⚠️ Received invalid/zero BTC price from Supabase:', newBtcPrice);
           // Don't set to null - keep existing data if any
           if (btcPrice && btcPrice > 0) {
             newBtcPrice = btcPrice;
-            if (verbose) {
-              console.log('Using cached BTC price:', newBtcPrice);
-            }
-          }
-        } else {
-          if (verbose) {
-            console.log('✅ Successfully fetched BTC price from Supabase:', newBtcPrice);
           }
         }
       } catch (btcError) {
-        console.error('❌ Error fetching BTC price from Supabase:', btcError);
         // Fall back to cached value if available
         if (btcPrice && btcPrice > 0) {
-          if (verbose) {
-            console.log('Using cached BTC price:', btcPrice);
-          }
           newBtcPrice = btcPrice;
         }
       }
@@ -263,24 +286,13 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       // If we didn't get a valid price from Supabase, try the API
       if (!newBtcPrice || newBtcPrice <= 0) {
         try {
-          if (verbose) {
-            console.log('Falling back to CoinMarketCap API for BTC price');
-          }
           newBtcPrice = await getBtcPrice();
-          if (verbose) {
-            console.log('✅ Successfully fetched BTC price from API fallback:', newBtcPrice);
-          }
         } catch (apiBtcError) {
-          console.error('❌ Error fetching BTC price from API fallback:', apiBtcError);
           // Fall back to cached value if available
           if (btcPrice && btcPrice > 0) {
-            if (verbose) {
-              console.log('Using cached BTC price:', btcPrice);
-            }
             newBtcPrice = btcPrice;
           } else {
             // Last resort - use a hardcoded value that's at least close
-            console.warn('Using hardcoded fallback BTC price');
             newBtcPrice = 68000;
           }
         }
@@ -288,39 +300,23 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       
       // Updated part - use additional fallbacks if data still invalid
       if (!newBtcPrice || newBtcPrice <= 0) {
-        console.warn('Still got invalid BTC price after all fallbacks, using hardcoded value');
         newBtcPrice = 68000;
       }
       
       try {
-        if (verbose) {
-          console.log('Attempting to fetch ETH price from Supabase...');
-        }
         // Use Supabase data source instead of direct API calls
         newEthPrice = await getEthPriceFromSupabase();
         
         // Validate the data - if it's 0 or null, we didn't get a valid price
         if (!newEthPrice || newEthPrice <= 0) {
-          console.warn('⚠️ Received invalid/zero ETH price from Supabase:', newEthPrice);
           // Don't set to null - keep existing data if any
           if (ethPrice && ethPrice > 0) {
             newEthPrice = ethPrice;
-            if (verbose) {
-              console.log('Using cached ETH price:', newEthPrice);
-            }
-          }
-        } else {
-          if (verbose) {
-            console.log('✅ Successfully fetched ETH price from Supabase:', newEthPrice);
           }
         }
       } catch (ethError) {
-        console.error('❌ Error fetching ETH price from Supabase:', ethError);
         // Fall back to cached value if available
         if (ethPrice && ethPrice > 0) {
-          if (verbose) {
-            console.log('Using cached ETH price:', ethPrice);
-          }
           newEthPrice = ethPrice;
         }
       }
@@ -328,24 +324,13 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       // If we didn't get a valid price from Supabase, try the API
       if (!newEthPrice || newEthPrice <= 0) {
         try {
-          if (verbose) {
-            console.log('Falling back to CoinMarketCap API for ETH price');
-          }
           newEthPrice = await getEthPrice();
-          if (verbose) {
-            console.log('✅ Successfully fetched ETH price from API fallback:', newEthPrice);
-          }
         } catch (apiEthError) {
-          console.error('❌ Error fetching ETH price from API fallback:', apiEthError);
           // Fall back to cached value if available
           if (ethPrice && ethPrice > 0) {
-            if (verbose) {
-              console.log('Using cached ETH price:', ethPrice);
-            }
             newEthPrice = ethPrice;
           } else {
             // Last resort - use a hardcoded value that's at least close
-            console.warn('Using hardcoded fallback ETH price');
             newEthPrice = 3500;
           }
         }
@@ -353,39 +338,23 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       
       // Updated part - use additional fallbacks if data still invalid
       if (!newEthPrice || newEthPrice <= 0) {
-        console.warn('Still got invalid ETH price after all fallbacks, using hardcoded value');
         newEthPrice = 3500;
       }
       
       try {
-        if (verbose) {
-          console.log('Attempting to fetch global market data from Supabase...');
-        }
         // Use Supabase data source instead of direct API calls
         newGlobalData = await getGlobalDataFromSupabase();
         
         // Validate global data - check if totalMarketCap is valid
         if (!newGlobalData || newGlobalData.totalMarketCap <= 0) {
-          console.warn('⚠️ Received invalid global market data from Supabase');
           // Don't set to null - keep existing data if any
           if (globalData) {
             newGlobalData = globalData;
-            if (verbose) {
-              console.log('Using cached global market data');
-            }
-          }
-        } else {
-          if (verbose) {
-            console.log('✅ Successfully fetched global market data from Supabase');
           }
         }
       } catch (globalError) {
-        console.error('❌ Error fetching global market data from Supabase:', globalError);
         // Fall back to cached value if available
         if (globalData) {
-          if (verbose) {
-            console.log('Using cached global market data');
-          }
           newGlobalData = globalData;
         }
       }
@@ -393,20 +362,10 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       // If we didn't get valid global data from Supabase, try the API
       if (newGlobalData === null || !newGlobalData || newGlobalData.totalMarketCap <= 0) {
         try {
-          if (verbose) {
-            console.log('Falling back to CoinMarketCap API for global market data');
-          }
           newGlobalData = await getGlobalData();
-          if (verbose) {
-            console.log('✅ Successfully fetched global market data from API fallback');
-          }
         } catch (apiGlobalError) {
-          console.error('❌ Error fetching global market data from API fallback:', apiGlobalError);
           // Fall back to cached value if available
           if (globalData) {
-            if (verbose) {
-              console.log('Using cached global market data');
-            }
             newGlobalData = globalData;
           }
         }
@@ -433,22 +392,12 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       setLastUpdated(now);
       
     } catch (error) {
-      console.error('❌ Error refreshing data cache:', error);
+      console.error('Error refreshing data cache:', error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
-      
-      // Debug output for current state after refresh
-      console.log("DEBUG: Data cache state after refresh:", {
-        btcPrice,
-        ethPrice,
-        hasGlobalData: !!globalData,
-        isLoading,
-        isRefreshing,
-        lastUpdated
-      });
     }
-  }, [btcPrice, ethPrice, globalData, isRefreshing, isLoading, lastUpdated]);
+  }, [btcPrice, ethPrice, globalData, isRefreshing, setIsLoading, setIsRefreshing, setLastUpdated]);
   
   // Function to clear the entire cache
   const clearCache = useCallback(() => {

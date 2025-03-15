@@ -2,21 +2,43 @@ import supabase from './supabase-client';
 import { CoinData } from '@/types/portfolio';
 import { GlobalData } from './coinmarketcap';
 
+// Helper function to check if table exists (to avoid redundant checks)
+let tableExistsCache: Record<string, boolean> = {};
+
+/**
+ * Check if a table exists without excessive querying
+ */
+async function checkTableExists(tableName: string): Promise<boolean> {
+  // Return from cache if we've already checked
+  if (tableExistsCache[tableName] !== undefined) {
+    return tableExistsCache[tableName];
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('count')
+      .limit(1);
+      
+    const exists = !error || error.code !== '42P01';
+    // Cache the result
+    tableExistsCache[tableName] = exists;
+    return exists;
+  } catch (error) {
+    // Cache negative result to avoid repeated failures
+    tableExistsCache[tableName] = false;
+    return false;
+  }
+}
+
 /**
  * Fetch Bitcoin price from Supabase
  */
 export async function getBtcPriceFromSupabase(): Promise<number> {
   try {
-    console.log('Fetching BTC price from Supabase...');
-    
-    // Check if crypto_market_data table exists without using single()
-    const { data: tableCheck, error: tableCheckError } = await supabase
-      .from('crypto_market_data')
-      .select('count')
-      .limit(1);
-      
-    if (tableCheckError && tableCheckError.code === '42P01') {
-      console.warn('crypto_market_data table does not exist yet.');
+    // Check if table exists before proceeding
+    const tableExists = await checkTableExists('crypto_market_data');
+    if (!tableExists) {
       return 0;
     }
     
@@ -28,23 +50,17 @@ export async function getBtcPriceFromSupabase(): Promise<number> {
       .limit(1);
 
     if (error) {
-      console.error('Error querying BTC price:', error);
       return 0;
     }
     
-    // Log results and handle array properly
-    console.log('BTC data from Supabase:', data);
-    
     // Check if we got any results
     if (!data || data.length === 0) {
-      console.warn('No BTC price data found in Supabase');
       return 0;
     }
     
     // Return the first result's price
     return data[0]?.price_usd || 0;
   } catch (error) {
-    console.error('Error fetching BTC price from Supabase:', error);
     return 0;
   }
 }
@@ -54,16 +70,9 @@ export async function getBtcPriceFromSupabase(): Promise<number> {
  */
 export async function getEthPriceFromSupabase(): Promise<number> {
   try {
-    console.log('Fetching ETH price from Supabase...');
-    
-    // Check if crypto_market_data table exists without using single()
-    const { data: tableCheck, error: tableCheckError } = await supabase
-      .from('crypto_market_data')
-      .select('count')
-      .limit(1);
-      
-    if (tableCheckError && tableCheckError.code === '42P01') {
-      console.warn('crypto_market_data table does not exist yet.');
+    // Check if table exists before proceeding
+    const tableExists = await checkTableExists('crypto_market_data');
+    if (!tableExists) {
       return 0;
     }
     
@@ -75,23 +84,17 @@ export async function getEthPriceFromSupabase(): Promise<number> {
       .limit(1);
 
     if (error) {
-      console.error('Error querying ETH price:', error);
       return 0;
     }
     
-    // Log results and handle array properly
-    console.log('ETH data from Supabase:', data);
-    
     // Check if we got any results
     if (!data || data.length === 0) {
-      console.warn('No ETH price data found in Supabase');
       return 0;
     }
     
     // Return the first result's price
     return data[0]?.price_usd || 0;
   } catch (error) {
-    console.error('Error fetching ETH price from Supabase:', error);
     return 0;
   }
 }
@@ -101,15 +104,23 @@ export async function getEthPriceFromSupabase(): Promise<number> {
  */
 export async function getGlobalDataFromSupabase(): Promise<GlobalData> {
   try {
-    console.log('Calculating global market data from Supabase...');
+    // Check if table exists before proceeding
+    const tableExists = await checkTableExists('crypto_market_data');
+    if (!tableExists) {
+      return {
+        btcDominance: 0,
+        ethDominance: 0,
+        totalMarketCap: 0,
+        totalVolume24h: 0
+      };
+    }
     
     // Get all market data needed for calculations
     const { data: marketData, error: marketError } = await supabase
       .from('crypto_market_data')
       .select('symbol, market_cap, volume_24h');
 
-    if (marketError) {
-      console.error('Error fetching market data:', marketError);
+    if (marketError || !marketData || marketData.length === 0) {
       return {
         btcDominance: 0,
         ethDominance: 0,
@@ -117,18 +128,6 @@ export async function getGlobalDataFromSupabase(): Promise<GlobalData> {
         totalVolume24h: 0
       };
     }
-
-    if (!marketData || marketData.length === 0) {
-      console.warn('No market data found in Supabase');
-      return {
-        btcDominance: 0,
-        ethDominance: 0,
-        totalMarketCap: 0,
-        totalVolume24h: 0
-      };
-    }
-
-    console.log(`Found ${marketData.length} coins with market data`);
 
     // Calculate totals
     const totalMarketCap = marketData.reduce((sum, coin) => sum + (coin.market_cap || 0), 0);
@@ -145,18 +144,13 @@ export async function getGlobalDataFromSupabase(): Promise<GlobalData> {
     const btcDominance = totalMarketCap > 0 ? (btcMarketCap / totalMarketCap) * 100 : 0;
     const ethDominance = totalMarketCap > 0 ? (ethMarketCap / totalMarketCap) * 100 : 0;
 
-    const result = {
+    return {
       btcDominance,
       ethDominance,
       totalMarketCap,
       totalVolume24h
     };
-    
-    console.log('Calculated global market data:', result);
-    
-    return result;
   } catch (error) {
-    console.error('Error calculating global market data from Supabase:', error);
     return {
       btcDominance: 0,
       ethDominance: 0,
@@ -171,18 +165,21 @@ export async function getGlobalDataFromSupabase(): Promise<GlobalData> {
  */
 export async function fetchCoinDataFromSupabase(coinId: string): Promise<CoinData | null> {
   try {
+    // Check if table exists before proceeding
+    const tableExists = await checkTableExists('crypto_market_data');
+    if (!tableExists) {
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from('crypto_market_data')
       .select('*')
       .eq('id', coinId)
       .limit(1);
 
-    if (error) {
-      console.error(`Error querying coin data for ${coinId}:`, error);
+    if (error || !data || data.length === 0) {
       return null;
     }
-    
-    if (!data || data.length === 0) return null;
 
     // Map to CoinData format
     const coinData: CoinData = {
@@ -199,7 +196,6 @@ export async function fetchCoinDataFromSupabase(coinId: string): Promise<CoinDat
 
     return coinData;
   } catch (error) {
-    console.error(`Error fetching coin data from Supabase for ${coinId}:`, error);
     return null;
   }
 }
@@ -213,41 +209,23 @@ export async function fetchMultipleCoinsDataFromSupabase(coinIds: string[]): Pro
   }
 
   try {
-    console.log(`Fetching data for ${coinIds.length} coins from Supabase...`);
-    
-    // Check if crypto_market_data table exists
-    const { error: tableCheckError } = await supabase
-      .from('crypto_market_data')
-      .select('count')
-      .limit(1)
-      .single();
-      
-    if (tableCheckError && tableCheckError.code === '42P01') {
-      console.warn('crypto_market_data table does not exist yet.');
+    // Check if table exists before proceeding
+    const tableExists = await checkTableExists('crypto_market_data');
+    if (!tableExists) {
       return {};
     }
 
     // Ensure all coinIds are strings and deduplicate them
     const uniqueCoinIds = Array.from(new Set(coinIds.map(id => String(id))));
     
-    console.log(`Querying for coins: ${uniqueCoinIds.join(', ')}`);
-    
     const { data, error } = await supabase
       .from('crypto_market_data')
       .select('id, name, symbol, price_usd, price_btc, price_change_24h, market_cap, volume_24h, logo_url')
       .in('id', uniqueCoinIds);
 
-    if (error) {
-      console.error(`Error querying multiple coins data:`, error);
+    if (error || !data || data.length === 0) {
       return {};
     }
-
-    if (!data || data.length === 0) {
-      console.warn(`No data found for coins: ${uniqueCoinIds.join(', ')}`);
-      return {};
-    }
-
-    console.log(`Retrieved data for ${data.length} coins from Supabase`);
 
     // Map to CoinData format
     const results: Record<string, CoinData> = {};

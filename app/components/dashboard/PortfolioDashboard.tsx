@@ -407,22 +407,17 @@ function PortfolioDashboardComponent() {
   const [isAssetDetailModalOpen, setIsAssetDetailModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [renderKey, setRenderKey] = useState(Date.now()); // Add a key to force re-render if needed
-  const hasRefreshedRef = useRef(false);
-  const lastRefreshAttemptRef = useRef(0);
   const mountedRef = useRef(true); // Track if component is mounted
+  const hasInitializedRef = useRef(false); // Track initial data load
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Calculate loading and error states - IMPROVED to prevent stuck loading
-  // Only consider the component in a loading state during initial load or explicit refresh
-  const effectivePortfolioLoading = portfolioLoading && !initialLoadComplete;
-  const effectivePriceLoading = loadingPrices && !initialLoadComplete && !btcPrice && !ethPrice;
-  const loading = (effectivePortfolioLoading || effectivePriceLoading) && !initialLoadComplete;
+  const loading = (portfolioLoading || loadingPrices) && !initialLoadComplete;
   const error = portfolioError || watchlistError;
   
   // Create a sorted version of the portfolio items
   const sortedPortfolioItems = useMemo(() => {
     if (!portfolio || !portfolio.items) return [];
-    
     // Return a new sorted array by valueUsd (descending)
     return [...portfolio.items].sort((a, b) => b.valueUsd - a.valueUsd);
   }, [portfolio]);
@@ -437,57 +432,80 @@ function PortfolioDashboardComponent() {
   const cardAnimationClass = initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform";
   const listItemAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
   
-  // Reset loading state when component unmounts and remounts
-  // This is crucial for preventing stuck loading states after navigation
+  // Single comprehensive useEffect for component initialization and cleanup
   useEffect(() => {
-    // Mark as mounted
+    // Component mount initialization
     mountedRef.current = true;
-    console.log("DEBUG: Component mounted, forcing portfolio refresh on navigation back");
-    
-    // Check if we already have data and set initial load complete if we do
-    if ((btcPrice && ethPrice) || portfolio) {
-      setInitialLoadComplete(true);
+
+    // If we haven't initialized yet
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      
+      // Check if we already have data and set initial load complete if we do
+      if ((btcPrice && ethPrice) || portfolio) {
+        setInitialLoadComplete(true);
+      }
+      
+      // Critical fix: don't refresh portfolio data if it's already loaded 
+      // This prevents data loss when navigating back to the dashboard
+      if (portfolio && Object.keys(portfolio).length > 0 && portfolio.items && portfolio.items.length > 0) {
+        // We already have portfolio data, just set initial load complete
+        setInitialLoadComplete(true);
+        
+        // Only refresh prices if needed
+        if (!btcPrice || !ethPrice) {
+          refreshData().catch(err => console.error("Data refresh error:", err));
+        }
+      } else {
+        // Initial data refresh with debounce to prevent duplicate calls
+        refreshTimeoutRef.current = setTimeout(() => {
+          if (mountedRef.current) {
+            // Load crypto prices first
+            refreshData().catch(err => console.error("Data refresh error:", err));
+            
+            // Then load portfolio data (which needs prices)
+            refreshPortfolio(false).catch(err => console.error("Portfolio refresh error:", err));
+          }
+        }, 200);
+      }
+      
+      // Set initial load complete after reasonable timeout
+      // This prevents indefinite loading states
+      setTimeout(() => {
+        if (mountedRef.current && !initialLoadComplete) {
+          setInitialLoadComplete(true);
+        }
+      }, 3000);
     }
     
-    // NAVIGATION FIX: Always refresh portfolio data when component mounts
-    // This ensures data is fresh when navigating back to the dashboard
-    // Pass true to force a refresh regardless of cache
-    refreshPortfolio(true);
-    
-    // On unmount, reset state
+    // Cleanup on unmount
     return () => {
       mountedRef.current = false;
-      hasRefreshedRef.current = false;
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
     };
-  }, [btcPrice, ethPrice, portfolio, refreshPortfolio]);
-  
-  // Add a special effect to detect portfolio with zero value despite having items
-  // This can happen when navigating back to the dashboard
-  useEffect(() => {
-    // If we have portfolio items but their value is 0, this indicates a data issue
-    if (portfolio && 
-        portfolio.items && 
-        portfolio.items.length > 0 && 
-        portfolio.totalValueUsd === 0) {
-      
-      console.log("DEBUG: Portfolio has items but zero value - forcing refresh");
-      refreshPortfolio(true);
-    }
-  }, [portfolio, refreshPortfolio]);
+  }, [btcPrice, ethPrice, portfolio, refreshData, refreshPortfolio, initialLoadComplete]);
   
   // Throttled refresh function to prevent excessive calls
   const throttledRefresh = useCallback(async () => {
-    const now = Date.now();
-    const timeSinceLastRefresh = now - lastRefreshAttemptRef.current;
+    if (isRefreshing) return;
     
-    // Prevent refreshing too often (minimum 3 seconds between refreshes)
-    if (timeSinceLastRefresh < 3000) {
-      return;
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+      await refreshPortfolio(false);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      // Add a minimum duration for the refresh animation
+      setTimeout(() => {
+        if (mountedRef.current) {
+          setIsRefreshing(false);
+        }
+      }, 500);
     }
-    
-    lastRefreshAttemptRef.current = now;
-    await refreshData();
-  }, [refreshData]);
+  }, [refreshData, refreshPortfolio, isRefreshing]);
   
   // Handler for when a coin is added to ensure UI updates
   const handleCoinAdded = useCallback(() => {
@@ -515,247 +533,15 @@ function PortfolioDashboardComponent() {
   
   // Manual refresh function with visual feedback
   const handleManualRefresh = useCallback(() => {
-    setIsRefreshing(true);
-    
-    // Only refresh if enough time has passed
-    throttledRefresh()
-      .catch(error => {
-        console.error("Error refreshing global data:", error);
-      })
-      .finally(() => {
-        // Add a minimum duration for the refresh animation
-        setTimeout(() => {
-          if (mountedRef.current) {
-            setIsRefreshing(false);
-          }
-        }, 500);
-      });
-      
-    // Also refresh the portfolio with force=true 
-    refreshPortfolio(true);
-  }, [throttledRefresh, refreshPortfolio]);
-  
-  // Only run this once on mount with debounce
-  const loadInitialData = useCallback(async () => {
-    // If already complete, don't reload
-    if (initialLoadComplete && (btcPrice || ethPrice)) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log("DEBUG: Initial load already complete, skipping", { 
-          btcPrice, 
-          ethPrice, 
-          hasPortfolio: Boolean(portfolio),
-          initialLoadComplete
-        });
-      }
-      return;
-    }
-
-    console.log("DEBUG: Starting initial data load", { 
-      hasCache: Boolean(btcPrice && ethPrice && globalData),
-      btcPrice,
-      ethPrice,
-      hasPortfolio: Boolean(portfolio),
-      portfolioLoading
-    });
-
-    try {
-      // Check if we have data in the cache already
-      if (btcPrice && ethPrice && globalData) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log("Dashboard already has data from cache, skipping initial refresh");
-        }
-        hasRefreshedRef.current = true;
-        setInitialLoadComplete(true);
-        return;
-      }
-      
-      // Only show refreshing if we don't have data
-      if (!globalData) {
-        setIsRefreshing(true);
-      }
-      
-      // Just refresh the global data which contains dominance values
-      console.log("DEBUG: Calling refreshData()");
-      await refreshData();
-      console.log("DEBUG: refreshData() completed, btcPrice:", btcPrice, "ethPrice:", ethPrice);
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log("Dashboard data refreshed on mount");
-      }
-      
-      // Mark as refreshed to prevent multiple calls
-      hasRefreshedRef.current = true;
-    } catch (error) {
-      console.error("Error refreshing dashboard data:", error);
-      
-      // Even on error, mark as refreshed to prevent retry storms
-      hasRefreshedRef.current = true;
-    } finally {
-      if (mountedRef.current) {
-        setIsRefreshing(false);
-        // Set initial load as complete whether we succeeded or failed
-        setInitialLoadComplete(true);
-        console.log("DEBUG: Initial load complete, final state:", {
-          btcPrice,
-          ethPrice,
-          hasPortfolio: Boolean(portfolio),
-          portfolioLoading
-        });
-      }
-    }
-  }, [btcPrice, ethPrice, globalData, refreshData, initialLoadComplete, portfolio, portfolioLoading]);
-  
-  // Initialize data on mount - with optimization to prevent duplicate initialization
-  useEffect(() => {
-    console.log("DEBUG: Mount effect running", {
-      btcPrice,
-      ethPrice,
-      hasPortfolio: Boolean(portfolio),
-      portfolioLoading,
-      initialLoadComplete,
-      hasRefreshed: hasRefreshedRef.current
-    });
-    
-    // Always set initial load complete if we have price data
-    // This ensures we recover from interrupted loads
-    if (btcPrice && ethPrice) {
-      console.log("DEBUG: We have price data, setting initialLoadComplete");
-      setInitialLoadComplete(true);
-      return;
-    }
-    
-    // If we already have portfolio data, show it immediately
-    if (portfolio && !portfolioLoading) {
-      console.log("DEBUG: We have portfolio data, setting initialLoadComplete");
-      setInitialLoadComplete(true);
-    }
-    
-    // Skip if already initialized
-    if (hasRefreshedRef.current && initialLoadComplete) {
-      console.log("DEBUG: Already initialized, skipping load");
-      return;
-    }
-    
-    // Use a smaller delay for faster startup
-    console.log("DEBUG: Setting up timer for loadInitialData");
-    const timer = setTimeout(() => {
-      if (mountedRef.current) {
-        console.log("DEBUG: Timer fired, calling loadInitialData");
-        loadInitialData();
-      }
-    }, 200);
-    
-    return () => {
-      console.log("DEBUG: Cleaning up mount effect");
-      clearTimeout(timer);
-    }
-  }, [loadInitialData, btcPrice, ethPrice, portfolio, portfolioLoading, initialLoadComplete]);
-  
-  // Trigger a portfolio refresh when we get new price data - optimized with conditions
-  useEffect(() => {
-    // Skip if we have no price data yet or if we're still loading
-    if (!btcPrice || !ethPrice || portfolioLoading) {
-      return;
-    }
-    
-    // Only refresh if we have portfolio items but zero value
-    if (portfolio && 
-        portfolio.totalValueUsd === 0 && 
-        portfolio.items.length > 0) {
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log("Prices available but portfolio value is 0 - refreshing portfolio data");
-      }
-      refreshPortfolio();
-    }
-  }, [btcPrice, ethPrice, portfolio, refreshPortfolio, portfolioLoading]);
-  
-  // Handle the case of returning to the page with data but stuck loading
-  // This is crucial for recovering from navigation
-  useEffect(() => {
-    if ((btcPrice || ethPrice || portfolio) && !initialLoadComplete) {
-      // Short delay to ensure data is processed before showing animations
-      const timer = setTimeout(() => {
-        if (mountedRef.current) {
-          setInitialLoadComplete(true);
-        }
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [btcPrice, ethPrice, portfolio, initialLoadComplete]);
-  
-  // Emergency recovery for stuck loading state
-  useEffect(() => {
-    // If we've been in loading state for more than 5 seconds despite having data
-    // force a reset of the component state
-    const timer = setTimeout(() => {
-      if (mountedRef.current && (btcPrice || ethPrice || portfolio) && !initialLoadComplete) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log("Emergency recovery from stuck loading state");
-        }
-        setInitialLoadComplete(true);
-        setRenderKey(Date.now()); // Force re-render
-      }
-    }, 5000);
-    
-    return () => clearTimeout(timer);
-  }, [btcPrice, ethPrice, portfolio, initialLoadComplete]);
-  
-  // Ultimate fallback - if we've been mounted for 10 seconds and still have no data, 
-  // inject hardcoded values to show something
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (mountedRef.current && !btcPrice && !ethPrice) {
-        console.log("CRITICAL: No data after 10 seconds, using hardcoded values");
-        
-        // This is a last resort to ensure users see SOMETHING
-        if (!btcPrice) {
-          // @ts-ignore - emergency override of state
-          setBtcPrice(68000);
-        }
-        
-        if (!ethPrice) {
-          // @ts-ignore - emergency override of state  
-          setEthPrice(3500);
-        }
-        
-        setInitialLoadComplete(true);
-        setRenderKey(Date.now()); // Force re-render
-      }
-    }, 10000);
-    
-    return () => clearTimeout(timer);
-  }, [btcPrice, ethPrice]);
-  
-  // Force an immediate refresh on mount
-  useEffect(() => {
-    // Emergency loading if we have no data after 2 seconds
-    const emergencyTimer = setTimeout(() => {
-      if (mountedRef.current && !initialLoadComplete && !hasRefreshedRef.current) {
-        console.log("DEBUG: Emergency refresh triggered");
-        refreshData().catch(err => console.error("Emergency refresh failed:", err));
-        refreshPortfolio().catch(err => console.error("Emergency portfolio refresh failed:", err));
-        // Allow a bit more time then force complete
-        setTimeout(() => {
-          if (mountedRef.current) {
-            console.log("DEBUG: Forcing initialLoadComplete");
-            setInitialLoadComplete(true);
-            setRenderKey(Date.now());
-          }
-        }, 1000);
-      }
-    }, 2000);
-    
-    return () => clearTimeout(emergencyTimer);
-  }, [refreshData, refreshPortfolio, initialLoadComplete]);
+    throttledRefresh();
+  }, [throttledRefresh]);
   
   // If we're still showing the loading skeleton but we have data,
   // force a recovery to the normal view
   if (loading && (portfolio || (btcPrice && ethPrice)) && !initialLoadComplete) {
     // Force render complete view instead of skeleton
     return (
-      <div className="container mx-auto pt-2 pb-6 px-4 max-w-7xl" key={renderKey}>
+      <div className="container mx-auto pt-2 pb-6 px-4 max-w-7xl" key={Date.now()}>
         {/* Emergency fallback content */}
         <div className="mb-6 flex justify-between items-center">
           <div>
@@ -807,7 +593,6 @@ function PortfolioDashboardComponent() {
           <button 
             onClick={() => {
               setInitialLoadComplete(true);
-              setRenderKey(Date.now());
               handleManualRefresh();
             }}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"

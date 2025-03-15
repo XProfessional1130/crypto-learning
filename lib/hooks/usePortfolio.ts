@@ -47,6 +47,27 @@ export function usePortfolio() {
   const hasInitialCheckedRef = useRef<boolean>(false);
   const verbose = process.env.NODE_ENV === 'development';
 
+  // Immediately check for cached data on hook initialization
+  useEffect(() => {
+    if (!hasInitialCheckedRef.current && user) {
+      hasInitialCheckedRef.current = true;
+      const userId = user.id;
+      const globalCacheForUser = globalCache.portfolioData[userId];
+      
+      // Check for and use any cached data immediately
+      if (globalCacheForUser) {
+        setPortfolio(globalCacheForUser.data);
+        setLoading(false);
+        if (verbose) {
+          console.log('Portfolio data retrieved from global cache on init');
+        }
+      }
+      
+      // Still fetch fresh data, but don't show loading if we have cache
+      fetchPortfolio(false);
+    }
+  }, [user]);
+
   // Fetch portfolio data with caching and throttling
   const fetchPortfolio = useCallback(async (forceFetch = false) => {
     if (!user) {
@@ -82,8 +103,8 @@ export function usePortfolio() {
     const timeSinceLastFetch = now - lastFetchRef.current;
     const globalCacheForUser = globalCache.portfolioData[userId];
     
-    // For return navigation, we use a much shorter cache duration
-    const effectiveCacheDuration = isReturnNavigation ? NAV_CACHE_DURATION : CACHE_DURATION;
+    // For return navigation, we use a much longer cache duration to avoid refresh
+    const effectiveCacheDuration = isReturnNavigation ? CACHE_DURATION * 2 : CACHE_DURATION;
     
     // Determine if we can use the cache
     const canUseGlobalCache = !forceFetch && 
@@ -126,8 +147,8 @@ export function usePortfolio() {
         setPortfolio(localCacheRef.current!.data);
       }
       
-      // Only do background refresh if we're not in the cooldown
-      if (timeSinceLastFetch >= MIN_FETCH_INTERVAL) {
+      // Only do background refresh if we're not in the cooldown and it's not a return navigation
+      if (timeSinceLastFetch >= MIN_FETCH_INTERVAL && !isReturnNavigation) {
         if (verbose) {
           console.log('Using cache and fetching portfolio in background');
         }
@@ -144,8 +165,11 @@ export function usePortfolio() {
       }
     }
 
-    // Full refresh needed
-    setLoading(true);
+    // If we got here, we need a full refresh
+    // Only show loading if we don't have any cached data to show
+    if (!portfolio) {
+      setLoading(true);
+    }
     setError(null);
     lastFetchRef.current = now;
     fetchingRef.current = true;
