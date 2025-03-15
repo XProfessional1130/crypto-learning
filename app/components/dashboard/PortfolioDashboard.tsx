@@ -442,18 +442,38 @@ function PortfolioDashboardComponent() {
   useEffect(() => {
     // Mark as mounted
     mountedRef.current = true;
+    console.log("DEBUG: Component mounted, forcing portfolio refresh on navigation back");
     
     // Check if we already have data and set initial load complete if we do
     if ((btcPrice && ethPrice) || portfolio) {
       setInitialLoadComplete(true);
     }
     
+    // NAVIGATION FIX: Always refresh portfolio data when component mounts
+    // This ensures data is fresh when navigating back to the dashboard
+    // Pass true to force a refresh regardless of cache
+    refreshPortfolio(true);
+    
     // On unmount, reset state
     return () => {
       mountedRef.current = false;
       hasRefreshedRef.current = false;
     };
-  }, [btcPrice, ethPrice, portfolio]);
+  }, [btcPrice, ethPrice, portfolio, refreshPortfolio]);
+  
+  // Add a special effect to detect portfolio with zero value despite having items
+  // This can happen when navigating back to the dashboard
+  useEffect(() => {
+    // If we have portfolio items but their value is 0, this indicates a data issue
+    if (portfolio && 
+        portfolio.items && 
+        portfolio.items.length > 0 && 
+        portfolio.totalValueUsd === 0) {
+      
+      console.log("DEBUG: Portfolio has items but zero value - forcing refresh");
+      refreshPortfolio(true);
+    }
+  }, [portfolio, refreshPortfolio]);
   
   // Throttled refresh function to prevent excessive calls
   const throttledRefresh = useCallback(async () => {
@@ -510,7 +530,10 @@ function PortfolioDashboardComponent() {
           }
         }, 500);
       });
-  }, [throttledRefresh]);
+      
+    // Also refresh the portfolio with force=true 
+    refreshPortfolio(true);
+  }, [throttledRefresh, refreshPortfolio]);
   
   // Only run this once on mount with debounce
   const loadInitialData = useCallback(async () => {
@@ -856,7 +879,7 @@ function PortfolioDashboardComponent() {
         <p className="text-red-500">{error}</p>
         <button 
           className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          onClick={refreshPortfolio}
+          onClick={() => refreshPortfolio(true)}
         >
           Try Again
         </button>

@@ -9,11 +9,30 @@ const PORTFOLIO_LIMIT = 30;
  * Get coin data using the global data cache helper if available
  * This avoids direct API calls when cached data is available
  */
-async function getCoinDataWithFallback(coinIds: string[]) {
+async function getCoinDataWithFallback(coinIds: string[], forceRefresh = false) {
   try {
+    // Check if this is a re-navigation attempt based on timing
+    const isNavigationRequest = typeof window !== 'undefined' && 
+      window.performance && 
+      performance.navigation && 
+      (performance.navigation.type === 1 || // Reload
+       (document.referrer && document.referrer.includes(window.location.host))); // Back navigation
+    
+    // Always log key information
+    const verbose = process.env.NODE_ENV === 'development';
+    if (verbose) {
+      console.log(`Portfolio: Getting data for ${coinIds.length} coins, ` + 
+                 `forceRefresh=${forceRefresh}, ` + 
+                 `potentialNavigation=${isNavigationRequest}`);
+    }
+    
     // Try to get from the window global cache if it exists (set by DataCacheProvider)
-    if (typeof window !== 'undefined' && window.__LC_DATA_CACHE_HELPER__) {
-      console.log('Using DataCache helper for portfolio coin prices');
+    // Skip cache if forceRefresh is true or if this seems to be a navigation
+    if (!forceRefresh && !isNavigationRequest && 
+        typeof window !== 'undefined' && window.__LC_DATA_CACHE_HELPER__) {
+      if (verbose) {
+        console.log('Using DataCache helper for portfolio coin prices');
+      }
       const cachedData = await window.__LC_DATA_CACHE_HELPER__(coinIds);
       if (cachedData && Object.keys(cachedData).length > 0) {
         return cachedData;
@@ -21,7 +40,9 @@ async function getCoinDataWithFallback(coinIds: string[]) {
     }
     
     // First try Supabase
-    console.log('Trying Supabase for portfolio coin prices');
+    if (verbose) {
+      console.log('Trying Supabase for portfolio coin prices');
+    }
     try {
       const supabaseData = await fetchMultipleCoinsDataFromSupabase(coinIds);
       if (supabaseData && Object.keys(supabaseData).length > 0) {
@@ -32,7 +53,9 @@ async function getCoinDataWithFallback(coinIds: string[]) {
     }
     
     // Fall back to direct API call
-    console.log('Falling back to API for portfolio coin prices');
+    if (verbose) {
+      console.log('Falling back to API for portfolio coin prices');
+    }
     return await fetchMultipleCoinsData(coinIds);
   } catch (error) {
     console.error('Error getting coin data:', error);
@@ -41,7 +64,7 @@ async function getCoinDataWithFallback(coinIds: string[]) {
   }
 }
 
-export async function getUserPortfolio(userId: string): Promise<PortfolioSummary> {
+export async function getUserPortfolio(userId: string, forceRefresh = false): Promise<PortfolioSummary> {
   try {
     const { data: portfolioItems, error } = await supabase
       .from('user_portfolios')
@@ -65,8 +88,8 @@ export async function getUserPortfolio(userId: string): Promise<PortfolioSummary
     // Get all coin prices - ensure IDs are strings
     const coinIds = portfolioItems.map(item => String(item.coin_id));
     
-    // Use the function that checks cache first
-    const coinsData = await getCoinDataWithFallback(coinIds);
+    // Use the function that checks cache first, passing the forceRefresh flag
+    const coinsData = await getCoinDataWithFallback(coinIds, forceRefresh);
     
     let totalValueUsd = 0;
     let totalValueBtc = 0;
