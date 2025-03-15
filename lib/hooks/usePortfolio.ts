@@ -33,12 +33,22 @@ export function usePortfolio() {
   const toast = useToast();
   const lastFetchRef = useRef<number>(0);
   const localCacheRef = useRef<{data: PortfolioSummary, timestamp: number} | null>(null);
+  const fetchingRef = useRef<boolean>(false);
+  const verbose = process.env.NODE_ENV === 'development';
 
   // Fetch portfolio data with caching and throttling
   const fetchPortfolio = useCallback(async (forceFetch = false) => {
     if (!user) {
       setPortfolio(null);
       setLoading(false);
+      return;
+    }
+
+    // Prevent concurrent fetches
+    if (fetchingRef.current && !forceFetch) {
+      if (verbose) {
+        console.log('Already fetching portfolio, skipping duplicate request');
+      }
       return;
     }
 
@@ -61,16 +71,22 @@ export function usePortfolio() {
       if (canUseGlobalCache) {
         setPortfolio(globalCacheForUser.data);
         setLoading(false);
-        console.log('Using global portfolio cache (in cooldown)');
+        if (verbose) {
+          console.log('Using global portfolio cache (in cooldown)');
+        }
         return;
       } else if (canUseLocalCache) {
         setPortfolio(localCacheRef.current!.data);
         setLoading(false);
-        console.log('Using local portfolio cache (in cooldown)');
+        if (verbose) {
+          console.log('Using local portfolio cache (in cooldown)');
+        }
         return;
       }
       // If no cache but in cooldown, we'll continue but log it
-      console.log('Skipping portfolio fetch - too soon since last fetch');
+      if (verbose) {
+        console.log('Skipping portfolio fetch - too soon since last fetch');
+      }
     }
     
     // If not in cooldown but cache is still fresh, use it and do background refresh
@@ -84,7 +100,9 @@ export function usePortfolio() {
       
       // Only do background refresh if we're not in the cooldown
       if (timeSinceLastFetch >= MIN_FETCH_INTERVAL) {
-        console.log('Using cache and fetching portfolio in background');
+        if (verbose) {
+          console.log('Using cache and fetching portfolio in background');
+        }
         // Don't show loading indicator for background refresh
         setLoading(false);
         
@@ -102,11 +120,16 @@ export function usePortfolio() {
     setLoading(true);
     setError(null);
     lastFetchRef.current = now;
+    fetchingRef.current = true;
 
     try {
-      console.log(`Fetching portfolio for user ${user.id}...`);
+      if (verbose) {
+        console.log(`Fetching portfolio for user ${user.id}...`);
+      }
       const data = await getUserPortfolio(user.id);
-      console.log(`Portfolio fetched successfully with ${data.items.length} items`);
+      if (verbose) {
+        console.log(`Portfolio fetched successfully with ${data.items.length} items`);
+      }
       
       // Update state and caches
       setPortfolio(data);
@@ -134,58 +157,109 @@ export function usePortfolio() {
       });
       
       setLoading(false);
+    } finally {
+      fetchingRef.current = false;
     }
-  }, [user, toast]);
+  }, [user, toast, verbose]);
   
   // Background refresh function that doesn't update loading state
-  const backgroundRefresh = async () => {
+  const backgroundRefresh = useCallback(async () => {
     if (!user) return;
     
-    lastFetchRef.current = Date.now();
+    // Prevent concurrent background refreshes
+    if (fetchingRef.current) {
+      if (verbose) {
+        console.log('Background refresh skipped - another fetch in progress');
+      }
+      return;
+    }
+    
+    const now = Date.now();
+    lastFetchRef.current = now;
+    fetchingRef.current = true;
     
     try {
-      console.log(`Background refreshing portfolio for user ${user.id}...`);
       const data = await getUserPortfolio(user.id);
       
-      // Update state and caches
-      setPortfolio(data);
-      const now = Date.now();
-      localCacheRef.current = { data, timestamp: now };
-      globalCache.portfolioData[user.id] = { data, timestamp: now };
-      
-      console.log('Background portfolio refresh completed');
+      // Only update if we got valid data
+      if (data && data.items) {
+        setPortfolio(data);
+        localCacheRef.current = { data, timestamp: now };
+        globalCache.portfolioData[user.id] = { data, timestamp: now };
+        
+        if (verbose) {
+          console.log('Background refresh complete with', data.items.length, 'items');
+        }
+      }
     } catch (err) {
-      console.error('Background portfolio refresh failed:', err);
-      // Don't set error state for background refreshes
+      console.error('Error in background refresh:', err);
+      // Don't show an error toast for background refresh failures
+    } finally {
+      fetchingRef.current = false;
     }
-  };
+  }, [user, verbose]);
 
+  // Auto-refresh for authenticated users
   useEffect(() => {
-    // Initial fetch when component mounts or user changes
-    if (user) {
-      console.log('User authenticated, fetching portfolio...');
-      fetchPortfolio(true); // Force fetch on initial load
+    if (!user) return;
+    
+    // Perform an initial fetch if needed
+    const hasCache = globalCache.portfolioData[user.id] || localCacheRef.current;
+    
+    // If we don't have any cached data, fetch immediately
+    if (!hasCache && !fetchingRef.current) {
+      if (verbose) {
+        console.log('No cached portfolio data, fetching on mount...');
+      }
+      fetchPortfolio(false);
     }
     
-    // Set up refresh interval (now 10 minutes instead of 5)
-    const refreshIntervalId = setInterval(() => {
-      if (user) {
-        console.log('Auto-refreshing portfolio...');
-        backgroundRefresh(); // Use background refresh for intervals
+    // Set up auto-refresh interval
+    const intervalId = setInterval(() => {
+      // Only refresh if user is still logged in and enough time has passed
+      if (user && Date.now() - lastFetchRef.current >= AUTO_REFRESH_INTERVAL) {
+        if (verbose) {
+          console.log('Auto-refreshing portfolio data...');
+        }
+        backgroundRefresh();
       }
     }, AUTO_REFRESH_INTERVAL);
     
     // Set up cache cleanup interval
-    const cacheCleanupIntervalId = setInterval(() => {
-      console.log('Cleaning up coin data caches...');
-      cleanupCaches();
+    const cleanupIntervalId = setInterval(() => {
+      if (verbose) {
+        console.log('Cleaning up expired portfolio caches...');
+      }
+      
+      // Clean up global cache
+      const now = Date.now();
+      Object.keys(globalCache.portfolioData).forEach(userId => {
+        const cacheItem = globalCache.portfolioData[userId];
+        if (now - cacheItem.timestamp > CACHE_CLEANUP_INTERVAL) {
+          delete globalCache.portfolioData[userId];
+        }
+      });
     }, CACHE_CLEANUP_INTERVAL);
     
+    // Cleanup on unmount
     return () => {
-      clearInterval(refreshIntervalId);
-      clearInterval(cacheCleanupIntervalId);
+      clearInterval(intervalId);
+      clearInterval(cleanupIntervalId);
     };
-  }, [user]);
+  }, [user, fetchPortfolio, backgroundRefresh, verbose]);
+  
+  // Whenever user changes, we need to check authentication
+  useEffect(() => {
+    if (user) {
+      if (verbose) {
+        console.log('User authenticated, fetching portfolio...');
+      }
+      fetchPortfolio();
+    } else {
+      setPortfolio(null);
+      setLoading(false);
+    }
+  }, [user, fetchPortfolio, verbose]);
 
   // Add a coin to the portfolio with optimistic UI updates
   const addCoin = useCallback(async (coinId: string, amount: number) => {

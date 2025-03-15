@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useDataCache } from '@/lib/context/data-cache-context';
 
 /**
@@ -13,19 +13,23 @@ import { useDataCache } from '@/lib/context/data-cache-context';
 export default function CoinDataInitializer() {
   const [initialized, setInitialized] = useState(false);
   const { refreshData } = useDataCache();
+  const initTriedRef = useRef(false);
+  const verbose = process.env.NODE_ENV === 'development';
 
   useEffect(() => {
     // Only run once
-    if (initialized) return;
+    if (initialized || initTriedRef.current) return;
     
-    // Mark as initialized immediately to prevent multiple effect runs
-    setInitialized(true);
+    // Mark as tried immediately to prevent multiple effect runs
+    initTriedRef.current = true;
     
     const initService = async () => {
       // Set a global flag to prevent double initialization with DataPrefetcher
       if (typeof window !== 'undefined') {
         if (window.__DATA_SERVICE_INITIALIZING__ || window.__DATA_SERVICE_INITIALIZED__) {
-          console.log('CoinDataInitializer: Initialization already handled elsewhere, skipping');
+          if (verbose) {
+            console.log('CoinDataInitializer: Initialization already handled elsewhere, skipping');
+          }
           return;
         }
         window.__DATA_SERVICE_INITIALIZING__ = true;
@@ -33,14 +37,21 @@ export default function CoinDataInitializer() {
       
       try {
         // Prefer using DataCache for initializing data - it uses Supabase
-        console.log('CoinDataInitializer: Using DataCache (via Supabase) instead of direct API calls');
+        if (verbose) {
+          console.log('CoinDataInitializer: Using DataCache (via Supabase) instead of direct API calls');
+        }
         await refreshData();
-        console.log('Coin data service initialized from app router (using Supabase)');
+        if (verbose) {
+          console.log('Coin data service initialized from app router (using Supabase)');
+        }
         
         if (typeof window !== 'undefined') {
           window.__DATA_SERVICE_INITIALIZED__ = true;
           window.__DATA_SERVICE_INITIALIZING__ = false;
         }
+        
+        // Mark as initialized to prevent duplicate initialization attempts
+        setInitialized(true);
       } catch (err) {
         console.error('Could not initialize data via DataCache:', err);
         
@@ -51,20 +62,29 @@ export default function CoinDataInitializer() {
           
           if (module && typeof module.initCoinDataService === 'function') {
             if (!module.isCoinDataServiceInitialized()) {
-              console.log('Fallback: Initializing legacy coin data service...');
+              if (verbose) {
+                console.log('Fallback: Initializing legacy coin data service...');
+              }
               await module.initCoinDataService();
-              console.log('Legacy coin data service initialized from app router');
+              if (verbose) {
+                console.log('Legacy coin data service initialized from app router');
+              }
               
               if (typeof window !== 'undefined') {
                 window.__DATA_SERVICE_INITIALIZED__ = true;
                 window.__DATA_SERVICE_INITIALIZING__ = false;
               }
             } else {
-              console.log('CoinDataInitializer: Coin data service already initialized, skipping');
+              if (verbose) {
+                console.log('CoinDataInitializer: Coin data service already initialized, skipping');
+              }
             }
           } else {
             console.warn('Coin data service module loaded but initCoinDataService function not found');
           }
+          
+          // Mark as initialized even with fallback
+          setInitialized(true);
         } catch (fallbackErr) {
           console.error('Could not initialize coin data service (fallback):', fallbackErr);
           if (typeof window !== 'undefined') {
@@ -74,8 +94,10 @@ export default function CoinDataInitializer() {
       }
     };
 
-    initService();
-  }, [initialized, refreshData]);
+    // Defer initialization to avoid blocking initial render
+    const timer = setTimeout(initService, 500);
+    return () => clearTimeout(timer);
+  }, [initialized, refreshData, verbose]);
   
   // This component doesn't render anything
   return null;

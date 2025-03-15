@@ -408,6 +408,7 @@ function PortfolioDashboardComponent() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const hasRefreshedRef = useRef(false);
+  const lastRefreshAttemptRef = useRef(0);
   
   // Calculate loading and error states
   const loading = portfolioLoading || watchlistLoading;
@@ -431,15 +432,27 @@ function PortfolioDashboardComponent() {
   const cardAnimationClass = initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform";
   const listItemAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
   
+  // Throttled refresh function to prevent excessive calls
+  const throttledRefresh = useCallback(async () => {
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshAttemptRef.current;
+    
+    // Prevent refreshing too often (minimum 3 seconds between refreshes)
+    if (timeSinceLastRefresh < 3000) {
+      return;
+    }
+    
+    lastRefreshAttemptRef.current = now;
+    await refreshData();
+  }, [refreshData]);
+  
   // Handler for when a coin is added to ensure UI updates
   const handleCoinAdded = useCallback(() => {
-    console.log("Coin added, refreshing portfolio...");
     refreshPortfolio();
   }, [refreshPortfolio]);
 
   // Handler for when a watchlist item is added
   const handleWatchlistRefresh = useCallback(() => {
-    console.log("Refreshing watchlist...");
     refreshWatchlist();
   }, [refreshWatchlist]);
 
@@ -461,8 +474,8 @@ function PortfolioDashboardComponent() {
   const handleManualRefresh = useCallback(() => {
     setIsRefreshing(true);
     
-    // Only refresh the global data to avoid conflicts
-    refreshData()
+    // Only refresh if enough time has passed
+    throttledRefresh()
       .catch(error => {
         console.error("Error refreshing global data:", error);
       })
@@ -470,33 +483,37 @@ function PortfolioDashboardComponent() {
         // Add a minimum duration for the refresh animation
         setTimeout(() => setIsRefreshing(false), 500);
       });
-  }, [refreshData]);
+  }, [throttledRefresh]);
   
-  // Refresh data when component mounts
+  // Refresh data when component mounts - optimized to reduce redundant calls
   useEffect(() => {
     // Skip if we've already refreshed
     if (hasRefreshedRef.current) {
       return;
     }
 
-    // Only run this once on mount
+    // Only run this once on mount with debounce
     const loadInitialData = async () => {
       try {
+        // Check if we have data in the cache already
+        if (btcPrice && ethPrice && globalData) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log("Dashboard already has data from cache, skipping initial refresh");
+          }
+          hasRefreshedRef.current = true;
+          return;
+        }
+        
         // Only show refreshing if we don't have data
         if (!globalData) {
           setIsRefreshing(true);
         }
         
-        // Check if we have data in the cache already
-        if (btcPrice && ethPrice && globalData) {
-          console.log("Dashboard already has data from cache, skipping initial refresh");
-          hasRefreshedRef.current = true;
-          return;
-        }
-        
         // Just refresh the global data which contains dominance values
         await refreshData();
-        console.log("Dashboard data refreshed on mount");
+        if (process.env.NODE_ENV === 'development') {
+          console.log("Dashboard data refreshed on mount");
+        }
         
         // Mark as refreshed to prevent multiple calls
         hasRefreshedRef.current = true;
@@ -510,23 +527,31 @@ function PortfolioDashboardComponent() {
       }
     };
     
-    // Add a small delay to avoid race conditions with other initialization
-    setTimeout(loadInitialData, 500);
+    // Use a larger delay to avoid race conditions with other initializations
+    const timer = setTimeout(loadInitialData, 800);
+    return () => clearTimeout(timer);
   }, [refreshData, globalData, btcPrice, ethPrice]);
   
-  // Trigger a portfolio refresh when we get new price data
+  // Trigger a portfolio refresh when we get new price data - optimized with conditions
   useEffect(() => {
-    // If we have price data but the portfolio is showing 0 values,
-    // refresh the portfolio to recalculate with current prices
-    if (btcPrice && ethPrice && portfolio && portfolio.totalValueUsd === 0 && portfolio.items.length > 0) {
-      console.log("Prices available but portfolio value is 0 - refreshing portfolio data...");
+    // Only run if we have price data but portfolio shows 0 values despite having items
+    if (btcPrice && 
+        ethPrice && 
+        portfolio && 
+        portfolio.totalValueUsd === 0 && 
+        portfolio.items.length > 0 &&
+        !portfolioLoading) { // Avoid refresh during initial loading
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log("Prices available but portfolio value is 0 - refreshing portfolio data");
+      }
       refreshPortfolio();
     }
-  }, [btcPrice, ethPrice, portfolio, refreshPortfolio]);
+  }, [btcPrice, ethPrice, portfolio, refreshPortfolio, portfolioLoading]);
   
   // After first data load is complete, trigger main content visibility
   useEffect(() => {
-    if (!loading && !error) {
+    if (!loading && !error && !initialLoadComplete) {
       // Short delay to ensure data is processed before showing animations
       const timer = setTimeout(() => {
         setInitialLoadComplete(true);
@@ -534,7 +559,7 @@ function PortfolioDashboardComponent() {
       
       return () => clearTimeout(timer);
     }
-  }, [loading, error]);
+  }, [loading, error, initialLoadComplete]);
   
   if (loading) {
     return (

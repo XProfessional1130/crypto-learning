@@ -212,7 +212,11 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     if (isRefreshing) return;
     
     setIsRefreshing(true);
-    console.log('🔄 Refreshing data cache...');
+    const verbose = process.env.NODE_ENV === 'development';
+    
+    if (verbose) {
+      console.log('🔄 Refreshing data cache...');
+    }
     
     try {
       // Try to get data from Supabase with proper error handling for each call
@@ -221,7 +225,9 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       let newGlobalData = null;
       
       try {
-        console.log('Attempting to fetch BTC price from Supabase...');
+        if (verbose) {
+          console.log('Attempting to fetch BTC price from Supabase...');
+        }
         // Use Supabase data source instead of direct API calls
         newBtcPrice = await getBtcPriceFromSupabase();
         
@@ -231,16 +237,22 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
           // Don't set to null - keep existing data if any
           if (btcPrice && btcPrice > 0) {
             newBtcPrice = btcPrice;
-            console.log('Using cached BTC price:', newBtcPrice);
+            if (verbose) {
+              console.log('Using cached BTC price:', newBtcPrice);
+            }
           }
         } else {
-          console.log('✅ Successfully fetched BTC price from Supabase:', newBtcPrice);
+          if (verbose) {
+            console.log('✅ Successfully fetched BTC price from Supabase:', newBtcPrice);
+          }
         }
       } catch (btcError) {
         console.error('❌ Error fetching BTC price from Supabase:', btcError);
         // Fall back to cached value if available
         if (btcPrice && btcPrice > 0) {
-          console.log('Using cached BTC price:', btcPrice);
+          if (verbose) {
+            console.log('Using cached BTC price:', btcPrice);
+          }
           newBtcPrice = btcPrice;
         }
       }
@@ -248,21 +260,29 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       // If we didn't get a valid price from Supabase, try the API
       if (newBtcPrice === null || newBtcPrice <= 0) {
         try {
-          console.log('Falling back to CoinMarketCap API for BTC price');
+          if (verbose) {
+            console.log('Falling back to CoinMarketCap API for BTC price');
+          }
           newBtcPrice = await getBtcPrice();
-          console.log('✅ Successfully fetched BTC price from API fallback:', newBtcPrice);
+          if (verbose) {
+            console.log('✅ Successfully fetched BTC price from API fallback:', newBtcPrice);
+          }
         } catch (apiBtcError) {
           console.error('❌ Error fetching BTC price from API fallback:', apiBtcError);
           // Fall back to cached value if available
           if (btcPrice && btcPrice > 0) {
-            console.log('Using cached BTC price:', btcPrice);
+            if (verbose) {
+              console.log('Using cached BTC price:', btcPrice);
+            }
             newBtcPrice = btcPrice;
           }
         }
       }
       
       try {
-        console.log('Attempting to fetch ETH price from Supabase...');
+        if (verbose) {
+          console.log('Attempting to fetch ETH price from Supabase...');
+        }
         // Use Supabase data source instead of direct API calls
         newEthPrice = await getEthPriceFromSupabase();
         
@@ -272,16 +292,22 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
           // Don't set to null - keep existing data if any
           if (ethPrice && ethPrice > 0) {
             newEthPrice = ethPrice;
-            console.log('Using cached ETH price:', newEthPrice);
+            if (verbose) {
+              console.log('Using cached ETH price:', newEthPrice);
+            }
           }
         } else {
-          console.log('✅ Successfully fetched ETH price from Supabase:', newEthPrice);
+          if (verbose) {
+            console.log('✅ Successfully fetched ETH price from Supabase:', newEthPrice);
+          }
         }
       } catch (ethError) {
         console.error('❌ Error fetching ETH price from Supabase:', ethError);
         // Fall back to cached value if available
         if (ethPrice && ethPrice > 0) {
-          console.log('Using cached ETH price:', ethPrice);
+          if (verbose) {
+            console.log('Using cached ETH price:', ethPrice);
+          }
           newEthPrice = ethPrice;
         }
       }
@@ -289,21 +315,29 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       // If we didn't get a valid price from Supabase, try the API
       if (newEthPrice === null || newEthPrice <= 0) {
         try {
-          console.log('Falling back to CoinMarketCap API for ETH price');
+          if (verbose) {
+            console.log('Falling back to CoinMarketCap API for ETH price');
+          }
           newEthPrice = await getEthPrice();
-          console.log('✅ Successfully fetched ETH price from API fallback:', newEthPrice);
+          if (verbose) {
+            console.log('✅ Successfully fetched ETH price from API fallback:', newEthPrice);
+          }
         } catch (apiEthError) {
           console.error('❌ Error fetching ETH price from API fallback:', apiEthError);
           // Fall back to cached value if available
           if (ethPrice && ethPrice > 0) {
-            console.log('Using cached ETH price:', ethPrice);
+            if (verbose) {
+              console.log('Using cached ETH price:', ethPrice);
+            }
             newEthPrice = ethPrice;
           }
         }
       }
       
       try {
-        console.log('Attempting to fetch global market data from Supabase...');
+        if (verbose) {
+          console.log('Attempting to fetch global market data from Supabase...');
+        }
         // Use Supabase data source instead of direct API calls
         newGlobalData = await getGlobalDataFromSupabase();
         
@@ -313,16 +347,22 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
           // Don't set to null - keep existing data if any
           if (globalData) {
             newGlobalData = globalData;
-            console.log('Using cached global market data');
+            if (verbose) {
+              console.log('Using cached global market data');
+            }
           }
         } else {
-          console.log('✅ Successfully fetched global market data from Supabase');
+          if (verbose) {
+            console.log('✅ Successfully fetched global market data from Supabase');
+          }
         }
       } catch (globalError) {
         console.error('❌ Error fetching global market data from Supabase:', globalError);
         // Fall back to cached value if available
         if (globalData) {
-          console.log('Using cached global market data');
+          if (verbose) {
+            console.log('Using cached global market data');
+          }
           newGlobalData = globalData;
         }
       }
@@ -330,14 +370,20 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       // If we didn't get valid global data from Supabase, try the API
       if (newGlobalData === null || !newGlobalData || newGlobalData.totalMarketCap <= 0) {
         try {
-          console.log('Falling back to CoinMarketCap API for global market data');
+          if (verbose) {
+            console.log('Falling back to CoinMarketCap API for global market data');
+          }
           newGlobalData = await getGlobalData();
-          console.log('✅ Successfully fetched global market data from API fallback');
+          if (verbose) {
+            console.log('✅ Successfully fetched global market data from API fallback');
+          }
         } catch (apiGlobalError) {
           console.error('❌ Error fetching global market data from API fallback:', apiGlobalError);
           // Fall back to cached value if available
           if (globalData) {
-            console.log('Using cached global market data');
+            if (verbose) {
+              console.log('Using cached global market data');
+            }
             newGlobalData = globalData;
           }
         }
@@ -355,7 +401,9 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
             data: newBtcPrice,
             timestamp: Date.now()
           }));
-          console.log('Updated BTC price in cache:', newBtcPrice);
+          if (verbose) {
+            console.log('Updated BTC price in cache:', newBtcPrice);
+          }
           dataUpdated = true;
         } catch (error) {
           console.error('Error saving BTC price to cache:', error);
@@ -370,7 +418,9 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
             data: newEthPrice,
             timestamp: Date.now()
           }));
-          console.log('Updated ETH price in cache:', newEthPrice);
+          if (verbose) {
+            console.log('Updated ETH price in cache:', newEthPrice);
+          }
           dataUpdated = true;
         } catch (error) {
           console.error('Error saving ETH price to cache:', error);
@@ -385,7 +435,9 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
             data: newGlobalData,
             timestamp: Date.now()
           }));
-          console.log('Updated global market data in cache:', newGlobalData);
+          if (verbose) {
+            console.log('Updated global market data in cache:', newGlobalData);
+          }
           dataUpdated = true;
         } catch (error) {
           console.error('Error saving global market data to cache:', error);
@@ -396,9 +448,13 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       if (dataUpdated) {
         const now = new Date();
         setLastUpdated(now);
-        console.log('Cache refresh completed at:', now.toLocaleTimeString());
+        if (verbose) {
+          console.log('Cache refresh completed at:', now.toLocaleTimeString());
+        }
       } else {
-        console.warn('No data was updated during refresh, keeping existing cache');
+        if (verbose) {
+          console.warn('No data was updated during refresh, keeping existing cache');
+        }
       }
       
       // Always reset loading state even if no data was updated
@@ -426,7 +482,9 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     storage.removeItem('globalData');
     storage.removeItem(COIN_DATA_KEY);
     
-    console.log('Data cache cleared');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Data cache cleared');
+    }
   }, []);
   
   // Coin data functions - Now uses Supabase instead of CMC API
@@ -438,17 +496,23 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     
     // Ensure coinId is a string
     const coinIdStr = String(coinId);
-    console.log(`Getting data for coin ID: ${coinIdStr}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Getting data for coin ID: ${coinIdStr}`);
+    }
     
     // Check if we have it cached
     if (coinDataCache[coinIdStr]) {
-      console.log(`Found cached data for coin ${coinIdStr}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Found cached data for coin ${coinIdStr}`);
+      }
       return coinDataCache[coinIdStr];
     }
     
     // Not in the cache, so fetch it
     try {
-      console.log(`Fetching coin data for ${coinIdStr} from Supabase...`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Fetching coin data for ${coinIdStr} from Supabase...`);
+      }
       
       // Try Supabase first
       let coinData = null;
@@ -457,37 +521,53 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
         
         // Validate the data
         if (coinData && coinData.priceUsd > 0) {
-          console.log(`Successfully retrieved data for ${coinIdStr} from Supabase`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Successfully retrieved data for ${coinIdStr} from Supabase`);
+          }
         } else {
-          console.warn(`Invalid or missing data for ${coinIdStr} from Supabase`);
+          if (process.env.NODE_ENV === 'development') {
+            console.warn(`Invalid or missing data for ${coinIdStr} from Supabase`);
+          }
           coinData = null;
         }
       } catch (supabaseError) {
-        console.error(`Error fetching coin ${coinIdStr} from Supabase:`, supabaseError);
+        if (process.env.NODE_ENV === 'development') {
+          console.error(`Error fetching coin ${coinIdStr} from Supabase:`, supabaseError);
+        }
         coinData = null;
       }
       
       // Fall back to API if Supabase doesn't have valid data
       if (!coinData) {
         try {
-          console.log(`Coin ${coinIdStr} not found in Supabase, falling back to API`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Coin ${coinIdStr} not found in Supabase, falling back to API`);
+          }
           coinData = await fetchCoinData(coinIdStr);
           
           if (coinData && coinData.priceUsd > 0) {
-            console.log(`Successfully retrieved data for ${coinIdStr} from API`);
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Successfully retrieved data for ${coinIdStr} from API`);
+            }
           } else {
-            console.warn(`Invalid or missing data for ${coinIdStr} from API`);
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(`Invalid or missing data for ${coinIdStr} from API`);
+            }
             return null;
           }
         } catch (apiError) {
-          console.error(`Error fetching coin ${coinIdStr} from API:`, apiError);
+          if (process.env.NODE_ENV === 'development') {
+            console.error(`Error fetching coin ${coinIdStr} from API:`, apiError);
+          }
           return null;
         }
       }
       
       // If we have valid data by now, update the cache
       if (coinData) {
-        console.log(`Updating cache with data for coin ${coinIdStr}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Updating cache with data for coin ${coinIdStr}`);
+        }
         setCoinDataCache(prev => {
           const updated = { ...prev, [coinIdStr]: coinData };
           // Save to localStorage
@@ -500,7 +580,9 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       
       return null;
     } catch (error) {
-      console.error(`Unexpected error fetching coin ${coinIdStr}:`, error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`Unexpected error fetching coin ${coinIdStr}:`, error);
+      }
       return null;
     }
   }, [coinDataCache]);
@@ -510,7 +592,9 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       return {};
     }
     
-    console.log(`Getting data for ${coinIds.length} coins...`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Getting data for ${coinIds.length} coins...`);
+    }
     
     // Ensure all IDs are strings
     const normalizedIds = coinIds.map(id => String(id));
@@ -521,7 +605,9 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     
     normalizedIds.forEach(id => {
       if (coinDataCache[id]) {
-        console.log(`Using cached data for coin ${id}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Using cached data for coin ${id}`);
+        }
         result[id] = coinDataCache[id];
       } else {
         idsToFetch.push(id);
@@ -530,22 +616,32 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     
     // If we have all the data in the cache, return it
     if (idsToFetch.length === 0) {
-      console.log('All requested coin data was in cache');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('All requested coin data was in cache');
+      }
       return result;
     }
     
-    console.log(`Fetching data for ${idsToFetch.length} missing coins...`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Fetching data for ${idsToFetch.length} missing coins...`);
+    }
     
     // Otherwise, fetch the missing data from Supabase
     try {
       // Try Supabase first
       let supabaseData: Record<string, CoinData> = {};
       try {
-        console.log(`Querying Supabase for coins: ${idsToFetch.join(', ')}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Querying Supabase for coins: ${idsToFetch.join(', ')}`);
+        }
         supabaseData = await fetchMultipleCoinsDataFromSupabase(idsToFetch);
-        console.log(`Retrieved ${Object.keys(supabaseData).length} coins from Supabase`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Retrieved ${Object.keys(supabaseData).length} coins from Supabase`);
+        }
       } catch (supabaseError) {
-        console.error('Error fetching multiple coins from Supabase:', supabaseError);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error fetching multiple coins from Supabase:', supabaseError);
+        }
         supabaseData = {};
       }
       
@@ -557,11 +653,17 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       let apiData: Record<string, CoinData> = {};
       if (stillMissingIds.length > 0) {
         try {
-          console.log(`Falling back to API for ${stillMissingIds.length} missing coins: ${stillMissingIds.join(', ')}`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Falling back to API for ${stillMissingIds.length} missing coins: ${stillMissingIds.join(', ')}`);
+          }
           apiData = await fetchMultipleCoinsData(stillMissingIds);
-          console.log(`Retrieved ${Object.keys(apiData).length} coins from API`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Retrieved ${Object.keys(apiData).length} coins from API`);
+          }
         } catch (apiError) {
-          console.error('Error fetching coins from API fallback:', apiError);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Error fetching coins from API fallback:', apiError);
+          }
           apiData = {};
         }
       }
@@ -571,7 +673,9 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       
       // Update the cache with the new data
       if (Object.keys(allFetchedData).length > 0) {
-        console.log(`Updating cache with ${Object.keys(allFetchedData).length} coins`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Updating cache with ${Object.keys(allFetchedData).length} coins`);
+        }
         setCoinDataCache(prev => {
           const updated = { ...prev, ...allFetchedData };
           // Save to localStorage
@@ -587,12 +691,16 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       const foundIds = Object.keys(finalResult);
       const missingIds = normalizedIds.filter(id => !foundIds.includes(id));
       if (missingIds.length > 0) {
-        console.warn(`Could not find data for ${missingIds.length} coins: ${missingIds.join(', ')}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`Could not find data for ${missingIds.length} coins: ${missingIds.join(', ')}`);
+        }
       }
       
       return finalResult;
     } catch (error) {
-      console.error('Unexpected error in getMultipleCoinsData:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Unexpected error in getMultipleCoinsData:', error);
+      }
       return result; // Return what we have from the cache
     }
   }, [coinDataCache]);
@@ -619,7 +727,9 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Only set the global helper once and only in the browser
     if (typeof window !== 'undefined' && !window.__LC_DATA_CACHE_HELPER__) {
-      console.log('Setting up global DataCache helper function');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Setting up global DataCache helper function');
+      }
       
       // Store the function in the persistent variable
       cachedMultipleCoinsDataFn = getMultipleCoinsData;

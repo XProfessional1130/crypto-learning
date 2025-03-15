@@ -1,7 +1,10 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, memo } from 'react';
 import PortfolioDashboard from '@/app/components/dashboard/PortfolioDashboard';
+
+// Memoize the PortfolioDashboard component to prevent unnecessary re-renders
+const MemoizedPortfolioDashboard = memo(PortfolioDashboard);
 
 /**
  * Dashboard page - shows the user's portfolio and watchlist
@@ -10,7 +13,7 @@ export default function DashboardPage() {
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
       <Suspense fallback={<DashboardSkeleton />}>
-        <PortfolioDashboard />
+        <MemoizedPortfolioDashboard />
       </Suspense>
     </main>
   );
