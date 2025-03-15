@@ -501,6 +501,7 @@ function PortfolioDashboardComponent() {
             console.log("Dashboard already has data from cache, skipping initial refresh");
           }
           hasRefreshedRef.current = true;
+          setInitialLoadComplete(true);
           return;
         }
         
@@ -524,11 +525,20 @@ function PortfolioDashboardComponent() {
         hasRefreshedRef.current = true;
       } finally {
         setIsRefreshing(false);
+        // Set initial load as complete whether we succeeded or failed
+        setInitialLoadComplete(true);
       }
     };
     
     // Use a larger delay to avoid race conditions with other initializations
-    const timer = setTimeout(loadInitialData, 800);
+    // Also mark initializing immediately to prevent duplicate initialization attempts
+    hasRefreshedRef.current = true;
+    const timer = setTimeout(() => {
+      // Reset the flag before actually trying to load
+      hasRefreshedRef.current = false;
+      loadInitialData();
+    }, 1000);
+    
     return () => clearTimeout(timer);
   }, [refreshData, globalData, btcPrice, ethPrice]);
   

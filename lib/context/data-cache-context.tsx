@@ -592,7 +592,9 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       return {};
     }
     
-    if (process.env.NODE_ENV === 'development') {
+    const verbose = process.env.NODE_ENV === 'development';
+    
+    if (verbose) {
       console.log(`Getting data for ${coinIds.length} coins...`);
     }
     
@@ -605,7 +607,8 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     
     normalizedIds.forEach(id => {
       if (coinDataCache[id]) {
-        if (process.env.NODE_ENV === 'development') {
+        // Only log in extreme verbose mode - this is too noisy for most debugging
+        if (verbose && process.env.DEBUG_EXTREME_VERBOSE) {
           console.log(`Using cached data for coin ${id}`);
         }
         result[id] = coinDataCache[id];
@@ -616,13 +619,13 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     
     // If we have all the data in the cache, return it
     if (idsToFetch.length === 0) {
-      if (process.env.NODE_ENV === 'development') {
+      if (verbose) {
         console.log('All requested coin data was in cache');
       }
       return result;
     }
     
-    if (process.env.NODE_ENV === 'development') {
+    if (verbose) {
       console.log(`Fetching data for ${idsToFetch.length} missing coins...`);
     }
     
@@ -631,11 +634,15 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       // Try Supabase first
       let supabaseData: Record<string, CoinData> = {};
       try {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Querying Supabase for coins: ${idsToFetch.join(', ')}`);
+        if (verbose) {
+          // Log IDs in a more compact format if there are many
+          const idsStr = idsToFetch.length > 5 
+            ? `${idsToFetch.slice(0, 3).join(', ')}... and ${idsToFetch.length - 3} more`
+            : idsToFetch.join(', ');
+          console.log(`Querying Supabase for coins: ${idsStr}`);
         }
         supabaseData = await fetchMultipleCoinsDataFromSupabase(idsToFetch);
-        if (process.env.NODE_ENV === 'development') {
+        if (verbose) {
           console.log(`Retrieved ${Object.keys(supabaseData).length} coins from Supabase`);
         }
       } catch (supabaseError) {

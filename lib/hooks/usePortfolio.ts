@@ -250,16 +250,32 @@ export function usePortfolio() {
   
   // Whenever user changes, we need to check authentication
   useEffect(() => {
-    if (user) {
-      if (verbose) {
+    // We already have a loading state, so we don't need to check authentication if we're already fetching
+    if (user && !fetchingRef.current) {
+      // Only log in verbose mode
+      if (verbose && process.env.NODE_ENV === 'development') {
         console.log('User authenticated, fetching portfolio...');
       }
-      fetchPortfolio();
-    } else {
+      
+      // Only fetch if we don't have data or the data is stale
+      const now = Date.now();
+      const hasRecentData = 
+        (globalCache.portfolioData[user.id] && 
+         (now - globalCache.portfolioData[user.id].timestamp) < CACHE_DURATION) ||
+        (localCacheRef.current && 
+         (now - localCacheRef.current.timestamp) < CACHE_DURATION);
+         
+      if (!hasRecentData) {
+        fetchPortfolio();
+      } else if (verbose && process.env.NODE_ENV === 'development') {
+        console.log('Using cached data for portfolio, skipping initial fetch');
+      }
+    } else if (!user) {
       setPortfolio(null);
       setLoading(false);
     }
-  }, [user, fetchPortfolio, verbose]);
+    // Specifically not including verbose in deps to avoid re-triggering this effect
+  }, [user, fetchPortfolio]);
 
   // Add a coin to the portfolio with optimistic UI updates
   const addCoin = useCallback(async (coinId: string, amount: number) => {
