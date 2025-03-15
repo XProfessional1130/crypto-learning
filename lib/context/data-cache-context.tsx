@@ -194,21 +194,50 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     setIsRefreshing(true);
     
     try {
-      const [newBtcPrice, newEthPrice, newGlobalData] = await Promise.all([
-        getBtcPrice(),
-        getEthPrice(),
-        getGlobalData()
-      ]);
+      // Try to get data from APIs with proper error handling for each call
+      let newBtcPrice = null;
+      let newEthPrice = null;
+      let newGlobalData = null;
       
-      // Update state
-      setBtcPrice(newBtcPrice);
-      setEthPrice(newEthPrice);
-      setGlobalData(newGlobalData);
+      try {
+        newBtcPrice = await getBtcPrice();
+      } catch (btcError) {
+        console.error('Error fetching BTC price:', btcError);
+        // Fall back to cached value if available
+        if (btcPrice) newBtcPrice = btcPrice;
+      }
       
-      // Update cache
-      storage.setItem('btcPrice', newBtcPrice);
-      storage.setItem('ethPrice', newEthPrice);
-      storage.setItem('globalData', newGlobalData);
+      try {
+        newEthPrice = await getEthPrice();
+      } catch (ethError) {
+        console.error('Error fetching ETH price:', ethError);
+        // Fall back to cached value if available
+        if (ethPrice) newEthPrice = ethPrice;
+      }
+      
+      try {
+        newGlobalData = await getGlobalData();
+      } catch (globalError) {
+        console.error('Error fetching global market data:', globalError);
+        // Fall back to cached value if available
+        if (globalData) newGlobalData = globalData;
+      }
+      
+      // Only update state and cache for successful fetches
+      if (newBtcPrice !== null) {
+        setBtcPrice(newBtcPrice);
+        storage.setItem('btcPrice', newBtcPrice);
+      }
+      
+      if (newEthPrice !== null) {
+        setEthPrice(newEthPrice);
+        storage.setItem('ethPrice', newEthPrice);
+      }
+      
+      if (newGlobalData !== null) {
+        setGlobalData(newGlobalData);
+        storage.setItem('globalData', newGlobalData);
+      }
       
       // Update last refresh time
       const now = new Date();
@@ -221,7 +250,7 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       setIsRefreshing(false);
       setIsLoading(false);
     }
-  }, [isRefreshing]);
+  }, [isRefreshing, btcPrice, ethPrice, globalData]);
   
   // Function to clear the entire cache
   const clearCache = useCallback(() => {

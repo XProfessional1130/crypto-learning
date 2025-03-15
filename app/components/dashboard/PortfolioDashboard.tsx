@@ -494,6 +494,13 @@ function PortfolioDashboardComponent() {
           setIsRefreshing(true);
         }
         
+        // Check if we have data in the cache already
+        if (btcPrice && ethPrice && globalData) {
+          console.log("Dashboard already has data from cache, skipping initial refresh");
+          hasRefreshedRef.current = true;
+          return;
+        }
+        
         // Just refresh the global data which contains dominance values
         await refreshData();
         console.log("Dashboard data refreshed on mount");
@@ -502,13 +509,17 @@ function PortfolioDashboardComponent() {
         hasRefreshedRef.current = true;
       } catch (error) {
         console.error("Error refreshing dashboard data:", error);
+        
+        // Even on error, mark as refreshed to prevent retry storms
+        hasRefreshedRef.current = true;
       } finally {
         setIsRefreshing(false);
       }
     };
     
-    loadInitialData();
-  }, [refreshData, globalData]);
+    // Add a small delay to avoid race conditions with other initialization
+    setTimeout(loadInitialData, 500);
+  }, [refreshData, globalData, btcPrice, ethPrice]);
   
   // After first data load is complete, trigger main content visibility
   useEffect(() => {

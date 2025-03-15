@@ -65,22 +65,44 @@ export async function initCoinDataService(): Promise<void> {
     // Prefetch basic market data to initialize the service
     console.log('Prefetching basic market data...');
     
-    // Try to fetch global data
-    try {
-      const globalData = await getGlobalData();
+    // Use a Promise.allSettled to handle any potential API errors gracefully
+    const [globalDataResult, btcDataResult, ethDataResult] = await Promise.allSettled([
+      getGlobalData().catch(err => {
+        console.warn('Error prefetching global data:', err);
+        return null;
+      }),
+      fetchCoinData('1').catch(err => {
+        console.warn('Error prefetching BTC data:', err);
+        return null;
+      }),
+      fetchCoinData('1027').catch(err => {
+        console.warn('Error prefetching ETH data:', err);
+        return null;
+      })
+    ]);
+    
+    // Process global data result
+    let globalData = null;
+    if (globalDataResult.status === 'fulfilled' && globalDataResult.value) {
+      globalData = globalDataResult.value;
       console.log('Global data prefetched:', globalData);
-      
-      // Also prefetch Bitcoin and Ethereum prices for quick access
-      const [btcData, ethData] = await Promise.all([
-        fetchCoinData('1'),     // Bitcoin
-        fetchCoinData('1027')   // Ethereum
-      ]);
-      
-      console.log('BTC price:', btcData?.priceUsd || 0);
-      console.log('ETH price:', ethData?.priceUsd || 0);
-    } catch (dataError) {
-      console.error('Error prefetching data, but continuing initialization:', dataError);
+    } else {
+      console.warn('Global data could not be prefetched');
     }
+    
+    // Process BTC price result
+    let btcPrice = 0;
+    if (btcDataResult.status === 'fulfilled' && btcDataResult.value) {
+      btcPrice = btcDataResult.value.priceUsd || 0;
+    }
+    console.log('BTC price:', btcPrice);
+    
+    // Process ETH price result
+    let ethPrice = 0;
+    if (ethDataResult.status === 'fulfilled' && ethDataResult.value) {
+      ethPrice = ethDataResult.value.priceUsd || 0;
+    }
+    console.log('ETH price:', ethPrice);
     
     isServiceInitialized = true;
     isServiceInitializing = false;
@@ -88,7 +110,8 @@ export async function initCoinDataService(): Promise<void> {
   } catch (error) {
     isServiceInitializing = false;
     console.error('Failed to initialize coin data service:', error);
-    throw error;
+    // Still mark as initialized to prevent endless retry loops
+    isServiceInitialized = true;
   }
 }
 
