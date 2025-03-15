@@ -33,7 +33,7 @@ const PortfolioItem = ({ item, onItemClick, totalPortfolioValue, isAdmin }: {
   return (
     <div
       onClick={() => isAdmin && onItemClick(item)}
-      className={`flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 ${isAdmin ? 'hover:bg-gray-50 dark:hover:bg-gray-750 cursor-pointer' : ''} transition-colors`}
+      className={`flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 ${isAdmin ? 'hover:bg-gray-100 dark:hover:bg-gray-700/70 cursor-pointer' : ''} transition-colors`}
     >
       <div className="flex items-center">
         <div className="w-8 h-8 mr-3 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold overflow-hidden">

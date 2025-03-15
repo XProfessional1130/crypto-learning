@@ -37,8 +37,6 @@ export default function Dashboard() {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Your Portfolio Dashboard</h1>
-      
       <Suspense fallback={<LoadingSpinner size="large" text="Loading dashboard..." />}>
         <PortfolioDashboard />
       </Suspense>

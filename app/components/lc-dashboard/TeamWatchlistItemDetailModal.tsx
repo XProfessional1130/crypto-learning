@@ -124,12 +124,12 @@ export default function TeamWatchlistItemDetailModal({
       <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
       
       <div className="relative min-h-screen flex items-center justify-center p-4">
-        <div className="relative bg-white rounded-lg w-full max-w-md p-6 shadow-xl">
+        <div className="relative bg-white dark:bg-gray-800 rounded-lg w-full max-w-md p-6 shadow-xl">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {tab === 'details' ? localItem.name : 'Edit Price Target'}
             </h2>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" clipRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"></path>
               </svg>
@@ -137,15 +137,15 @@ export default function TeamWatchlistItemDetailModal({
           </div>
           
           <div className="mb-4">
-            <div className="flex space-x-2 border-b border-gray-200">
+            <div className="flex space-x-2 border-b border-gray-200 dark:border-gray-700">
               <button
-                className={`px-4 py-2 ${tab === 'details' ? 'border-b-2 border-indigo-500 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`px-4 py-2 ${tab === 'details' ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
                 onClick={() => setTab('details')}
               >
                 Details
               </button>
               <button
-                className={`px-4 py-2 ${tab === 'edit' ? 'border-b-2 border-indigo-500 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`px-4 py-2 ${tab === 'edit' ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
                 onClick={() => setTab('edit')}
               >
                 Edit Target
@@ -155,7 +155,7 @@ export default function TeamWatchlistItemDetailModal({
           
           {tab === 'details' ? (
             <div>
-              <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-4">
                 <div className="flex items-center">
                   <div className="h-10 w-10 flex-shrink-0 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                     <img

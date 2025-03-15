@@ -185,7 +185,7 @@ export default function AssetDetailModal({ isOpen, onClose, asset }: AssetDetail
                 </div>
                 
                 {/* Market Info Section - Always visible, generic information */}
-                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700">
+                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-700">
                   <div className="grid grid-cols-2 gap-4">
                     {localAsset.marketCap > 0 && (
                       <div>
@@ -292,16 +292,6 @@ export default function AssetDetailModal({ isOpen, onClose, asset }: AssetDetail
                 <p className="text-gray-500 dark:text-gray-400">Asset information not available</p>
               </div>
             )}
-          </div>
-          
-          {/* Footer */}
-          <div className="flex justify-end p-3 border-t border-gray-200 dark:border-gray-700">
-            <button
-              onClick={onClose}
-              className="px-4 py-1.5 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              Close
-            </button>
           </div>
         </div>
       </div>

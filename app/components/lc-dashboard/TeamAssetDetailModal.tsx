@@ -173,7 +173,7 @@ export default function TeamAssetDetailModal({
           </div>
           
           {/* Market Info Section - Always visible, generic information */}
-          <div className="px-4 py-3 bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700">
+          <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-700">
             <div className="grid grid-cols-2 gap-4">
               {localAsset.marketCap > 0 && (
                 <div>
