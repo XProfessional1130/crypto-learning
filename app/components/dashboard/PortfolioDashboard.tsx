@@ -485,50 +485,60 @@ function PortfolioDashboardComponent() {
       });
   }, [throttledRefresh]);
   
-  // Refresh data when component mounts - optimized to reduce redundant calls
+  // Only run this once on mount with debounce
+  const loadInitialData = async () => {
+    try {
+      // Check if we have data in the cache already
+      if (btcPrice && ethPrice && globalData) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log("Dashboard already has data from cache, skipping initial refresh");
+        }
+        hasRefreshedRef.current = true;
+        setInitialLoadComplete(true);
+        return;
+      }
+      
+      // Only show refreshing if we don't have data
+      if (!globalData) {
+        setIsRefreshing(true);
+      }
+      
+      // Just refresh the global data which contains dominance values
+      await refreshData();
+      if (process.env.NODE_ENV === 'development') {
+        console.log("Dashboard data refreshed on mount");
+      }
+      
+      // Mark as refreshed to prevent multiple calls
+      hasRefreshedRef.current = true;
+    } catch (error) {
+      console.error("Error refreshing dashboard data:", error);
+      
+      // Even on error, mark as refreshed to prevent retry storms
+      hasRefreshedRef.current = true;
+    } finally {
+      setIsRefreshing(false);
+      // Set initial load as complete whether we succeeded or failed
+      setInitialLoadComplete(true);
+    }
+  };
+  
+  // Initialize data on mount - with optimization to prevent duplicate initialization
   useEffect(() => {
     // Skip if we've already refreshed
     if (hasRefreshedRef.current) {
       return;
     }
-
-    // Only run this once on mount with debounce
-    const loadInitialData = async () => {
-      try {
-        // Check if we have data in the cache already
-        if (btcPrice && ethPrice && globalData) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log("Dashboard already has data from cache, skipping initial refresh");
-          }
-          hasRefreshedRef.current = true;
-          setInitialLoadComplete(true);
-          return;
-        }
-        
-        // Only show refreshing if we don't have data
-        if (!globalData) {
-          setIsRefreshing(true);
-        }
-        
-        // Just refresh the global data which contains dominance values
-        await refreshData();
-        if (process.env.NODE_ENV === 'development') {
-          console.log("Dashboard data refreshed on mount");
-        }
-        
-        // Mark as refreshed to prevent multiple calls
-        hasRefreshedRef.current = true;
-      } catch (error) {
-        console.error("Error refreshing dashboard data:", error);
-        
-        // Even on error, mark as refreshed to prevent retry storms
-        hasRefreshedRef.current = true;
-      } finally {
-        setIsRefreshing(false);
-        // Set initial load as complete whether we succeeded or failed
-        setInitialLoadComplete(true);
+    
+    // Skip if we already have the important data
+    if (btcPrice && ethPrice && globalData) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log("Dashboard already has complete data, initialization not needed");
       }
-    };
+      hasRefreshedRef.current = true;
+      setInitialLoadComplete(true);
+      return;
+    }
     
     // Use a larger delay to avoid race conditions with other initializations
     // Also mark initializing immediately to prevent duplicate initialization attempts
@@ -537,20 +547,22 @@ function PortfolioDashboardComponent() {
       // Reset the flag before actually trying to load
       hasRefreshedRef.current = false;
       loadInitialData();
-    }, 1000);
+    }, 500); // Reduced from 1000ms to 500ms for faster startup
     
     return () => clearTimeout(timer);
   }, [refreshData, globalData, btcPrice, ethPrice]);
   
   // Trigger a portfolio refresh when we get new price data - optimized with conditions
   useEffect(() => {
-    // Only run if we have price data but portfolio shows 0 values despite having items
-    if (btcPrice && 
-        ethPrice && 
-        portfolio && 
+    // Skip if we have no price data yet or if we're still loading
+    if (!btcPrice || !ethPrice || portfolioLoading) {
+      return;
+    }
+    
+    // Only refresh if we have portfolio items but zero value
+    if (portfolio && 
         portfolio.totalValueUsd === 0 && 
-        portfolio.items.length > 0 &&
-        !portfolioLoading) { // Avoid refresh during initial loading
+        portfolio.items.length > 0) {
       
       if (process.env.NODE_ENV === 'development') {
         console.log("Prices available but portfolio value is 0 - refreshing portfolio data");

@@ -34,6 +34,7 @@ export function usePortfolio() {
   const lastFetchRef = useRef<number>(0);
   const localCacheRef = useRef<{data: PortfolioSummary, timestamp: number} | null>(null);
   const fetchingRef = useRef<boolean>(false);
+  const hasInitialCheckedRef = useRef<boolean>(false);
   const verbose = process.env.NODE_ENV === 'development';
 
   // Fetch portfolio data with caching and throttling
@@ -250,10 +251,18 @@ export function usePortfolio() {
   
   // Whenever user changes, we need to check authentication
   useEffect(() => {
+    // Skip if we've already done the initial check for this user
+    if (hasInitialCheckedRef.current && user) {
+      return;
+    }
+    
     // We already have a loading state, so we don't need to check authentication if we're already fetching
     if (user && !fetchingRef.current) {
+      // Mark that we've checked for this user
+      hasInitialCheckedRef.current = true;
+      
       // Only log in verbose mode
-      if (verbose && process.env.NODE_ENV === 'development') {
+      if (verbose) {
         console.log('User authenticated, fetching portfolio...');
       }
       
@@ -267,15 +276,16 @@ export function usePortfolio() {
          
       if (!hasRecentData) {
         fetchPortfolio();
-      } else if (verbose && process.env.NODE_ENV === 'development') {
+      } else if (verbose) {
         console.log('Using cached data for portfolio, skipping initial fetch');
       }
     } else if (!user) {
       setPortfolio(null);
       setLoading(false);
+      // Reset check flag when user is null
+      hasInitialCheckedRef.current = false;
     }
-    // Specifically not including verbose in deps to avoid re-triggering this effect
-  }, [user, fetchPortfolio]);
+  }, [user, fetchPortfolio, verbose]);
 
   // Add a coin to the portfolio with optimistic UI updates
   const addCoin = useCallback(async (coinId: string, amount: number) => {
@@ -291,15 +301,22 @@ export function usePortfolio() {
     }
 
     try {
-      console.log(`Adding coin ${coinId} to portfolio...`);
+      if (verbose) {
+        console.log(`Adding coin ${coinId} to portfolio...`);
+      }
       const result = await addCoinToPortfolio(user.id, coinId, amount);
       
       if (result.success) {
-        console.log('Coin added successfully, refreshing portfolio...');
+        if (verbose) {
+          console.log('Coin added successfully, refreshing portfolio...');
+        }
         
         // Force fetch to get the updated portfolio data
         await fetchPortfolio(true);
-        console.log('Portfolio refreshed successfully after adding coin');
+        
+        if (verbose) {
+          console.log('Portfolio refreshed successfully after adding coin');
+        }
         
         toast({
           title: 'Success',
@@ -331,7 +348,7 @@ export function usePortfolio() {
       });
       return { success: false };
     }
-  }, [user, toast, fetchPortfolio]);
+  }, [user, toast, fetchPortfolio, verbose]);
 
   // Update the amount of a coin with optimistic UI updates
   const updateAmount = useCallback(async (portfolioItemId: string, amount: number) => {
