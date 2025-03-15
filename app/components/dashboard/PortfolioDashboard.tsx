@@ -12,13 +12,19 @@ import WatchlistComponent from './WatchlistComponent';
 import { formatCryptoPrice, formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
 
 // Memoized Stats Card component
-const StatsCard = memo(({ title, value, icon = null, dominance = null, loading = false, valueClassName = '' }: {
+const StatsCard = memo(({ title, value, icon = null, dominance = null, loading = false, valueClassName = '', changeInfo = null, showChangeIcon = false }: {
   title: string;
   value: string;
   icon?: React.ReactNode;
   dominance?: number | null;
   loading?: boolean;
   valueClassName?: string;
+  changeInfo?: {
+    value: number;
+    isPositive: boolean;
+    label?: string;
+  } | null;
+  showChangeIcon?: boolean;
 }) => {
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover transform hover:-translate-y-1">
@@ -33,9 +39,38 @@ const StatsCard = memo(({ title, value, icon = null, dominance = null, loading =
         </div>
       ) : (
         <>
-          <p className={`text-3xl font-bold ${valueClassName}`}>
-            {value}
-          </p>
+          <div className="flex items-center">
+            <p className={`text-3xl font-bold ${valueClassName}`}>
+              {value}
+            </p>
+            {changeInfo && showChangeIcon && (
+              <div className={`ml-2 ${changeInfo.isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                {changeInfo.isPositive ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+            )}
+          </div>
+          {changeInfo && (
+            <div className="mt-2">
+              <div className={`${changeInfo.isPositive ? 'text-green-500' : 'text-red-500'} text-sm flex items-center`}>
+                <span className="font-medium">
+                  {changeInfo.isPositive ? '+' : ''}{changeInfo.value.toFixed(2)}%
+                </span>
+                {changeInfo.label && (
+                  <span className="ml-1 text-gray-500 dark:text-gray-400">
+                    {changeInfo.label}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
           {dominance !== null && (
             <div className="mt-2 flex items-center">
               <div className={`${title.includes('Bitcoin') ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'} text-xs px-2 py-0.5 rounded-full flex items-center`}>
@@ -51,6 +86,241 @@ const StatsCard = memo(({ title, value, icon = null, dominance = null, loading =
   );
 });
 StatsCard.displayName = 'StatsCard';
+
+// New Combined Stats Card for portfolio
+const PortfolioStatsCard = memo(({ portfolioValue, dailyChange, loading = false, portfolioItems = [] }: {
+  portfolioValue: number;
+  dailyChange: number;
+  loading?: boolean;
+  portfolioItems?: PortfolioItemWithPrice[];
+}) => {
+  const isPositive = dailyChange >= 0;
+  
+  // Calculate the distribution percentages based on actual portfolio data
+  const distributionData = useMemo(() => {
+    if (!portfolioItems.length || portfolioValue <= 0) return [];
+    
+    // Get top assets to show individually (top 4)
+    const topCount = 4;
+    const sortedItems = [...portfolioItems].sort((a, b) => b.valueUsd - a.valueUsd);
+    
+    // Calculate top assets
+    const topAssets = sortedItems.slice(0, topCount).map(item => ({
+      name: item.coinSymbol,
+      value: item.valueUsd,
+      percentage: (item.valueUsd / portfolioValue) * 100,
+      color: getColorForAsset(item.coinSymbol)
+    }));
+    
+    // Calculate "Others" if there are more than topCount assets
+    if (sortedItems.length > topCount) {
+      const othersValue = sortedItems
+        .slice(topCount)
+        .reduce((sum, item) => sum + item.valueUsd, 0);
+      
+      const othersPercentage = (othersValue / portfolioValue) * 100;
+      
+      if (othersPercentage > 0) {
+        topAssets.push({
+          name: "Others",
+          value: othersValue,
+          percentage: othersPercentage,
+          color: "bg-gray-400"
+        });
+      }
+    }
+    
+    return topAssets;
+  }, [portfolioItems, portfolioValue]);
+  
+  // Helper function to get color based on asset symbol
+  function getColorForAsset(symbol: string): string {
+    const colors = {
+      BTC: 'bg-orange-500',
+      ETH: 'bg-blue-500',
+      default1: 'bg-teal-500',
+      default2: 'bg-purple-500',
+      default3: 'bg-pink-500',
+      default4: 'bg-indigo-500'
+    };
+    
+    if (symbol === 'BTC') return colors.BTC;
+    if (symbol === 'ETH') return colors.ETH;
+    
+    // Return a default color based on the first character of the symbol
+    const charCode = symbol.charCodeAt(0) % 4;
+    return [colors.default1, colors.default2, colors.default3, colors.default4][charCode];
+  }
+  
+  return (
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover h-full">
+      <div className="flex justify-between items-start mb-5">
+        <div>
+          <h3 className="text-sm text-gray-500 dark:text-gray-400 mb-1">Portfolio Summary</h3>
+          <div className="flex items-baseline space-x-2">
+            {loading ? (
+              <div className="h-9 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            ) : (
+              <>
+                <p className="text-2xl font-bold">
+                  ${portfolioValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+                <div className={`flex items-center rounded-full px-2 py-0.5 text-sm ${isPositive ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'}`}>
+                  <span>{isPositive ? '+' : ''}{dailyChange.toFixed(2)}% (24h)</span>
+                  {isPositive ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-1">
+                      <path fillRule="evenodd" d="M12.577 4.878a.75.75 0 01.919-.53l4.78 1.281a.75.75 0 01.531.919l-1.281 4.78a.75.75 0 01-1.449-.387l.81-3.022a19.407 19.407 0 00-5.594 5.203.75.75 0 01-1.139.093L7 10.06l-4.72 4.72a.75.75 0 01-1.06-1.061l5.25-5.25a.75.75 0 011.06 0l3.074 3.073a20.923 20.923 0 015.545-4.931l-3.042-.815a.75.75 0 01-.53-.919z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-1">
+                      <path fillRule="evenodd" d="M1.22 5.222a.75.75 0 011.06 0L7 9.942l3.768-3.769a.75.75 0 011.113.058 20.908 20.908 0 013.813 7.254l1.574-2.727a.75.75 0 011.3.75l-2.475 4.286a.75.75 0 01-.99.303l-4.142-2.13a.75.75 0 01.726-1.313l2.673 1.379a19.397 19.397 0 00-3.528-6.582l-4.17 4.17a.75.75 0 01-1.06 0l-5.25-5.25a.75.75 0 010-1.06z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded-full">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-teal-600 dark:text-teal-400">
+            <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </svg>
+        </div>
+      </div>
+      
+      {/* Portfolio distribution visualization */}
+      {!loading && portfolioValue > 0 && (
+        <div className="mt-4">
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
+            <span>Portfolio Distribution</span>
+          </div>
+          
+          {/* Distribution bar */}
+          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            {distributionData.length > 0 ? (
+              <div className="flex h-full">
+                {distributionData.map((item, index) => (
+                  <div 
+                    key={index} 
+                    className={`h-full ${item.color}`} 
+                    style={{ width: `${item.percentage}%` }}
+                  ></div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex h-full">
+                <div className="bg-gray-300 dark:bg-gray-600 h-full w-full"></div>
+              </div>
+            )}
+          </div>
+          
+          {/* Legend */}
+          {distributionData.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {distributionData.map((item, index) => (
+                <div key={index} className="flex items-center">
+                  <div className={`w-3 h-3 rounded-full ${item.color} mr-1.5`}></div>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                    {item.name} ({item.percentage.toFixed(1)}%)
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      
+      {!loading && portfolioValue > 0 && distributionData.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+          <div className="grid grid-cols-2 gap-2">
+            {distributionData.slice(0, 4).map((item, index) => (
+              <div key={index} className="flex justify-between items-center">
+                <div className="flex items-center">
+                  <div className={`w-2.5 h-2.5 rounded-full ${item.color} mr-1.5`}></div>
+                  <span className="text-xs font-medium">{item.name}</span>
+                </div>
+                <span className="text-xs text-gray-600 dark:text-gray-400">
+                  ${item.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+PortfolioStatsCard.displayName = 'PortfolioStatsCard';
+
+// New Combined Card for BTC and ETH prices
+const MarketLeadersCard = memo(({ btcPrice, ethPrice, btcDominance, ethDominance, loading = false }: {
+  btcPrice: number | null;
+  ethPrice: number | null;
+  btcDominance: number | null;
+  ethDominance: number | null;
+  loading?: boolean;
+}) => {
+  return (
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover">
+      <h3 className="text-sm text-gray-500 dark:text-gray-400 mb-4">Market Leaders</h3>
+      
+      {loading ? (
+        <div className="space-y-4">
+          <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Bitcoin row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1.png" alt="Bitcoin" className="w-8 h-8 mr-3" />
+              <div>
+                <p className="font-medium">Bitcoin</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">BTC</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="font-bold">{formatCryptoPrice(btcPrice || 0)}</p>
+              <div className="flex items-center justify-end space-x-1">
+                <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs px-2 py-0.5 rounded-full">
+                  <span>{btcDominance ? btcDominance.toFixed(1) : '---'}% DOM</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Ethereum row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png" alt="Ethereum" className="w-8 h-8 mr-3" />
+              <div>
+                <p className="font-medium">Ethereum</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">ETH</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="font-bold">{formatCryptoPrice(ethPrice || 0)}</p>
+              <div className="flex items-center justify-end space-x-1">
+                <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full">
+                  <span>{ethDominance ? ethDominance.toFixed(1) : '---'}% DOM</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Market insight */}
+          <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Combined market dominance: {((btcDominance || 0) + (ethDominance || 0)).toFixed(1)}%
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+MarketLeadersCard.displayName = 'MarketLeadersCard';
 
 // Memoized Portfolio Item component
 const PortfolioItem = memo(({ item, onItemClick, totalPortfolioValue }: {
@@ -343,46 +613,25 @@ function PortfolioDashboardComponent() {
         </button>
       </div>
       
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Portfolio Value Card */}
+      {/* Stats Cards - Modified to show 2 cards instead of 4 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Combined Portfolio Stats Card */}
         <div className={cardAnimationClass} style={{ transitionDelay: '100ms', animationDelay: '100ms' }}>
-          <StatsCard 
-            title="Portfolio Value" 
-            value={`$${portfolio?.totalValueUsd.toLocaleString(undefined, { 
-              minimumFractionDigits: 2, 
-              maximumFractionDigits: 2 
-            }) || '0.00'}`}
+          <PortfolioStatsCard 
+            portfolioValue={portfolio?.totalValueUsd || 0}
+            dailyChange={portfolio?.dailyChangePercentage || 0}
+            loading={loading}
+            portfolioItems={sortedPortfolioItems}
           />
         </div>
         
-        {/* 24h Change Card */}
+        {/* Combined Market Leaders Card */}
         <div className={cardAnimationClass} style={{ transitionDelay: '150ms', animationDelay: '150ms' }}>
-          <StatsCard 
-            title="24h Change"
-            value={`${(portfolio?.dailyChangePercentage || 0) >= 0 ? '+' : ''}${(portfolio?.dailyChangePercentage || 0).toFixed(2)}%`}
-            valueClassName={(portfolio?.dailyChangePercentage || 0) >= 0 ? 'text-green-500' : 'text-red-500'}
-          />
-        </div>
-        
-        {/* Bitcoin Price Card */}
-        <div className={cardAnimationClass} style={{ transitionDelay: '200ms', animationDelay: '200ms' }}>
-          <StatsCard 
-            title="Bitcoin Price"
-            value={formatCryptoPrice(btcPrice || 0)}
-            icon={<img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1.png" alt="Bitcoin" className="w-5 h-5" />}
-            dominance={globalData?.btcDominance}
-            loading={loadingPrices}
-          />
-        </div>
-        
-        {/* Ethereum Price Card */}
-        <div className={cardAnimationClass} style={{ transitionDelay: '250ms', animationDelay: '250ms' }}>
-          <StatsCard 
-            title="Ethereum Price"
-            value={formatCryptoPrice(ethPrice || 0)}
-            icon={<img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png" alt="Ethereum" className="w-5 h-5" />}
-            dominance={globalData?.ethDominance}
+          <MarketLeadersCard 
+            btcPrice={btcPrice}
+            ethPrice={ethPrice}
+            btcDominance={globalData?.btcDominance || null}
+            ethDominance={globalData?.ethDominance || null}
             loading={loadingPrices}
           />
         </div>
