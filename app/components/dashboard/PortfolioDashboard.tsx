@@ -109,7 +109,8 @@ const PortfolioItem = memo(({ item, onItemClick, totalPortfolioValue }: {
 });
 PortfolioItem.displayName = 'PortfolioItem';
 
-export default function PortfolioDashboard() {
+// Create a memoized component for the PortfolioDashboard
+function PortfolioDashboardComponent() {
   const { 
     portfolio, 
     loading: portfolioLoading, 
@@ -205,6 +206,11 @@ export default function PortfolioDashboard() {
     
     // Return a new sorted array by valueUsd (descending)
     return [...portfolio.items].sort((a, b) => b.valueUsd - a.valueUsd);
+  }, [portfolio]);
+  
+  // Memoize the total portfolio value calculation
+  const totalPortfolioValue = useMemo(() => {
+    return portfolio?.totalValueUsd || 0;
   }, [portfolio]);
   
   if (loading) {
@@ -306,7 +312,7 @@ export default function PortfolioDashboard() {
                     key={item.id} 
                     item={item} 
                     onItemClick={handleAssetClick} 
-                    totalPortfolioValue={portfolio?.totalValueUsd || 0} 
+                    totalPortfolioValue={totalPortfolioValue} 
                   />
                 ))}
               </div>
@@ -344,4 +350,7 @@ export default function PortfolioDashboard() {
       )}
     </div>
   );
-} 
+}
+
+// Export the memoized component
+export default memo(PortfolioDashboardComponent); 

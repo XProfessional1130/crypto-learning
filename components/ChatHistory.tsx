@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { deleteThread } from '@/lib/services/chat-history';
+import { memoize } from '@/lib/utils/memoize';
+import { logger } from '@/lib/utils/logger';
 
 // Define personality profile images here instead of importing from page.tsx
 const personalityImages = {
@@ -26,7 +28,77 @@ interface ChatHistoryProps {
   currentThreadId: string | null;
 }
 
-export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHistoryProps) {
+// Extract ThreadItem into a separate memoized component for better performance
+const ThreadItem = memoize(({ 
+  thread, 
+  isActive, 
+  onThreadSelect, 
+  onDelete, 
+  isDeleting, 
+  formatDate 
+}: { 
+  thread: Thread;
+  isActive: boolean;
+  onThreadSelect: (threadId: string) => void;
+  onDelete: (e: React.MouseEvent, threadId: string) => void;
+  isDeleting: boolean;
+  formatDate: (dateString: string) => string;
+}) => {
+  return (
+    <motion.div
+      key={thread.threadId}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+      transition={{ duration: 0.2 }}
+      className={`relative px-4 py-3 mb-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors
+        ${isActive ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800'}
+        border`}
+      onClick={() => onThreadSelect(thread.threadId)}
+    >
+      <div className="flex items-center mb-1">
+        <div className="flex-shrink-0 w-6 h-6 mr-2 relative">
+          <Image
+            src={personalityImages[thread.personality || 'tobo']}
+            alt={thread.personality || 'AI'}
+            width={24}
+            height={24}
+            className="rounded-full"
+          />
+        </div>
+        <div className="flex-grow font-medium text-sm truncate pr-6">
+          {thread.preview || 'New conversation'}
+        </div>
+      </div>
+      <div className="flex justify-between items-center">
+        <div className="text-xs text-gray-500 dark:text-gray-400">
+          {formatDate(thread.latestMessage.created_at)}
+        </div>
+        <button
+          className={`text-xs px-2 py-1 rounded hover:bg-red-100 dark:hover:bg-red-900 transition-colors
+            text-red-500 dark:text-red-400`}
+          onClick={(e) => onDelete(e, thread.threadId)}
+          disabled={isDeleting}
+        >
+          {isDeleting ? (
+            <span className="flex items-center">
+              <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Deleting
+            </span>
+          ) : (
+            'Delete'
+          )}
+        </button>
+      </div>
+    </motion.div>
+  );
+});
+ThreadItem.displayName = 'ThreadItem';
+
+function ChatHistoryComponent({ onThreadSelect, currentThreadId }: ChatHistoryProps) {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,44 +135,8 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
     fetchConversations();
   }, [user]);
 
-  // Filter conversations by search term
-  const filteredConversations = searchTerm
-    ? conversations.filter(thread => 
-        thread.preview.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (thread.personality || '').toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : conversations;
-
-  // Handle thread deletion
-  const handleDelete = async (e: React.MouseEvent, threadId: string) => {
-    e.stopPropagation(); // Prevent clicking through to the thread select
-    
-    try {
-      setDeleting(threadId);
-      setDeleteError(null);
-      
-      // Delete the thread via API
-      if (user) {
-        await deleteThread(user.id, threadId);
-        
-        // Remove from local state
-        setConversations(prev => prev.filter(thread => thread.threadId !== threadId));
-        
-        // If the deleted thread was selected, clear the current thread
-        if (currentThreadId === threadId) {
-          onThreadSelect('');
-        }
-      }
-    } catch (err) {
-      console.error('Failed to delete thread:', err);
-      setDeleteError('Failed to delete. Try again?');
-    } finally {
-      setDeleting(null);
-    }
-  };
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
+  // Format date for display - memoize the function for better performance
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
@@ -118,11 +154,52 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
     }
     
     return date.toLocaleDateString([], { 
-      month: 'short', 
+      month: 'short',
       day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+      hour: '2-digit',
+      minute: '2-digit'
     });
-  };
+  }, []);
+
+  // Filter conversations with useMemo for performance
+  const filteredConversations = useMemo(() => {
+    if (!searchTerm) return conversations;
+    const searchTermLower = searchTerm.toLowerCase();
+    
+    return conversations.filter(thread => 
+      thread.preview.toLowerCase().includes(searchTermLower) ||
+      (thread.personality || '').toLowerCase().includes(searchTermLower)
+    );
+  }, [conversations, searchTerm]);
+
+  // Handle thread deletion with useCallback
+  const handleDelete = useCallback(async (e: React.MouseEvent, threadId: string) => {
+    e.stopPropagation(); // Prevent clicking through to the thread select
+    
+    try {
+      setDeleting(threadId);
+      setDeleteError(null);
+      
+      // Delete the thread via API
+      if (user) {
+        await deleteThread(user.id, threadId);
+        logger.info('Thread deleted successfully', { threadId });
+        
+        // Remove from local state
+        setConversations(prev => prev.filter(thread => thread.threadId !== threadId));
+        
+        // If the deleted thread was selected, clear the current thread
+        if (currentThreadId === threadId) {
+          onThreadSelect('');
+        }
+      }
+    } catch (err) {
+      logger.error('Failed to delete thread', { error: err, threadId });
+      setDeleteError('Failed to delete. Try again?');
+    } finally {
+      setDeleting(null);
+    }
+  }, [user, currentThreadId, onThreadSelect]);
 
   if (loading) {
     return (
@@ -160,166 +237,100 @@ export default function ChatHistory({ onThreadSelect, currentThreadId }: ChatHis
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-white/10">
+    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden h-full flex flex-col">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="text-lg font-semibold mb-2">Chat History</div>
+        
         <div className="relative">
           <input
             type="text"
+            placeholder="Search conversations..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search conversations..."
-            className="w-full py-1.5 px-3 pr-8 text-sm rounded-lg bg-white/5 border border-white/10 focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-brand-primary transition"
+            className="w-full px-3 py-2 pl-9 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-blue-500 dark:focus:border-blue-600 outline-none transition-all"
           />
-          {searchTerm ? (
-            <button 
-              onClick={() => setSearchTerm('')}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary hover:text-brand-primary"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          ) : (
-            <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </span>
-          )}
+          <div className="absolute left-3 top-2.5 text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
         </div>
+      </div>
+      
+      <div className="flex-grow overflow-y-auto p-4">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading conversations...</div>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-full text-center p-4">
+            <div className="text-red-500 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">{error}</div>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-3 px-4 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded-md transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        ) : filteredConversations.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center p-4">
+            {searchTerm ? (
+              <>
+                <div className="text-gray-400 mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">No matching conversations found.</div>
+                <button 
+                  onClick={() => setSearchTerm('')} 
+                  className="mt-2 px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs rounded-md transition-colors"
+                >
+                  Clear search
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="text-gray-400 mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">No conversations yet. Start a new chat!</div>
+              </>
+            )}
+          </div>
+        ) : (
+          <AnimatePresence>
+            {filteredConversations.map(thread => (
+              <ThreadItem
+                key={thread.threadId}
+                thread={thread}
+                isActive={currentThreadId === thread.threadId}
+                onThreadSelect={onThreadSelect}
+                onDelete={handleDelete}
+                isDeleting={deleting === thread.threadId}
+                formatDate={formatDate}
+              />
+            ))}
+          </AnimatePresence>
+        )}
       </div>
       
       {deleteError && (
-        <div className="px-3 py-2 mx-2 mt-2 text-xs text-red-500 bg-red-500/10 rounded-md flex items-center justify-between">
-          <span>{deleteError}</span>
-          <button onClick={() => setDeleteError(null)} className="text-red-500/70 hover:text-red-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+        <div className="p-2 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-xs text-center">
+          {deleteError}
         </div>
       )}
-      
-      <div className="overflow-y-auto flex-1 scrollbar-thin">
-        {filteredConversations.length === 0 && !loading && (
-          <div className="p-4 text-center text-light-text-secondary dark:text-dark-text-secondary h-full flex items-center justify-center">
-            <div>
-              {searchTerm ? (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto mb-2 text-light-text-secondary/50 dark:text-dark-text-secondary/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <p className="text-sm">No matches found</p>
-                  <button 
-                    onClick={() => setSearchTerm('')}
-                    className="mt-1 text-xs text-brand-primary hover:underline"
-                  >
-                    Clear search
-                  </button>
-                </>
-              ) : (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto mb-2 text-light-text-secondary/50 dark:text-dark-text-secondary/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  <p className="text-sm">No previous conversations</p>
-                  <p className="text-xs mt-1">Start a new chat to see your history here</p>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-        
-        <AnimatePresence>
-          <div className="p-2 space-y-2">
-            {filteredConversations.map((thread, index) => (
-              <motion.div
-                key={thread.threadId}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2, delay: index * 0.05 }}
-                className="relative group"
-              >
-                <button
-                  id={`thread-${thread.threadId}`}
-                  onClick={() => onThreadSelect(thread.threadId)}
-                  className={`w-full p-3 rounded-lg text-left transition-all duration-200 ${
-                    currentThreadId === thread.threadId 
-                      ? 'bg-brand-primary/10 shadow-sm border border-brand-primary/20' 
-                      : 'hover:bg-white/5 dark:hover:bg-dark-bg-secondary/30 border border-transparent'
-                  } relative group`}
-                >
-                  <div className="flex items-start">
-                    <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100/20 dark:bg-gray-800/30 flex items-center justify-center mr-2 flex-shrink-0 border border-white/10 dark:border-white/5">
-                      <Image 
-                        src={personalityImages[thread.personality || 'tobo']} 
-                        alt={thread.personality || 'AI'} 
-                        width={32} 
-                        height={32} 
-                        className="object-cover"
-                      />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-center">
-                        <span className={`font-medium text-sm truncate ${
-                          currentThreadId === thread.threadId 
-                            ? 'text-brand-primary dark:text-brand-light' 
-                            : 'text-light-text-primary dark:text-dark-text-primary'
-                        }`}>
-                          {thread.personality === 'tobo' ? 'Tobot' : 'Haido'}
-                        </span>
-                        <span className="text-xs text-light-text-secondary/70 dark:text-dark-text-secondary/70 ml-2 flex-shrink-0">
-                          {formatDate(thread.latestMessage.created_at)}
-                        </span>
-                      </div>
-                      
-                      <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary truncate mt-1">
-                        {thread.preview}
-                      </p>
-                    </div>
-                    
-                    {/* New inline delete button */}
-                    <div 
-                      onClick={(e) => e.stopPropagation()}
-                      className="ml-2 flex-shrink-0 self-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 relative"
-                      title="Delete conversation"
-                    >
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation(); // Stop event propagation
-                          if (window.confirm("Are you sure you want to delete this conversation? This cannot be undone.")) {
-                            handleDelete(e, thread.threadId);
-                          }
-                        }}
-                        disabled={deleting === thread.threadId}
-                        className={`p-1.5 rounded-full transition-all duration-200 ${
-                          deleting === thread.threadId
-                            ? 'bg-red-500/20'
-                            : 'hover:bg-red-500/20 hover:scale-110'
-                        }`}
-                        aria-label="Delete conversation"
-                      >
-                        {deleting === thread.threadId ? (
-                          <svg className="animate-spin h-4 w-4 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </AnimatePresence>
-      </div>
     </div>
   );
-} 
+}
+
+// Export the memoized component
+export default memoize(ChatHistoryComponent); 

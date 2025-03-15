@@ -1,8 +1,22 @@
 'use client';
 
+import { Suspense } from 'react';
+import { lazyLoad } from '@/lib/utils/lazyLoad';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
-import PortfolioDashboard from '../components/dashboard/PortfolioDashboard';
+
+// Lazy load the PortfolioDashboard component
+const PortfolioDashboard = lazyLoad(
+  () => import('@/app/components/dashboard/PortfolioDashboard'),
+  {
+    fallback: (
+      <div className="h-full min-h-[500px] w-full flex items-center justify-center">
+        <LoadingSpinner size="large" text="Loading portfolio data..." />
+      </div>
+    )
+  }
+);
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
@@ -21,5 +35,13 @@ export default function Dashboard() {
     return null;
   }
 
-  return <PortfolioDashboard />;
+  return (
+    <main className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">Your Portfolio Dashboard</h1>
+      
+      <Suspense fallback={<LoadingSpinner size="large" text="Loading dashboard..." />}>
+        <PortfolioDashboard />
+      </Suspense>
+    </main>
+  );
 } 

@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Skeleton } from '../../components/ui/skeleton';
 import { Clock, Newspaper, RefreshCw, Filter } from 'lucide-react';
+import { memoize } from '@/lib/utils/memoize';
+import { logger } from '@/lib/utils/logger';
 
 type NewsItem = {
   title: string;
@@ -15,7 +17,64 @@ type NewsItem = {
   categories?: string[];
 };
 
-export default function CryptoNews() {
+// Extract NewsItemCard into a memoized component for better performance
+const NewsItemCard = memoize(({ item }: { item: NewsItem }) => {
+  return (
+    <a 
+      href={item.link}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex gap-3 border border-gray-200 dark:border-gray-700 rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+    >
+      <div className="w-16 h-16 rounded overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0 relative">
+        {item.imageUrl ? (
+          // Using standard img tag for simpler implementation with remote URLs
+          <img 
+            src={item.imageUrl} 
+            alt=""
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // Replace broken images with a fallback
+              const target = e.target as HTMLImageElement;
+              target.src = 'https://www.coindesk.com/resizer/86_-JpS2CQ6k9FxoRHIxg3nGcvo=/500x500/filters:quality(80):format(png):base64(0)/cloudfront-us-east-1.images.arcpublishing.com/coindesk/F6KQ7VEWHFGTBKP2FKTWMJOUXA.png';
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-600">
+            <Newspaper className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+          </div>
+        )}
+      </div>
+      <div className="flex-grow min-w-0">
+        <h3 className="text-sm font-medium mb-1 line-clamp-2 leading-tight">{item.title}</h3>
+        {item.contentSnippet && (
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 line-clamp-1">{item.contentSnippet}</p>
+        )}
+        <div className="flex flex-wrap items-center gap-1 mb-1">
+          {item.categories?.map((category, i) => (
+            <span 
+              key={i} 
+              className="inline-block text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
+            >
+              {category}
+            </span>
+          ))}
+        </div>
+        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+          <span className="flex items-center">
+            <Clock className="h-2.5 w-2.5 mr-1" />
+            {item.date}
+          </span>
+          <span className="mx-1 text-gray-300 dark:text-gray-600">•</span>
+          <span className="truncate max-w-[60px]">{item.source}</span>
+        </div>
+      </div>
+    </a>
+  );
+});
+NewsItemCard.displayName = 'NewsItemCard';
+
+function CryptoNewsComponent() {
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const [allNewsItems, setAllNewsItems] = useState<NewsItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -25,7 +84,8 @@ export default function CryptoNews() {
   const [refreshing, setRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
-  const fetchNews = async () => {
+  // Use useCallback to memoize the fetchNews function
+  const fetchNews = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/crypto-news');
@@ -35,22 +95,25 @@ export default function CryptoNews() {
       }
       
       const data = await response.json();
+      logger.debug('Crypto news fetched successfully', { count: data.newsItems.length });
       setAllNewsItems(data.newsItems);
       setNewsItems(data.newsItems);
       setCategories(['All', ...data.categories]);
     } catch (err) {
-      console.error('Error fetching news:', err);
+      logger.error('Error fetching crypto news', { error: err });
       setError('Failed to load crypto news. Please try again later.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchNews();
   }, []);
 
+  // Fetch news on component mount
+  useEffect(() => {
+    fetchNews();
+  }, [fetchNews]);
+
+  // Use useMemo to filter news items when category changes
   useEffect(() => {
     if (selectedCategory === 'All') {
       setNewsItems(allNewsItems);
@@ -63,17 +126,36 @@ export default function CryptoNews() {
     }
   }, [selectedCategory, allNewsItems]);
 
-  const handleRefresh = async () => {
+  // Use useCallback for event handlers
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     setError(null);
     await fetchNews();
     setSelectedCategory('All');
-  };
+  }, [fetchNews]);
 
-  const toggleFilters = () => {
-    setShowFilters(!showFilters);
-  };
+  const toggleFilters = useCallback(() => {
+    setShowFilters(prev => !prev);
+  }, []);
 
+  // Memoize the category buttons to prevent unnecessary re-renders
+  const categoryButtons = useMemo(() => {
+    return categories.map((category) => (
+      <button
+        key={category}
+        onClick={() => setSelectedCategory(category)}
+        className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
+          selectedCategory === category
+            ? 'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-100'
+            : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'
+        }`}
+      >
+        {category}
+      </button>
+    ));
+  }, [categories, selectedCategory]);
+
+  // Render error state
   if (error) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
@@ -126,19 +208,7 @@ export default function CryptoNews() {
       
       {showFilters && (
         <div className="mb-3 flex flex-wrap gap-1 py-1">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
-                selectedCategory === category
-                  ? 'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-100'
-                  : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
+          {categoryButtons}
         </div>
       )}
       
@@ -172,61 +242,14 @@ export default function CryptoNews() {
             </div>
           ) : (
             newsItems.map((item, index) => (
-              <a 
-                key={index}
-                href={item.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex gap-3 border border-gray-200 dark:border-gray-700 rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                <div className="w-16 h-16 rounded overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0 relative">
-                  {item.imageUrl ? (
-                    // Using standard img tag for simpler implementation with remote URLs
-                    <img 
-                      src={item.imageUrl} 
-                      alt=""
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        // Replace broken images with a fallback
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'https://www.coindesk.com/resizer/86_-JpS2CQ6k9FxoRHIxg3nGcvo=/500x500/filters:quality(80):format(png):base64(0)/cloudfront-us-east-1.images.arcpublishing.com/coindesk/F6KQ7VEWHFGTBKP2FKTWMJOUXA.png';
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-600">
-                      <Newspaper className="h-6 w-6 text-gray-400 dark:text-gray-500" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-grow min-w-0">
-                  <h3 className="text-sm font-medium mb-1 line-clamp-2 leading-tight">{item.title}</h3>
-                  {item.contentSnippet && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 line-clamp-1">{item.contentSnippet}</p>
-                  )}
-                  <div className="flex flex-wrap items-center gap-1 mb-1">
-                    {item.categories?.map((category, i) => (
-                      <span 
-                        key={i} 
-                        className="inline-block text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
-                      >
-                        {category}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                    <span className="flex items-center">
-                      <Clock className="h-2.5 w-2.5 mr-1" />
-                      {item.date}
-                    </span>
-                    <span className="mx-1 text-gray-300 dark:text-gray-600">•</span>
-                    <span className="truncate max-w-[60px]">{item.source}</span>
-                  </div>
-                </div>
-              </a>
+              <NewsItemCard key={index} item={item} />
             ))
           )}
         </div>
       )}
     </div>
   );
-} 
+}
+
+// Export the memoized component
+export default memoize(CryptoNewsComponent); 
