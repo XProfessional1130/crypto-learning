@@ -1,48 +1,69 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-// Declare the global variable to hold the Supabase instance across module loads during development
+// Define the client type to avoid type errors
+type SupabaseClientType = SupabaseClient;
+
+// Declare a truly global variable to survive all module reloads
+// This will be available in globalThis/window in browser and global in Node
 declare global {
-  var __supabaseClient: ReturnType<typeof createClient> | undefined;
+  // For browser global scope
+  interface Window {
+    __supabaseClientInstance: SupabaseClientType | undefined;
+  }
+  
+  // For global scope across environments (Node/browser)
+  var __supabaseClientInstance: SupabaseClientType | undefined;
 }
 
 /**
- * This singleton implementation uses a global variable to survive React Fast Refresh
- * in development mode, which prevents multiple instances warning
+ * Enhanced singleton pattern that's resistant to React Fast Refresh
+ * and module reloads in both development and production.
+ * 
+ * This approach uses environment-specific globals to maintain a single instance.
  */
-const getSupabaseClient = (): ReturnType<typeof createClient> => {
-  // In production, we can use a simple module-level singleton
-  if (process.env.NODE_ENV === 'production') {
-    if (!globalThis.__supabaseClient) {
-      globalThis.__supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-          detectSessionInUrl: true,
-          persistSession: true,
-          autoRefreshToken: true
-        }
-      });
+const getSupabaseClient = (): SupabaseClientType => {
+  // Determine which global variable to use based on environment
+  const isBrowser = typeof window !== 'undefined';
+  
+  // Check if we already have an instance
+  if (isBrowser && window.__supabaseClientInstance) {
+    return window.__supabaseClientInstance;
+  } else if (globalThis.__supabaseClientInstance) {
+    return globalThis.__supabaseClientInstance;
+  } else if (global.__supabaseClientInstance) {
+    return global.__supabaseClientInstance;
+  }
+  
+  // Create a new instance if none exists
+  const newClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      detectSessionInUrl: true,
+      persistSession: true,
+      autoRefreshToken: true
     }
-    return globalThis.__supabaseClient;
+  });
+  
+  // Store in all possible global variables to ensure it's available
+  // regardless of which scope is preserved during hot module reloading
+  if (isBrowser) {
+    window.__supabaseClientInstance = newClient;
+  }
+  globalThis.__supabaseClientInstance = newClient;
+  global.__supabaseClientInstance = newClient;
+  
+  // Only log in development mode
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Created new Supabase client instance');
   }
   
-  // In development, we use global to survive Fast Refresh
-  if (!global.__supabaseClient) {
-    global.__supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        detectSessionInUrl: true,
-        persistSession: true,
-        autoRefreshToken: true
-      }
-    });
-  }
-  
-  return global.__supabaseClient;
+  return newClient;
 };
 
-// Create and export the Supabase client
+// Get or create the singleton instance
 const supabase = getSupabaseClient();
 
 // Log any initialization issues in development

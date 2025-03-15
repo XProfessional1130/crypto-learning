@@ -145,25 +145,26 @@ export function useWatchlist() {
       }
       
       // Get coin IDs for price fetching
-      const coinIds = watchlistItems.map(item => item.coin_id);
+      const coinIds = watchlistItems.map(item => String(item.coin_id));
       
       // Fetch current prices for all coins in the watchlist
       const pricesMap = await fetchPrices(coinIds);
       
       // Map database items to WatchlistItem format with current prices
       const watchlistWithPrices = watchlistItems.map(dbItem => {
-        const coinData = pricesMap[dbItem.coin_id];
+        const coinId = String(dbItem.coin_id);
+        const coinData = pricesMap[coinId];
         
         return {
-          id: dbItem.id,
-          coinId: dbItem.coin_id,  // Store the coin_id from the database for CoinMarketCap images
-          symbol: dbItem.symbol,
-          name: dbItem.name,
+          id: String(dbItem.id),
+          coinId: String(dbItem.coin_id),
+          symbol: String(dbItem.symbol),
+          name: String(dbItem.name),
           price: coinData?.priceUsd || 0,
           change24h: coinData?.priceChange24h || 0,
-          icon: dbItem.symbol,
-          priceTarget: dbItem.price_target || undefined,
-          createdAt: dbItem.created_at
+          icon: String(dbItem.symbol),
+          priceTarget: dbItem.price_target ? Number(dbItem.price_target) : undefined,
+          createdAt: dbItem.created_at ? String(dbItem.created_at) : undefined
         };
       });
       
@@ -207,7 +208,9 @@ export function useWatchlist() {
     
     try {
       await refreshWatchlistData();
-      console.log('Background refresh completed');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Background refresh completed');
+      }
     } catch (err) {
       console.error('Background refresh failed:', err);
       // Don't update error state for background refreshes
@@ -360,7 +363,9 @@ export function useWatchlist() {
     
     // Enforce refresh cooldown
     if (timeSinceLastRefresh < REFRESH_COOLDOWN) {
-      console.log(`Price refresh rate limited. Try again in ${Math.ceil((REFRESH_COOLDOWN - timeSinceLastRefresh)/1000)}s`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Price refresh rate limited. Try again in ${Math.ceil((REFRESH_COOLDOWN - timeSinceLastRefresh)/1000)}s`);
+      }
       return;
     }
     
