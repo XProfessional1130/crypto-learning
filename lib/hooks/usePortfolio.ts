@@ -15,7 +15,8 @@ import { useToast } from '@/lib/hooks/useToast';
 const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes instead of 5
 const CACHE_CLEANUP_INTERVAL = 30 * 60 * 1000; // 30 minutes
 const MIN_FETCH_INTERVAL = 60 * 1000; // 1 minute minimum between fetches
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache duration
+const CACHE_DURATION = 2 * 60 * 1000; // Reduced from 5 to 2 minutes to improve freshness on navigation
+const NAV_CACHE_DURATION = 15 * 1000; // Very short cache for navigation scenarios
 
 // Global cache for sharing data between hook instances
 const globalCache: {
@@ -23,6 +24,15 @@ const globalCache: {
 } = {
   portfolioData: {}
 };
+
+// Track if this is a return navigation (global)
+let lastPageUnloadTime = 0;
+if (typeof window !== 'undefined') {
+  // Record when user navigates away from the page
+  window.addEventListener('beforeunload', () => {
+    lastPageUnloadTime = Date.now();
+  });
+}
 
 export function usePortfolio() {
   const { user } = useAuth();
@@ -45,6 +55,20 @@ export function usePortfolio() {
       return;
     }
 
+    // Check if this might be a return navigation
+    let isReturnNavigation = false;
+    if (typeof window !== 'undefined' && lastPageUnloadTime > 0) {
+      // If we've navigated away and back within the last 30 seconds
+      if (Date.now() - lastPageUnloadTime < 30000) {
+        isReturnNavigation = true;
+        if (verbose) {
+          console.log('NAVIGATION: Detected return to dashboard, using shorter cache validity');
+        }
+      }
+      // Reset the lastPageUnloadTime after using it
+      lastPageUnloadTime = 0;
+    }
+
     // Prevent concurrent fetches
     if (fetchingRef.current && !forceFetch) {
       if (verbose) {
@@ -58,14 +82,17 @@ export function usePortfolio() {
     const timeSinceLastFetch = now - lastFetchRef.current;
     const globalCacheForUser = globalCache.portfolioData[userId];
     
+    // For return navigation, we use a much shorter cache duration
+    const effectiveCacheDuration = isReturnNavigation ? NAV_CACHE_DURATION : CACHE_DURATION;
+    
     // Determine if we can use the cache
     const canUseGlobalCache = !forceFetch && 
       globalCacheForUser && 
-      (now - globalCacheForUser.timestamp) < CACHE_DURATION;
+      (now - globalCacheForUser.timestamp) < effectiveCacheDuration;
       
     const canUseLocalCache = !forceFetch && 
       localCacheRef.current && 
-      (now - localCacheRef.current.timestamp) < CACHE_DURATION;
+      (now - localCacheRef.current.timestamp) < effectiveCacheDuration;
     
     // If in cooldown and we have some cache, use it
     if (!forceFetch && timeSinceLastFetch < MIN_FETCH_INTERVAL) {
@@ -539,7 +566,8 @@ export function usePortfolio() {
   }, [toast]);
 
   // Force refresh portfolio data
-  const refreshPortfolio = useCallback(() => {
+  const refreshPortfolio = useCallback((forceNavigationRefresh?: boolean) => {
+    // Always pass true to fetchPortfolio to force a refresh
     return fetchPortfolio(true);
   }, [fetchPortfolio]);
 
