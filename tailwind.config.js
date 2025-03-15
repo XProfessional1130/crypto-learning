@@ -134,10 +134,27 @@ module.exports = {
       transitionProperty: {
         'height': 'height',
         'spacing': 'margin, padding',
-      }
+      },
+      transitionDuration: {
+        '400': '400ms',
+        '600': '600ms',
+      },
+      transitionTimingFunction: {
+        'ease-in-out-smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
+      },
     },
   },
   plugins: [
-    require('tailwind-scrollbar')
+    require('tailwind-scrollbar'),
+    function({ addUtilities }) {
+      const newUtilities = {
+        '.transition-opacity-transform': {
+          'transition-property': 'opacity, transform',
+          'transition-timing-function': 'cubic-bezier(0.4, 0, 0.2, 1)',
+          'transition-duration': '400ms',
+        },
+      }
+      addUtilities(newUtilities)
+    }
   ],
 } 

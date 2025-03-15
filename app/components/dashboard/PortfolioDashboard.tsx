@@ -136,6 +136,29 @@ function PortfolioDashboardComponent() {
   const [globalData, setGlobalData] = useState<GlobalData | null>(null);
   const [loadingPrices, setLoadingPrices] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  
+  // Calculate loading and error states
+  const loading = portfolioLoading || watchlistLoading;
+  const error = portfolioError || watchlistError;
+  
+  // Create a sorted version of the portfolio items
+  const sortedPortfolioItems = useMemo(() => {
+    if (!portfolio || !portfolio.items) return [];
+    
+    // Return a new sorted array by valueUsd (descending)
+    return [...portfolio.items].sort((a, b) => b.valueUsd - a.valueUsd);
+  }, [portfolio]);
+  
+  // Memoize the total portfolio value calculation
+  const totalPortfolioValue = useMemo(() => {
+    return portfolio?.totalValueUsd || 0;
+  }, [portfolio]);
+  
+  // Create consistent animation classes based on loading state
+  const contentAnimationClass = initialLoadComplete ? "animate-fadeIn" : "opacity-0 transition-opacity-transform";
+  const cardAnimationClass = initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform";
+  const listItemAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
   
   // Handler for when a coin is added to ensure UI updates
   const handleCoinAdded = useCallback(() => {
@@ -211,21 +234,17 @@ function PortfolioDashboardComponent() {
     return () => clearInterval(intervalId);
   }, []); // Empty dependency array as we want this to run once on mount
   
-  const loading = portfolioLoading || watchlistLoading;
-  const error = portfolioError || watchlistError;
-  
-  // Create a sorted version of the portfolio items
-  const sortedPortfolioItems = useMemo(() => {
-    if (!portfolio || !portfolio.items) return [];
-    
-    // Return a new sorted array by valueUsd (descending)
-    return [...portfolio.items].sort((a, b) => b.valueUsd - a.valueUsd);
-  }, [portfolio]);
-  
-  // Memoize the total portfolio value calculation
-  const totalPortfolioValue = useMemo(() => {
-    return portfolio?.totalValueUsd || 0;
-  }, [portfolio]);
+  // After first data load is complete, trigger main content visibility
+  useEffect(() => {
+    if (!loading && !error) {
+      // Short delay to ensure data is processed before showing animations
+      const timer = setTimeout(() => {
+        setInitialLoadComplete(true);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [loading, error]);
   
   if (loading) {
     return (
@@ -299,13 +318,14 @@ function PortfolioDashboardComponent() {
     <div className="container mx-auto py-6 px-4 max-w-7xl">
       {/* Dashboard Header */}
       <div className="mb-6 flex justify-between items-center">
-        <div className="animate-fadeIn">
+        <div className={contentAnimationClass} style={{ transitionDelay: '0ms' }}>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Your Dashboard</h1>
           <p className="text-gray-600 dark:text-gray-300">Welcome back, {user?.email?.split('@')[0] || 'partnerships'}!</p>
         </div>
         <button 
           onClick={handleManualRefresh}
-          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500"
+          className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${contentAnimationClass}`}
+          style={{ transitionDelay: '50ms' }}
           aria-label="Refresh dashboard"
         >
           <svg 
@@ -326,7 +346,7 @@ function PortfolioDashboardComponent() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Portfolio Value Card */}
-        <div className="animate-scaleIn" style={{ animationDelay: '0ms' }}>
+        <div className={cardAnimationClass} style={{ transitionDelay: '100ms', animationDelay: '100ms' }}>
           <StatsCard 
             title="Portfolio Value" 
             value={`$${portfolio?.totalValueUsd.toLocaleString(undefined, { 
@@ -337,7 +357,7 @@ function PortfolioDashboardComponent() {
         </div>
         
         {/* 24h Change Card */}
-        <div className="animate-scaleIn" style={{ animationDelay: '50ms' }}>
+        <div className={cardAnimationClass} style={{ transitionDelay: '150ms', animationDelay: '150ms' }}>
           <StatsCard 
             title="24h Change"
             value={`${(portfolio?.dailyChangePercentage || 0) >= 0 ? '+' : ''}${(portfolio?.dailyChangePercentage || 0).toFixed(2)}%`}
@@ -346,7 +366,7 @@ function PortfolioDashboardComponent() {
         </div>
         
         {/* Bitcoin Price Card */}
-        <div className="animate-scaleIn" style={{ animationDelay: '100ms' }}>
+        <div className={cardAnimationClass} style={{ transitionDelay: '200ms', animationDelay: '200ms' }}>
           <StatsCard 
             title="Bitcoin Price"
             value={formatCryptoPrice(btcPrice || 0)}
@@ -357,7 +377,7 @@ function PortfolioDashboardComponent() {
         </div>
         
         {/* Ethereum Price Card */}
-        <div className="animate-scaleIn" style={{ animationDelay: '150ms' }}>
+        <div className={cardAnimationClass} style={{ transitionDelay: '250ms', animationDelay: '250ms' }}>
           <StatsCard 
             title="Ethereum Price"
             value={formatCryptoPrice(ethPrice || 0)}
@@ -371,7 +391,7 @@ function PortfolioDashboardComponent() {
       {/* Main Content - Portfolio and Watchlist */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Portfolio Section - Takes up 2/3 of the space */}
-        <div className="lg:col-span-2 animate-fadeIn" style={{ animationDelay: '200ms' }}>
+        <div className={`lg:col-span-2 ${contentAnimationClass}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300" style={{ height: 'calc(100vh - 24rem)' }}>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Your Portfolio</h2>
@@ -384,7 +404,7 @@ function PortfolioDashboardComponent() {
             </div>
             
             {(!portfolio || sortedPortfolioItems.length === 0) ? (
-              <div className="text-center py-10 animate-fadeIn">
+              <div className="text-center py-10">
                 <p className="text-lg mb-4">You don't have any assets yet</p>
                 <button 
                   onClick={() => setIsAddModalOpen(true)}
@@ -396,7 +416,7 @@ function PortfolioDashboardComponent() {
             ) : (
               <div className="overflow-y-auto h-[calc(100%-4rem)] scrollbar-thin">
                 {sortedPortfolioItems.map((item, index) => (
-                  <div key={item.id} className="animate-slide-up" style={{ animationDelay: `${index * 30}ms` }}>
+                  <div key={item.id} className={listItemAnimationClass} style={{ transitionDelay: `${350 + (index * 30)}ms`, animationDelay: `${350 + (index * 30)}ms` }}>
                     <PortfolioItem 
                       item={item} 
                       onItemClick={handleAssetClick} 
@@ -409,14 +429,17 @@ function PortfolioDashboardComponent() {
           </div>
           
           {/* Recent News */}
-          <div className="mt-6 animate-fadeIn" style={{ animationDelay: '250ms' }}>
+          <div className={`mt-6 ${contentAnimationClass}`} style={{ transitionDelay: '400ms', animationDelay: '400ms' }}>
             <CryptoNews />
           </div>
         </div>
         
         {/* Watchlist Section - Takes up 1/3 of the space */}
-        <div className="lg:col-span-1 h-auto animate-fadeIn" style={{ animationDelay: '300ms' }}>
-          <WatchlistComponent onRefresh={handleWatchlistRefresh} />
+        <div className={`lg:col-span-1 h-auto ${contentAnimationClass}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
+          <WatchlistComponent 
+            onRefresh={handleWatchlistRefresh} 
+            initialLoadComplete={initialLoadComplete}
+          />
         </div>
       </div>
 

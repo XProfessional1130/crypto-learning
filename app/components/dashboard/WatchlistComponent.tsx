@@ -11,6 +11,7 @@ import { Skeleton } from '../ui/skeleton';
 // Define props interface for WatchlistComponent
 interface WatchlistComponentProps {
   onRefresh?: () => void;
+  initialLoadComplete?: boolean;
 }
 
 // Memoized WatchlistItemCard component
@@ -126,7 +127,7 @@ const WatchlistItemSkeleton = memo(() => {
 });
 WatchlistItemSkeleton.displayName = 'WatchlistItemSkeleton';
 
-const WatchlistComponent = ({ onRefresh }: WatchlistComponentProps) => {
+const WatchlistComponent = ({ onRefresh, initialLoadComplete = false }: WatchlistComponentProps) => {
   const {
     watchlist,
     loading,
@@ -139,6 +140,10 @@ const WatchlistComponent = ({ onRefresh }: WatchlistComponentProps) => {
   const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Create consistent animation classes based on loading state
+  const contentAnimationClass = initialLoadComplete ? "animate-fadeIn" : "opacity-0 transition-opacity-transform";
+  const itemAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
   
   // Only load once on mount, with no dependencies to prevent reruns
   useEffect(() => {
@@ -248,7 +253,7 @@ const WatchlistComponent = ({ onRefresh }: WatchlistComponentProps) => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 flex flex-col animate-fadeIn" style={{ height: 'calc(100vh - 24rem)' }}>
+    <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 flex flex-col ${contentAnimationClass}`} style={{ height: 'calc(100vh - 24rem)' }}>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold">Watchlist</h2>
         <div className="flex space-x-2">
@@ -280,7 +285,7 @@ const WatchlistComponent = ({ onRefresh }: WatchlistComponentProps) => {
       </div>
 
       {watchlist.length === 0 ? (
-        <div className="text-center py-10 flex-grow animate-fadeIn">
+        <div className="text-center py-10 flex-grow">
           <p className="text-lg mb-4">Your watchlist is empty</p>
           <button 
             onClick={() => setIsAddModalOpen(true)}
@@ -299,7 +304,11 @@ const WatchlistComponent = ({ onRefresh }: WatchlistComponentProps) => {
               : 0;
             
             return (
-              <div key={item.id} className="animate-slide-up" style={{ animationDelay: `${index * 30}ms` }}>
+              <div 
+                key={item.id} 
+                className={itemAnimationClass} 
+                style={{ transitionDelay: `${index * 30}ms`, animationDelay: `${index * 30}ms` }}
+              >
                 <WatchlistItemCard
                   item={item}
                   progressPercentage={progressPercentage}
