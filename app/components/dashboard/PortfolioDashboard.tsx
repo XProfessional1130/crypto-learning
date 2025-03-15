@@ -21,7 +21,7 @@ const StatsCard = memo(({ title, value, icon = null, dominance = null, loading =
   valueClassName?: string;
 }) => {
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover transform hover:-translate-y-1">
       <div className="flex items-center mb-2">
         {icon && <div className="mr-2">{icon}</div>}
         <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
@@ -66,7 +66,7 @@ const PortfolioItem = memo(({ item, onItemClick, totalPortfolioValue }: {
   return (
     <div
       onClick={() => onItemClick(item)}
-      className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors cursor-pointer"
+      className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-all duration-200 cursor-pointer transform hover:translate-x-1"
     >
       <div className="flex items-center">
         <div className="w-8 h-8 mr-3 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold overflow-hidden">
@@ -135,6 +135,7 @@ function PortfolioDashboardComponent() {
   const [ethPrice, setEthPrice] = useState<number | null>(null);
   const [globalData, setGlobalData] = useState<GlobalData | null>(null);
   const [loadingPrices, setLoadingPrices] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Handler for when a coin is added to ensure UI updates
   const handleCoinAdded = useCallback(() => {
@@ -161,6 +162,19 @@ function PortfolioDashboardComponent() {
     // Refresh the portfolio data to ensure UI is updated
     refreshPortfolio();
   }, [refreshPortfolio]);
+  
+  // Manual refresh function with visual feedback
+  const handleManualRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    
+    Promise.all([
+      refreshPortfolio(),
+      refreshWatchlist()
+    ]).finally(() => {
+      // Add a minimum duration for the refresh animation
+      setTimeout(() => setIsRefreshing(false), 500);
+    });
+  }, [refreshPortfolio, refreshWatchlist]);
   
   // Fetch BTC and ETH prices and global data with optimized loading
   useEffect(() => {
@@ -215,8 +229,54 @@ function PortfolioDashboardComponent() {
   
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="max-w-7xl mx-auto py-6 px-4">
+        {/* Skeleton Loading UI */}
+        <div className="mb-6">
+          <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          <div className="h-4 w-72 bg-gray-200 dark:bg-gray-700 rounded mt-2 animate-pulse"></div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm animate-pulse">
+              <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+              <div className="h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 animate-pulse">
+            <div className="flex justify-between items-center mb-6">
+              <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            </div>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 mr-3"></div>
+                  <div>
+                    <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                    <div className="h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                  <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 h-64 animate-pulse">
+            <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 mr-2"></div>
+                <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded"></div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -238,95 +298,124 @@ function PortfolioDashboardComponent() {
   return (
     <div className="container mx-auto py-6 px-4 max-w-7xl">
       {/* Dashboard Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Your Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-300">Welcome back, {user?.email?.split('@')[0] || 'partnerships'}!</p>
+      <div className="mb-6 flex justify-between items-center">
+        <div className="animate-fadeIn">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Your Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-300">Welcome back, {user?.email?.split('@')[0] || 'partnerships'}!</p>
+        </div>
+        <button 
+          onClick={handleManualRefresh}
+          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500"
+          aria-label="Refresh dashboard"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2"
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            className={`w-5 h-5 text-gray-500 dark:text-gray-400 ${isRefreshing ? 'animate-refresh-spin' : ''}`}
+          >
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+          </svg>
+        </button>
       </div>
       
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Portfolio Value Card */}
-        <StatsCard 
-          title="Portfolio Value" 
-          value={`$${portfolio?.totalValueUsd.toLocaleString(undefined, { 
-            minimumFractionDigits: 2, 
-            maximumFractionDigits: 2 
-          }) || '0.00'}`}
-        />
+        <div className="animate-scaleIn" style={{ animationDelay: '0ms' }}>
+          <StatsCard 
+            title="Portfolio Value" 
+            value={`$${portfolio?.totalValueUsd.toLocaleString(undefined, { 
+              minimumFractionDigits: 2, 
+              maximumFractionDigits: 2 
+            }) || '0.00'}`}
+          />
+        </div>
         
         {/* 24h Change Card */}
-        <StatsCard 
-          title="24h Change"
-          value={`${(portfolio?.dailyChangePercentage || 0) >= 0 ? '+' : ''}${(portfolio?.dailyChangePercentage || 0).toFixed(2)}%`}
-          valueClassName={(portfolio?.dailyChangePercentage || 0) >= 0 ? 'text-green-500' : 'text-red-500'}
-        />
+        <div className="animate-scaleIn" style={{ animationDelay: '50ms' }}>
+          <StatsCard 
+            title="24h Change"
+            value={`${(portfolio?.dailyChangePercentage || 0) >= 0 ? '+' : ''}${(portfolio?.dailyChangePercentage || 0).toFixed(2)}%`}
+            valueClassName={(portfolio?.dailyChangePercentage || 0) >= 0 ? 'text-green-500' : 'text-red-500'}
+          />
+        </div>
         
         {/* Bitcoin Price Card */}
-        <StatsCard 
-          title="Bitcoin Price"
-          value={formatCryptoPrice(btcPrice || 0)}
-          icon={<img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1.png" alt="Bitcoin" className="w-5 h-5" />}
-          dominance={globalData?.btcDominance}
-          loading={loadingPrices}
-        />
+        <div className="animate-scaleIn" style={{ animationDelay: '100ms' }}>
+          <StatsCard 
+            title="Bitcoin Price"
+            value={formatCryptoPrice(btcPrice || 0)}
+            icon={<img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1.png" alt="Bitcoin" className="w-5 h-5" />}
+            dominance={globalData?.btcDominance}
+            loading={loadingPrices}
+          />
+        </div>
         
         {/* Ethereum Price Card */}
-        <StatsCard 
-          title="Ethereum Price"
-          value={formatCryptoPrice(ethPrice || 0)}
-          icon={<img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png" alt="Ethereum" className="w-5 h-5" />}
-          dominance={globalData?.ethDominance}
-          loading={loadingPrices}
-        />
+        <div className="animate-scaleIn" style={{ animationDelay: '150ms' }}>
+          <StatsCard 
+            title="Ethereum Price"
+            value={formatCryptoPrice(ethPrice || 0)}
+            icon={<img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png" alt="Ethereum" className="w-5 h-5" />}
+            dominance={globalData?.ethDominance}
+            loading={loadingPrices}
+          />
+        </div>
       </div>
       
       {/* Main Content - Portfolio and Watchlist */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Portfolio Section - Takes up 2/3 of the space */}
-        <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6" style={{ height: 'calc(100vh - 24rem)' }}>
+        <div className="lg:col-span-2 animate-fadeIn" style={{ animationDelay: '200ms' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300" style={{ height: 'calc(100vh - 24rem)' }}>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Your Portfolio</h2>
               <button 
                 onClick={() => setIsAddModalOpen(true)}
-                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
+                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors transform hover:scale-105 active:scale-95 hover:shadow-md"
               >
                 Add Asset
               </button>
             </div>
             
             {(!portfolio || sortedPortfolioItems.length === 0) ? (
-              <div className="text-center py-10">
+              <div className="text-center py-10 animate-fadeIn">
                 <p className="text-lg mb-4">You don't have any assets yet</p>
                 <button 
                   onClick={() => setIsAddModalOpen(true)}
-                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors transform hover:scale-105 active:scale-95"
                 >
                   Add your first asset
                 </button>
               </div>
             ) : (
               <div className="overflow-y-auto h-[calc(100%-4rem)] scrollbar-thin">
-                {sortedPortfolioItems.map((item) => (
-                  <PortfolioItem 
-                    key={item.id} 
-                    item={item} 
-                    onItemClick={handleAssetClick} 
-                    totalPortfolioValue={totalPortfolioValue} 
-                  />
+                {sortedPortfolioItems.map((item, index) => (
+                  <div key={item.id} className="animate-slide-up" style={{ animationDelay: `${index * 30}ms` }}>
+                    <PortfolioItem 
+                      item={item} 
+                      onItemClick={handleAssetClick} 
+                      totalPortfolioValue={totalPortfolioValue} 
+                    />
+                  </div>
                 ))}
               </div>
             )}
           </div>
           
           {/* Recent News */}
-          <div className="mt-6">
+          <div className="mt-6 animate-fadeIn" style={{ animationDelay: '250ms' }}>
             <CryptoNews />
           </div>
         </div>
         
         {/* Watchlist Section - Takes up 1/3 of the space */}
-        <div className="lg:col-span-1 h-auto">
+        <div className="lg:col-span-1 h-auto animate-fadeIn" style={{ animationDelay: '300ms' }}>
           <WatchlistComponent onRefresh={handleWatchlistRefresh} />
         </div>
       </div>
