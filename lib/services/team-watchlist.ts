@@ -175,7 +175,7 @@ export async function removeFromTeamWatchlist(itemId: string): Promise<{success:
 /**
  * Process watchlist items and add price data
  */
-async function processWatchlistItems(watchlistItems: any[]): Promise<{ items: WatchlistItem[] }> {
+export async function processWatchlistItems(watchlistItems: any[]): Promise<{ items: WatchlistItem[] }> {
   if (!watchlistItems || watchlistItems.length === 0) {
     console.log('No watchlist items found in the team watchlist.');
     // Return empty watchlist if no items exist yet

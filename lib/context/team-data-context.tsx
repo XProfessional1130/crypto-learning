@@ -20,7 +20,8 @@ import {
   getTeamWatchlist,
   addToTeamWatchlist,
   updateTeamWatchlistPriceTarget,
-  removeFromTeamWatchlist
+  removeFromTeamWatchlist,
+  processWatchlistItems
 } from '@/lib/services/team-watchlist';
 import { useDataCache } from '@/lib/context/data-cache-context';
 import supabase from '@/lib/services/supabase-client';
@@ -131,17 +132,28 @@ export function TeamDataProvider({ children }: { children: ReactNode }) {
       
       // Store the promise for deduplication
       const fetchPortfolioPromise = async () => {
-        // Fetch raw portfolio items from Supabase
-        const { data: portfolioItems, error } = await supabase
-          .from('team_portfolio')
-          .select('*');
+        console.log('Starting Supabase query for team_portfolio');
         
-        if (error) {
-          throw new Error(`Failed to fetch portfolio items: ${error.message}`);
+        try {
+          // Fetch raw portfolio items from Supabase
+          const { data: portfolioItems, error } = await supabase
+            .from('team_portfolio')
+            .select('*')
+            .order('coin_name', { ascending: true });
+          
+          if (error) {
+            console.error('Supabase query error:', error);
+            throw new Error(`Failed to fetch portfolio items: ${error.message}`);
+          }
+
+          console.log(`Supabase query successful: got ${portfolioItems?.length || 0} items`);
+          
+          // Process the portfolio items using the DataCacheProvider
+          return processTeamPortfolioWithCache(portfolioItems || [], getMultipleCoinsData);
+        } catch (err) {
+          console.error('Error in fetch portfolio promise:', err);
+          throw err;
         }
-        
-        // Process the portfolio items using the DataCacheProvider
-        return processTeamPortfolioWithCache(portfolioItems || [], getMultipleCoinsData);
       };
       
       portfolioPromiseRef.current = fetchPortfolioPromise();
@@ -189,7 +201,33 @@ export function TeamDataProvider({ children }: { children: ReactNode }) {
       setWatchlistLoading(true);
       
       // Store the promise for deduplication
-      watchlistPromiseRef.current = getTeamWatchlist();
+      const fetchWatchlistPromise = async () => {
+        console.log('Starting Supabase query for team_watchlist');
+        
+        try {
+          // Direct Supabase query instead of using getTeamWatchlist
+          const { data: watchlistItems, error } = await supabase
+            .from('team_watchlist')
+            .select('*')
+            .order('name', { ascending: true });
+          
+          if (error) {
+            console.error('Supabase watchlist query error:', error);
+            throw new Error(`Failed to fetch watchlist items: ${error.message}`);
+          }
+          
+          console.log(`Supabase watchlist query successful: got ${watchlistItems?.length || 0} items`);
+          
+          // Process the items with the existing function
+          const processedData = await processWatchlistItems(watchlistItems || []);
+          return processedData;
+        } catch (err) {
+          console.error('Error in fetch watchlist promise:', err);
+          throw err;
+        }
+      };
+      
+      watchlistPromiseRef.current = fetchWatchlistPromise();
       
       // Wait for data
       console.log('Fetching team watchlist...');

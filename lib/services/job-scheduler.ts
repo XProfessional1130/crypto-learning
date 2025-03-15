@@ -6,7 +6,8 @@ export enum JobType {
   CACHE_CLEANUP = 'cache_cleanup',
   UPDATE_TOP_COINS = 'update_top_coins',
   UPDATE_GLOBAL_DATA = 'update_global_data',
-  UPDATE_NEWS = 'update_news'
+  UPDATE_NEWS = 'update_news',
+  UPDATE_CRYPTO_MARKET_DATA = 'update_crypto_market_data'
 }
 
 // Job status
@@ -137,6 +138,10 @@ export class JobScheduler {
           result = await this.updateNews();
           break;
           
+        case JobType.UPDATE_CRYPTO_MARKET_DATA:
+          result = await this.updateCryptoMarketData();
+          break;
+          
         default:
           throw new Error(`Unknown job type: ${job.job_type}`);
       }
@@ -198,6 +203,11 @@ export class JobScheduler {
       case JobType.UPDATE_NEWS:
         // Run every 15 minutes
         nextRun.setMinutes(nextRun.getMinutes() + 15);
+        break;
+        
+      case JobType.UPDATE_CRYPTO_MARKET_DATA:
+        // Run every 30 minutes
+        nextRun.setMinutes(nextRun.getMinutes() + 30);
         break;
         
       default:
@@ -276,6 +286,126 @@ export class JobScheduler {
       return { count: result.newsItems?.length || 0 };
     } catch (error) {
       console.error('Error updating news:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Update crypto market data
+   */
+  private static async updateCryptoMarketData(): Promise<any> {
+    try {
+      // Get API key from environment variable
+      const cmcApiKey = process.env.CMC_API_KEY;
+      
+      if (!cmcApiKey) {
+        throw new Error('CoinMarketCap API key not configured');
+      }
+      
+      console.log('Fetching top 200 coins from CoinMarketCap...');
+      
+      // Fetch top 200 coins from CoinMarketCap
+      const response = await fetch('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=200', {
+        headers: {
+          'X-CMC_PRO_API_KEY': cmcApiKey,
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`CoinMarketCap API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.data || !Array.isArray(data.data)) {
+        throw new Error('Invalid response from CoinMarketCap API');
+      }
+      
+      // Process the data for Supabase
+      const coins = data.data.map((coin: any) => {
+        const usdQuote = coin.quote.USD;
+        return {
+          id: coin.id.toString(),
+          symbol: coin.symbol,
+          name: coin.name,
+          price_usd: usdQuote.price,
+          price_btc: 0, // This would require a separate calculation
+          price_change_24h: usdQuote.percent_change_24h || 0,
+          market_cap: usdQuote.market_cap || 0,
+          volume_24h: usdQuote.volume_24h || 0,
+          cmc_rank: coin.cmc_rank,
+          logo_url: `https://s2.coinmarketcap.com/static/img/coins/64x64/${coin.id}.png`,
+          last_updated: new Date().toISOString()
+        };
+      });
+      
+      // Connect to Supabase with service role to update the table
+      const supabase = createServiceClient();
+      
+      // Debug: Check the database schema and access
+      console.log('Testing Supabase connection and table access...');
+      try {
+        const { data: tableInfo, error: tableError } = await supabase
+          .from('crypto_market_data')
+          .select('id, symbol, name')
+          .limit(1);
+        
+        if (tableError) {
+          console.error('Error accessing crypto_market_data table:', tableError);
+        } else {
+          console.log('Successfully accessed crypto_market_data table:', tableInfo);
+        }
+      } catch (tableAccessError) {
+        console.error('Exception accessing crypto_market_data table:', tableAccessError);
+      }
+      
+      // First, count existing records
+      console.log('Counting existing records...');
+      const { count: beforeCount, error: countError } = await supabase
+        .from('crypto_market_data')
+        .select('*', { count: 'exact', head: true });
+      
+      if (countError) {
+        throw new Error(`Supabase count error: ${countError.message}`);
+      }
+      
+      console.log(`Found ${beforeCount || 0} existing records`);
+      
+      // Upsert data - update existing records or insert new ones
+      console.log(`Upserting ${coins.length} coins...`);
+      const { error: upsertError } = await supabase
+        .from('crypto_market_data')
+        .upsert(coins, { onConflict: 'id' });
+      
+      if (upsertError) {
+        throw new Error(`Supabase upsert error: ${upsertError.message}`);
+      }
+      
+      // Count records again after upsert
+      console.log('Counting records after upsert...');
+      const { count: afterCount, error: afterCountError } = await supabase
+        .from('crypto_market_data')
+        .select('*', { count: 'exact', head: true });
+      
+      if (afterCountError) {
+        throw new Error(`Supabase after count error: ${afterCountError.message}`);
+      }
+      
+      // Calculate how many records were affected
+      const insertedCount = Math.max(0, (afterCount || 0) - (beforeCount || 0));
+      const updatedCount = coins.length - insertedCount;
+      
+      console.log(`Successfully processed ${coins.length} coins: ${insertedCount} inserted, ${updatedCount} updated`);
+      
+      return { 
+        success: true,
+        totalCount: afterCount || 0,
+        insertedCount,
+        updatedCount
+      };
+    } catch (error) {
+      console.error('Error updating crypto market data:', error);
       throw error;
     }
   }
