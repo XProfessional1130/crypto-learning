@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils/classnames';
 import { calculateProgressPercentage, formatCryptoPrice, formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
 import Image from 'next/image';
 import { Skeleton } from '../ui/skeleton';
+import { useDataCache } from '@/lib/context/data-cache-context';
 
 // Define props interface for WatchlistComponent
 interface WatchlistComponentProps {
@@ -130,16 +131,20 @@ WatchlistItemSkeleton.displayName = 'WatchlistItemSkeleton';
 const WatchlistComponent = ({ onRefresh, initialLoadComplete = false }: WatchlistComponentProps) => {
   const {
     watchlist,
-    loading,
+    loading: watchlistLoading,
     error,
     getTargetPercentage,
     refreshWatchlist
   } = useWatchlist();
 
+  const { getMultipleCoinsData } = useDataCache();
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(false);
+  const [coinDataMap, setCoinDataMap] = useState<Record<string, CoinData>>({});
   
   // Create consistent animation classes based on loading state
   const contentAnimationClass = initialLoadComplete ? "animate-fadeIn" : "opacity-0 transition-opacity-transform";
@@ -204,7 +209,36 @@ const WatchlistComponent = ({ onRefresh, initialLoadComplete = false }: Watchlis
     />
   ) : null;
 
-  if (loading) {
+  // Load coin data for watchlist items
+  useEffect(() => {
+    // Skip if we're already done loading or if there's no watchlist
+    if (!watchlistLoading && initialLoadComplete && watchlist?.length > 0) {
+      console.log("DEBUG: Loading watchlist coin data, items:", watchlist.length);
+      
+      // Extract coin IDs from watchlist
+      const coinIds = watchlist.map(item => item.coinId.toString());
+      
+      // Fetch all coin data at once
+      setIsDataLoading(true);
+      getMultipleCoinsData(coinIds)
+        .then(data => {
+          console.log(`DEBUG: Got data for ${Object.keys(data).length}/${coinIds.length} watchlist coins`);
+          setCoinDataMap(data);
+        })
+        .catch(error => {
+          console.error("Error fetching watchlist coin data:", error);
+        })
+        .finally(() => {
+          setIsDataLoading(false);
+        });
+    } else if (initialLoadComplete && !watchlist?.length) {
+      console.log("DEBUG: No watchlist items to load");
+      // No watchlist items, so no loading needed
+      setIsDataLoading(false);
+    }
+  }, [watchlist, watchlistLoading, getMultipleCoinsData, initialLoadComplete]);
+
+  if (watchlistLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 flex flex-col" style={{ height: 'calc(100vh - 24rem)' }}>
         <div className="flex justify-between items-center mb-6">
