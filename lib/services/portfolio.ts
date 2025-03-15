@@ -1,8 +1,45 @@
 import { PortfolioItem, PortfolioItemWithPrice, PortfolioSummary } from '@/types/portfolio';
 import { fetchMultipleCoinsData } from './coinmarketcap';
+import { fetchMultipleCoinsDataFromSupabase } from './supabase-crypto';
 import supabase from './supabase-client';
 
 const PORTFOLIO_LIMIT = 30;
+
+/**
+ * Get coin data using the global data cache helper if available
+ * This avoids direct API calls when cached data is available
+ */
+async function getCoinDataWithFallback(coinIds: string[]) {
+  try {
+    // Try to get from the window global cache if it exists (set by DataCacheProvider)
+    if (typeof window !== 'undefined' && window.__LC_DATA_CACHE_HELPER__) {
+      console.log('Using DataCache helper for portfolio coin prices');
+      const cachedData = await window.__LC_DATA_CACHE_HELPER__(coinIds);
+      if (cachedData && Object.keys(cachedData).length > 0) {
+        return cachedData;
+      }
+    }
+    
+    // First try Supabase
+    console.log('Trying Supabase for portfolio coin prices');
+    try {
+      const supabaseData = await fetchMultipleCoinsDataFromSupabase(coinIds);
+      if (supabaseData && Object.keys(supabaseData).length > 0) {
+        return supabaseData;
+      }
+    } catch (err) {
+      console.warn('Failed to get coin data from Supabase:', err);
+    }
+    
+    // Fall back to direct API call
+    console.log('Falling back to API for portfolio coin prices');
+    return await fetchMultipleCoinsData(coinIds);
+  } catch (error) {
+    console.error('Error getting coin data:', error);
+    // Return empty object as fallback
+    return {};
+  }
+}
 
 export async function getUserPortfolio(userId: string): Promise<PortfolioSummary> {
   try {
@@ -23,9 +60,13 @@ export async function getUserPortfolio(userId: string): Promise<PortfolioSummary
       };
     }
     
+    console.log('Fetching portfolio for user', userId, 'with', portfolioItems.length, 'items');
+    
     // Get all coin prices - ensure IDs are strings
     const coinIds = portfolioItems.map(item => String(item.coin_id));
-    const coinsData = await fetchMultipleCoinsData(coinIds);
+    
+    // Use the function that checks cache first
+    const coinsData = await getCoinDataWithFallback(coinIds);
     
     let totalValueUsd = 0;
     let totalValueBtc = 0;
@@ -36,10 +77,21 @@ export async function getUserPortfolio(userId: string): Promise<PortfolioSummary
       // Ensure we're looking up with a string ID
       const coinStringId = String(item.coin_id);
       const coinData = coinsData[coinStringId];
-      const valueUsd = item.amount * (coinData?.priceUsd || 0);
-      const valueBtc = item.amount * (coinData?.priceBtc || 0);
-      const prevValueUsd = valueUsd / (1 + (coinData?.priceChange24h || 0) / 100);
-      const prevValueBtc = valueBtc / (1 + (coinData?.priceChange24h || 0) / 100);
+      
+      // Guard against missing or invalid price data
+      const priceUsd = coinData?.priceUsd || 0;
+      const priceBtc = coinData?.priceBtc || 0;
+      const priceChange24h = coinData?.priceChange24h || 0;
+      
+      // Compute values with safety guards
+      const valueUsd = item.amount * priceUsd;
+      const valueBtc = item.amount * priceBtc;
+      const prevValueUsd = priceChange24h !== 0 
+        ? valueUsd / (1 + priceChange24h / 100) 
+        : valueUsd;
+      const prevValueBtc = priceChange24h !== 0
+        ? valueBtc / (1 + priceChange24h / 100)
+        : valueBtc;
       
       totalValueUsd += valueUsd;
       totalValueBtc += valueBtc;
@@ -56,18 +108,18 @@ export async function getUserPortfolio(userId: string): Promise<PortfolioSummary
         preferredCurrency: item.preferred_currency as 'USD' | 'BTC',
         createdAt: item.created_at,
         updatedAt: item.updated_at,
-        priceUsd: coinData?.priceUsd || 0,
-        priceBtc: coinData?.priceBtc || 0,
+        priceUsd,
+        priceBtc,
         valueUsd,
         valueBtc,
-        priceChange24h: coinData?.priceChange24h || 0,
+        priceChange24h,
         percentage: 0, // Will be calculated after total is known
         marketCap: coinData?.marketCap || 0,
         logoUrl: coinData?.logoUrl
       };
     });
     
-    // Calculate daily change
+    // Calculate daily change with safety guards
     const dailyChangeUsd = totalValueUsd - totalPrevValueUsd;
     const dailyChangeBtc = totalValueBtc - totalPrevValueBtc;
     const dailyChangePercentage = totalPrevValueUsd > 0 
@@ -78,6 +130,8 @@ export async function getUserPortfolio(userId: string): Promise<PortfolioSummary
     items.forEach(item => {
       item.percentage = totalValueUsd > 0 ? (item.valueUsd / totalValueUsd) * 100 : 0;
     });
+    
+    console.log('Portfolio fetched successfully with', items.length, 'items');
     
     return {
       totalValueUsd,
@@ -99,69 +153,73 @@ export async function addCoinToPortfolio(
   coinId: string, 
   amount: number
 ): Promise<{ success: boolean; message?: string }> {
-  if (!userId || !coinId || amount <= 0) {
-    console.error('Invalid input for addCoinToPortfolio:', { userId, coinId, amount });
-    return { success: false, message: 'Invalid input parameters' };
-  }
-
-  // Ensure coinId is a string (sometimes IDs can be passed as numbers)
-  const coinIdString = String(coinId);
-  
   try {
-    console.log(`Adding coin ${coinIdString} to portfolio for user ${userId}`);
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
     
-    // Check portfolio limit
+    if (!coinId) {
+      throw new Error('Coin ID is required');
+    }
+    
+    if (amount <= 0) {
+      throw new Error('Amount must be greater than 0');
+    }
+    
+    // Check if this user has reached the portfolio limit
     const { count, error: countError } = await supabase
       .from('user_portfolios')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId);
-    
-    if (countError) {
-      console.error('Error counting portfolio items:', countError);
-      return { success: false, message: 'Failed to check portfolio limit' };
-    }
       
-    if (count && count >= PORTFOLIO_LIMIT) {
-      return { success: false, message: 'Portfolio limit of 30 coins reached' };
+    if (countError) {
+      throw countError;
     }
     
-    // Check if coin already exists - using maybeSingle() instead of single() to handle empty results better
-    const { data: existingCoin, error: existingError } = await supabase
+    if (count !== null && count >= PORTFOLIO_LIMIT) {
+      return {
+        success: false,
+        message: `You've reached the limit of ${PORTFOLIO_LIMIT} portfolio items. Please remove some before adding more.`
+      };
+    }
+    
+    // Check if the user already has this coin in their portfolio
+    const { data: existingItems, error: existingError } = await supabase
       .from('user_portfolios')
       .select('*')
       .eq('user_id', userId)
-      .eq('coin_id', coinIdString)
-      .maybeSingle();
-    
-    if (existingError) {
-      console.error('Error checking for existing coin:', existingError);
-      return { success: false, message: 'Failed to check if coin already exists' };
-    }
+      .eq('coin_id', coinId);
       
-    if (existingCoin) {
-      console.log(`Coin ${coinIdString} already exists, updating amount`);
-      // Update existing coin amount
-      const { error: updateError } = await supabase
-        .from('user_portfolios')
-        .update({ 
-          amount: existingCoin.amount + amount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existingCoin.id);
-        
-      if (updateError) {
-        console.error('Error updating existing coin:', updateError);
-        return { success: false, message: 'Failed to update coin amount' };
-      }
-      return { success: true };
+    if (existingError) {
+      throw existingError;
     }
     
-    // Get coin data
-    console.log(`Fetching data for coin ${coinIdString}`);
-    const coinData = await getCoinData(coinIdString);
-    if (!coinData) {
-      console.error(`Failed to fetch data for coin ${coinIdString}`);
-      return { success: false, message: 'Failed to fetch coin data' };
+    if (existingItems && existingItems.length > 0) {
+      return {
+        success: false,
+        message: 'This coin is already in your portfolio. Edit the existing entry instead.'
+      };
+    }
+    
+    // Get coin data to validate and store name/symbol
+    let coinData;
+    try {
+      // Use the cache-aware function to get coin data
+      const coinsData = await getCoinDataWithFallback([coinId]);
+      coinData = coinsData[coinId];
+      
+      if (!coinData) {
+        return {
+          success: false,
+          message: 'Could not fetch coin data. Please try again later.'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching coin data:', error);
+      return {
+        success: false,
+        message: 'Error fetching coin information. Please try again later.'
+      };
     }
     
     // Add new coin
@@ -170,7 +228,7 @@ export async function addCoinToPortfolio(
       .from('user_portfolios')
       .insert({
         user_id: userId,
-        coin_id: coinIdString,
+        coin_id: coinId,
         coin_symbol: coinData.symbol,
         coin_name: coinData.name,
         amount,

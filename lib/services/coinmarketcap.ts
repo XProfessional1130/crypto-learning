@@ -1,4 +1,10 @@
 import { CoinData } from '@/types/portfolio';
+import { 
+  getBtcPriceFromSupabase, 
+  getEthPriceFromSupabase, 
+  getGlobalDataFromSupabase,
+  fetchCoinDataFromSupabase
+} from './supabase-crypto';
 
 // Singleton pattern for service initialization
 let isInitialized = false;
@@ -45,6 +51,8 @@ let isServiceInitializing = false;
 /**
  * Initialize the service by prefetching global data
  * Call this at app startup
+ * 
+ * UPDATED: Now uses Supabase data sources instead of direct API calls
  */
 export async function initCoinDataService(): Promise<void> {
   // Prevent multiple initializations and concurrent initializations
@@ -59,24 +67,25 @@ export async function initCoinDataService(): Promise<void> {
   }
   
   isServiceInitializing = true;
-  console.log('Initializing coin data service...');
+  console.log('Initializing coin data service (using Supabase)...');
   
   try {
     // Prefetch basic market data to initialize the service
-    console.log('Prefetching basic market data...');
+    console.log('Prefetching basic market data from Supabase...');
     
     // Use a Promise.allSettled to handle any potential API errors gracefully
     const [globalDataResult, btcDataResult, ethDataResult] = await Promise.allSettled([
-      getGlobalData().catch(err => {
-        console.warn('Error prefetching global data:', err);
+      // Now use Supabase data sources
+      getGlobalDataFromSupabase().catch(err => {
+        console.warn('Error prefetching global data from Supabase:', err);
         return null;
       }),
-      fetchCoinData('1').catch(err => {
-        console.warn('Error prefetching BTC data:', err);
+      getBtcPriceFromSupabase().catch(err => {
+        console.warn('Error prefetching BTC data from Supabase:', err);
         return null;
       }),
-      fetchCoinData('1027').catch(err => {
-        console.warn('Error prefetching ETH data:', err);
+      getEthPriceFromSupabase().catch(err => {
+        console.warn('Error prefetching ETH data from Supabase:', err);
         return null;
       })
     ]);
@@ -85,33 +94,36 @@ export async function initCoinDataService(): Promise<void> {
     let globalData = null;
     if (globalDataResult.status === 'fulfilled' && globalDataResult.value) {
       globalData = globalDataResult.value;
-      console.log('Global data prefetched:', globalData);
+      console.log('Global data prefetched from Supabase:', globalData);
     } else {
-      console.warn('Global data could not be prefetched');
+      console.warn('Global data could not be prefetched from Supabase');
     }
     
     // Process BTC price result
     let btcPrice = 0;
-    if (btcDataResult.status === 'fulfilled' && btcDataResult.value) {
-      btcPrice = btcDataResult.value.priceUsd || 0;
+    if (btcDataResult.status === 'fulfilled' && btcDataResult.value && btcDataResult.value > 0) {
+      btcPrice = btcDataResult.value;
     }
-    console.log('BTC price:', btcPrice);
+    console.log('BTC price from Supabase:', btcPrice);
     
     // Process ETH price result
     let ethPrice = 0;
-    if (ethDataResult.status === 'fulfilled' && ethDataResult.value) {
-      ethPrice = ethDataResult.value.priceUsd || 0;
+    if (ethDataResult.status === 'fulfilled' && ethDataResult.value && ethDataResult.value > 0) {
+      ethPrice = ethDataResult.value;
     }
-    console.log('ETH price:', ethPrice);
+    console.log('ETH price from Supabase:', ethPrice);
     
-    isServiceInitialized = true;
-    isServiceInitializing = false;
-    console.log('Coin data service initialization complete');
+    // Set service initialized flag only if we got valid data
+    if (btcPrice > 0 || ethPrice > 0 || globalData) {
+      console.log('Coin data service initialized with Supabase data');
+      isServiceInitialized = true;
+    } else {
+      console.warn('Supabase data prefetch did not yield valid data');
+    }
   } catch (error) {
+    console.error('Error initializing coin data service with Supabase:', error);
+  } finally {
     isServiceInitializing = false;
-    console.error('Failed to initialize coin data service:', error);
-    // Still mark as initialized to prevent endless retry loops
-    isServiceInitialized = true;
   }
 }
 

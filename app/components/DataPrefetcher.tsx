@@ -8,6 +8,8 @@ import { useDataCache } from '@/lib/context/data-cache-context';
  * DataPrefetcher component that initializes data services on app load
  * This is the PRIMARY component for initializing all data services.
  * This component should be included only once, in the root layout.
+ * 
+ * UPDATED: Now primarily uses DataCache which gets data from Supabase
  */
 export default function DataPrefetcher() {
   const { refreshData } = useDataCache();
@@ -39,11 +41,11 @@ export default function DataPrefetcher() {
       console.log('DataPrefetcher: Data services already initialized by another component');
       hasInitializedRef.current = true;
       
-      // Still attempt to refresh data
+      // Still attempt to refresh data from Supabase via DataCache
       refreshTimeoutRef.current = setTimeout(async () => {
         try {
           await refreshData();
-          console.log('DataPrefetcher: Data successfully refreshed');
+          console.log('DataPrefetcher: Data successfully refreshed from Supabase via DataCache');
         } catch (err) {
           console.error('Error refreshing data:', err);
         }
@@ -52,7 +54,7 @@ export default function DataPrefetcher() {
       return;
     }
     
-    // Initialize the coin data service
+    // Initialize by using the DataCache for data refreshing (which uses Supabase)
     const initializeData = async () => {
       try {
         // Set global initialization flag
@@ -60,10 +62,13 @@ export default function DataPrefetcher() {
           window.__DATA_SERVICE_INITIALIZING__ = true;
         }
         
-        if (!isCoinDataServiceInitialized()) {
-          console.log('DataPrefetcher: Initializing coin data service...');
-          await initCoinDataService();
-          console.log('DataPrefetcher: Data services initialized');
+        // Primary approach: Just use DataCache which uses Supabase
+        console.log('DataPrefetcher: Using DataCache (via Supabase) as primary data source');
+        
+        try {
+          // First try to refresh data using DataCache (Supabase)
+          await refreshData();
+          console.log('DataPrefetcher: Successfully loaded data from Supabase via DataCache');
           
           // Set global initialized flag
           if (typeof window !== 'undefined') {
@@ -73,35 +78,24 @@ export default function DataPrefetcher() {
           
           // Set initialization flag to prevent multiple calls
           hasInitializedRef.current = true;
+        } catch (dataError) {
+          console.error('Error refreshing data via DataCache:', dataError);
           
-          // Refresh data after a small delay to ensure services are ready
-          refreshTimeoutRef.current = setTimeout(async () => {
-            try {
-              await refreshData();
-              console.log('DataPrefetcher: Data successfully refreshed');
-            } catch (err) {
-              console.error('Error refreshing data after init:', err);
+          // Fallback: Initialize coin data service if DataCache fails
+          if (!isCoinDataServiceInitialized()) {
+            console.log('DataPrefetcher: DataCache failed, initializing legacy coin data service...');
+            await initCoinDataService();
+            console.log('DataPrefetcher: Legacy data service initialized');
+            
+            // Set global initialized flag
+            if (typeof window !== 'undefined') {
+              window.__DATA_SERVICE_INITIALIZED__ = true;
+              window.__DATA_SERVICE_INITIALIZING__ = false;
             }
-          }, 1500);
-        } else {
-          console.log('DataPrefetcher: Services already initialized, just refreshing data');
-          
-          // Set flags
-          hasInitializedRef.current = true;
-          if (typeof window !== 'undefined') {
-            window.__DATA_SERVICE_INITIALIZED__ = true;
-            window.__DATA_SERVICE_INITIALIZING__ = false;
           }
           
-          // Just refresh data
-          refreshTimeoutRef.current = setTimeout(async () => {
-            try {
-              await refreshData();
-              console.log('DataPrefetcher: Data successfully refreshed');
-            } catch (err) {
-              console.error('Error refreshing data:', err);
-            }
-          }, 1000);
+          // Set initialization flag to prevent multiple calls
+          hasInitializedRef.current = true;
         }
       } catch (error) {
         console.error('Error initializing data services:', error);

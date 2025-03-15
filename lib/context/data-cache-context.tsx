@@ -1,7 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+// Import both the original CMC services and our new Supabase services
 import { GlobalData, getBtcPrice, getEthPrice, getGlobalData, fetchCoinData, fetchMultipleCoinsData } from '@/lib/services/coinmarketcap';
+import { 
+  getBtcPriceFromSupabase, 
+  getEthPriceFromSupabase, 
+  getGlobalDataFromSupabase,
+  fetchCoinDataFromSupabase,
+  fetchMultipleCoinsDataFromSupabase
+} from '@/lib/services/supabase-crypto';
 import { CoinData } from '@/types/portfolio';
 
 // Cache constants
@@ -101,6 +109,18 @@ const storage = {
   }
 };
 
+// Global type declaration for the window object
+declare global {
+  interface Window {
+    __DATA_SERVICE_INITIALIZING__?: boolean;
+    __DATA_SERVICE_INITIALIZED__?: boolean;
+    __LC_DATA_CACHE_HELPER__?: (coinIds: string[]) => Promise<Record<string, CoinData>>;
+  }
+}
+
+// Create persistent utility function - only needs to be set once
+let cachedMultipleCoinsDataFn: ((coinIds: string[]) => Promise<Record<string, CoinData>>) | null = null;
+
 // Provider component
 export function DataCacheProvider({ children }: { children: ReactNode }) {
   // State
@@ -187,68 +207,209 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     }
   }, []);
   
-  // Function to refresh all cached data
+  // Function to refresh all cached data - Now uses Supabase instead of CMC API
   const refreshData = useCallback(async () => {
     if (isRefreshing) return;
     
     setIsRefreshing(true);
+    console.log('🔄 Refreshing data cache...');
     
     try {
-      // Try to get data from APIs with proper error handling for each call
+      // Try to get data from Supabase with proper error handling for each call
       let newBtcPrice = null;
       let newEthPrice = null;
       let newGlobalData = null;
       
       try {
-        newBtcPrice = await getBtcPrice();
+        console.log('Attempting to fetch BTC price from Supabase...');
+        // Use Supabase data source instead of direct API calls
+        newBtcPrice = await getBtcPriceFromSupabase();
+        
+        // Validate the data - if it's 0 or null, we didn't get a valid price
+        if (newBtcPrice <= 0) {
+          console.warn('⚠️ Received invalid/zero BTC price from Supabase');
+          // Don't set to null - keep existing data if any
+          if (btcPrice && btcPrice > 0) {
+            newBtcPrice = btcPrice;
+            console.log('Using cached BTC price:', newBtcPrice);
+          }
+        } else {
+          console.log('✅ Successfully fetched BTC price from Supabase:', newBtcPrice);
+        }
       } catch (btcError) {
-        console.error('Error fetching BTC price:', btcError);
+        console.error('❌ Error fetching BTC price from Supabase:', btcError);
         // Fall back to cached value if available
-        if (btcPrice) newBtcPrice = btcPrice;
+        if (btcPrice && btcPrice > 0) {
+          console.log('Using cached BTC price:', btcPrice);
+          newBtcPrice = btcPrice;
+        }
+      }
+      
+      // If we didn't get a valid price from Supabase, try the API
+      if (newBtcPrice === null || newBtcPrice <= 0) {
+        try {
+          console.log('Falling back to CoinMarketCap API for BTC price');
+          newBtcPrice = await getBtcPrice();
+          console.log('✅ Successfully fetched BTC price from API fallback:', newBtcPrice);
+        } catch (apiBtcError) {
+          console.error('❌ Error fetching BTC price from API fallback:', apiBtcError);
+          // Fall back to cached value if available
+          if (btcPrice && btcPrice > 0) {
+            console.log('Using cached BTC price:', btcPrice);
+            newBtcPrice = btcPrice;
+          }
+        }
       }
       
       try {
-        newEthPrice = await getEthPrice();
+        console.log('Attempting to fetch ETH price from Supabase...');
+        // Use Supabase data source instead of direct API calls
+        newEthPrice = await getEthPriceFromSupabase();
+        
+        // Validate the data - if it's 0 or null, we didn't get a valid price
+        if (newEthPrice <= 0) {
+          console.warn('⚠️ Received invalid/zero ETH price from Supabase');
+          // Don't set to null - keep existing data if any
+          if (ethPrice && ethPrice > 0) {
+            newEthPrice = ethPrice;
+            console.log('Using cached ETH price:', newEthPrice);
+          }
+        } else {
+          console.log('✅ Successfully fetched ETH price from Supabase:', newEthPrice);
+        }
       } catch (ethError) {
-        console.error('Error fetching ETH price:', ethError);
+        console.error('❌ Error fetching ETH price from Supabase:', ethError);
         // Fall back to cached value if available
-        if (ethPrice) newEthPrice = ethPrice;
+        if (ethPrice && ethPrice > 0) {
+          console.log('Using cached ETH price:', ethPrice);
+          newEthPrice = ethPrice;
+        }
+      }
+      
+      // If we didn't get a valid price from Supabase, try the API
+      if (newEthPrice === null || newEthPrice <= 0) {
+        try {
+          console.log('Falling back to CoinMarketCap API for ETH price');
+          newEthPrice = await getEthPrice();
+          console.log('✅ Successfully fetched ETH price from API fallback:', newEthPrice);
+        } catch (apiEthError) {
+          console.error('❌ Error fetching ETH price from API fallback:', apiEthError);
+          // Fall back to cached value if available
+          if (ethPrice && ethPrice > 0) {
+            console.log('Using cached ETH price:', ethPrice);
+            newEthPrice = ethPrice;
+          }
+        }
       }
       
       try {
-        newGlobalData = await getGlobalData();
+        console.log('Attempting to fetch global market data from Supabase...');
+        // Use Supabase data source instead of direct API calls
+        newGlobalData = await getGlobalDataFromSupabase();
+        
+        // Validate global data - check if totalMarketCap is valid
+        if (!newGlobalData || newGlobalData.totalMarketCap <= 0) {
+          console.warn('⚠️ Received invalid global market data from Supabase');
+          // Don't set to null - keep existing data if any
+          if (globalData) {
+            newGlobalData = globalData;
+            console.log('Using cached global market data');
+          }
+        } else {
+          console.log('✅ Successfully fetched global market data from Supabase');
+        }
       } catch (globalError) {
-        console.error('Error fetching global market data:', globalError);
+        console.error('❌ Error fetching global market data from Supabase:', globalError);
         // Fall back to cached value if available
-        if (globalData) newGlobalData = globalData;
+        if (globalData) {
+          console.log('Using cached global market data');
+          newGlobalData = globalData;
+        }
       }
       
-      // Only update state and cache for successful fetches
-      if (newBtcPrice !== null) {
+      // If we didn't get valid global data from Supabase, try the API
+      if (newGlobalData === null || !newGlobalData || newGlobalData.totalMarketCap <= 0) {
+        try {
+          console.log('Falling back to CoinMarketCap API for global market data');
+          newGlobalData = await getGlobalData();
+          console.log('✅ Successfully fetched global market data from API fallback');
+        } catch (apiGlobalError) {
+          console.error('❌ Error fetching global market data from API fallback:', apiGlobalError);
+          // Fall back to cached value if available
+          if (globalData) {
+            console.log('Using cached global market data');
+            newGlobalData = globalData;
+          }
+        }
+      }
+      
+      // Even if some data is missing, update what we have
+      let dataUpdated = false;
+      
+      // Update state with new data if available
+      if (newBtcPrice !== null && newBtcPrice > 0) {
         setBtcPrice(newBtcPrice);
-        storage.setItem('btcPrice', newBtcPrice);
+        // Save to localStorage with proper format
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}btcPrice`, JSON.stringify({
+            data: newBtcPrice,
+            timestamp: Date.now()
+          }));
+          console.log('Updated BTC price in cache:', newBtcPrice);
+          dataUpdated = true;
+        } catch (error) {
+          console.error('Error saving BTC price to cache:', error);
+        }
       }
       
-      if (newEthPrice !== null) {
+      if (newEthPrice !== null && newEthPrice > 0) {
         setEthPrice(newEthPrice);
-        storage.setItem('ethPrice', newEthPrice);
+        // Save to localStorage with proper format
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}ethPrice`, JSON.stringify({
+            data: newEthPrice,
+            timestamp: Date.now()
+          }));
+          console.log('Updated ETH price in cache:', newEthPrice);
+          dataUpdated = true;
+        } catch (error) {
+          console.error('Error saving ETH price to cache:', error);
+        }
       }
       
-      if (newGlobalData !== null) {
+      if (newGlobalData !== null && newGlobalData.totalMarketCap > 0) {
         setGlobalData(newGlobalData);
-        storage.setItem('globalData', newGlobalData);
+        // Save to localStorage with proper format
+        try {
+          localStorage.setItem(`${STORAGE_KEY_PREFIX}globalData`, JSON.stringify({
+            data: newGlobalData,
+            timestamp: Date.now()
+          }));
+          console.log('Updated global market data in cache:', newGlobalData);
+          dataUpdated = true;
+        } catch (error) {
+          console.error('Error saving global market data to cache:', error);
+        }
       }
       
-      // Update last refresh time
-      const now = new Date();
-      setLastUpdated(now);
+      // Set last updated timestamp if any data was updated
+      if (dataUpdated) {
+        const now = new Date();
+        setLastUpdated(now);
+        console.log('Cache refresh completed at:', now.toLocaleTimeString());
+      } else {
+        console.warn('No data was updated during refresh, keeping existing cache');
+      }
       
-      console.log('Data cache refreshed successfully at', now.toLocaleTimeString());
+      // Always reset loading state even if no data was updated
+      setIsLoading(false);
+      
     } catch (error) {
-      console.error('Error refreshing data cache:', error);
+      console.error('Fatal error during data refresh:', error);
+      // Always reset loading state even on error
+      setIsLoading(false);
     } finally {
       setIsRefreshing(false);
-      setIsLoading(false);
     }
   }, [isRefreshing, btcPrice, ethPrice, globalData]);
   
@@ -268,33 +429,80 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     console.log('Data cache cleared');
   }, []);
   
-  // Coin data functions
+  // Coin data functions - Now uses Supabase instead of CMC API
   const getCoinData = useCallback(async (coinId: string): Promise<CoinData | null> => {
+    if (!coinId) {
+      console.error('Invalid coinId provided to getCoinData:', coinId);
+      return null;
+    }
+    
+    // Ensure coinId is a string
+    const coinIdStr = String(coinId);
+    console.log(`Getting data for coin ID: ${coinIdStr}`);
+    
     // Check if we have it cached
-    if (coinDataCache[coinId]) {
-      return coinDataCache[coinId];
+    if (coinDataCache[coinIdStr]) {
+      console.log(`Found cached data for coin ${coinIdStr}`);
+      return coinDataCache[coinIdStr];
     }
     
     // Not in the cache, so fetch it
     try {
-      const data = await fetchCoinData(coinId);
+      console.log(`Fetching coin data for ${coinIdStr} from Supabase...`);
       
-      if (data) {
-        // Update the cache
+      // Try Supabase first
+      let coinData = null;
+      try {
+        coinData = await fetchCoinDataFromSupabase(coinIdStr);
+        
+        // Validate the data
+        if (coinData && coinData.priceUsd > 0) {
+          console.log(`Successfully retrieved data for ${coinIdStr} from Supabase`);
+        } else {
+          console.warn(`Invalid or missing data for ${coinIdStr} from Supabase`);
+          coinData = null;
+        }
+      } catch (supabaseError) {
+        console.error(`Error fetching coin ${coinIdStr} from Supabase:`, supabaseError);
+        coinData = null;
+      }
+      
+      // Fall back to API if Supabase doesn't have valid data
+      if (!coinData) {
+        try {
+          console.log(`Coin ${coinIdStr} not found in Supabase, falling back to API`);
+          coinData = await fetchCoinData(coinIdStr);
+          
+          if (coinData && coinData.priceUsd > 0) {
+            console.log(`Successfully retrieved data for ${coinIdStr} from API`);
+          } else {
+            console.warn(`Invalid or missing data for ${coinIdStr} from API`);
+            return null;
+          }
+        } catch (apiError) {
+          console.error(`Error fetching coin ${coinIdStr} from API:`, apiError);
+          return null;
+        }
+      }
+      
+      // If we have valid data by now, update the cache
+      if (coinData) {
+        console.log(`Updating cache with data for coin ${coinIdStr}`);
         setCoinDataCache(prev => {
-          const updated = { ...prev, [coinId]: data };
+          const updated = { ...prev, [coinIdStr]: coinData };
           // Save to localStorage
           storage.setItem(COIN_DATA_KEY, updated);
           return updated;
         });
         
-        return data;
+        return coinData;
       }
+      
+      return null;
     } catch (error) {
-      console.error(`Error fetching data for coin ${coinId}:`, error);
+      console.error(`Unexpected error fetching coin ${coinIdStr}:`, error);
+      return null;
     }
-    
-    return null;
   }, [coinDataCache]);
   
   const getMultipleCoinsData = useCallback(async (coinIds: string[]): Promise<Record<string, CoinData>> => {
@@ -302,12 +510,18 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       return {};
     }
     
+    console.log(`Getting data for ${coinIds.length} coins...`);
+    
+    // Ensure all IDs are strings
+    const normalizedIds = coinIds.map(id => String(id));
+    
     // Start with what we have in the cache
     const result: Record<string, CoinData> = {};
     const idsToFetch: string[] = [];
     
-    coinIds.forEach(id => {
+    normalizedIds.forEach(id => {
       if (coinDataCache[id]) {
+        console.log(`Using cached data for coin ${id}`);
         result[id] = coinDataCache[id];
       } else {
         idsToFetch.push(id);
@@ -316,30 +530,71 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     
     // If we have all the data in the cache, return it
     if (idsToFetch.length === 0) {
+      console.log('All requested coin data was in cache');
       return result;
     }
     
-    // Otherwise, fetch the missing data
+    console.log(`Fetching data for ${idsToFetch.length} missing coins...`);
+    
+    // Otherwise, fetch the missing data from Supabase
     try {
-      const fetchedData = await fetchMultipleCoinsData(idsToFetch);
+      // Try Supabase first
+      let supabaseData: Record<string, CoinData> = {};
+      try {
+        console.log(`Querying Supabase for coins: ${idsToFetch.join(', ')}`);
+        supabaseData = await fetchMultipleCoinsDataFromSupabase(idsToFetch);
+        console.log(`Retrieved ${Object.keys(supabaseData).length} coins from Supabase`);
+      } catch (supabaseError) {
+        console.error('Error fetching multiple coins from Supabase:', supabaseError);
+        supabaseData = {};
+      }
+      
+      // Check which IDs we still need to fetch from the API
+      const fetchedIds = Object.keys(supabaseData);
+      const stillMissingIds = idsToFetch.filter(id => !fetchedIds.includes(id));
+      
+      // If we still have missing IDs, try the API fallback
+      let apiData: Record<string, CoinData> = {};
+      if (stillMissingIds.length > 0) {
+        try {
+          console.log(`Falling back to API for ${stillMissingIds.length} missing coins: ${stillMissingIds.join(', ')}`);
+          apiData = await fetchMultipleCoinsData(stillMissingIds);
+          console.log(`Retrieved ${Object.keys(apiData).length} coins from API`);
+        } catch (apiError) {
+          console.error('Error fetching coins from API fallback:', apiError);
+          apiData = {};
+        }
+      }
+      
+      // Combine all the fetched data
+      const allFetchedData = { ...supabaseData, ...apiData };
       
       // Update the cache with the new data
-      if (Object.keys(fetchedData).length > 0) {
+      if (Object.keys(allFetchedData).length > 0) {
+        console.log(`Updating cache with ${Object.keys(allFetchedData).length} coins`);
         setCoinDataCache(prev => {
-          const updated = { ...prev, ...fetchedData };
+          const updated = { ...prev, ...allFetchedData };
           // Save to localStorage
           storage.setItem(COIN_DATA_KEY, updated);
           return updated;
         });
-        
-        // Merge with the cached data
-        return { ...result, ...fetchedData };
       }
+      
+      // Merge with the cached data for the final result
+      const finalResult = { ...result, ...allFetchedData };
+      
+      // Log any coins we couldn't find data for
+      const foundIds = Object.keys(finalResult);
+      const missingIds = normalizedIds.filter(id => !foundIds.includes(id));
+      if (missingIds.length > 0) {
+        console.warn(`Could not find data for ${missingIds.length} coins: ${missingIds.join(', ')}`);
+      }
+      
+      return finalResult;
     } catch (error) {
-      console.error('Error fetching multiple coins data:', error);
+      console.error('Unexpected error in getMultipleCoinsData:', error);
+      return result; // Return what we have from the cache
     }
-    
-    return result;
   }, [coinDataCache]);
   
   const setCoinData = useCallback((coinId: string, data: CoinData) => {
@@ -359,6 +614,25 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       return updated;
     });
   }, []);
+  
+  // Set up the global helper function for non-React components to access the cache
+  useEffect(() => {
+    // Only set the global helper once and only in the browser
+    if (typeof window !== 'undefined' && !window.__LC_DATA_CACHE_HELPER__) {
+      console.log('Setting up global DataCache helper function');
+      
+      // Store the function in the persistent variable
+      cachedMultipleCoinsDataFn = getMultipleCoinsData;
+      
+      // Add it to the window for global access
+      window.__LC_DATA_CACHE_HELPER__ = async (coinIds: string[]) => {
+        if (cachedMultipleCoinsDataFn) {
+          return cachedMultipleCoinsDataFn(coinIds);
+        }
+        return {};
+      };
+    }
+  }, [getMultipleCoinsData]);
   
   // Create the context value
   const contextValue: DataCacheContextType = {

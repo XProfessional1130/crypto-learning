@@ -250,23 +250,27 @@ const PortfolioStatsCard = memo(({ portfolioValue, dailyChange, loading = false,
 });
 PortfolioStatsCard.displayName = 'PortfolioStatsCard';
 
-// New Combined Card for BTC and ETH prices
+// Memoized Market Leaders Card component
 const MarketLeadersCard = memo(({ btcPrice, ethPrice, btcDominance, ethDominance, loading = false }: {
   btcPrice: number | null;
   ethPrice: number | null;
-  btcDominance: number | null;
-  ethDominance: number | null;
+  btcDominance: number;
+  ethDominance: number;
   loading?: boolean;
 }) => {
   // Use default values of 0 for any null values
   const btcDom = typeof btcDominance === 'number' ? btcDominance : 0;
   const ethDom = typeof ethDominance === 'number' ? ethDominance : 0;
   
+  // Add additional check to ensure we're not showing empty data
+  const hasValidData = btcPrice && btcPrice > 0 && ethPrice && ethPrice > 0;
+  const isLoading = loading || !hasValidData;
+  
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover">
       <h3 className="text-sm text-gray-500 dark:text-gray-400 mb-4">Market Leaders</h3>
       
-      {loading ? (
+      {isLoading ? (
         <div className="space-y-4">
           <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
           <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
@@ -279,15 +283,13 @@ const MarketLeadersCard = memo(({ btcPrice, ethPrice, btcDominance, ethDominance
               <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1.png" alt="Bitcoin" className="w-8 h-8 mr-3" />
               <div>
                 <p className="font-medium">Bitcoin</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">BTC</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">BTC</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="font-bold">{formatCryptoPrice(btcPrice || 0)}</p>
-              <div className="flex items-center justify-end space-x-1">
-                <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs px-2 py-0.5 rounded-full">
-                  <span>{btcDom.toFixed(1)}% DOM</span>
-                </div>
+              <p className="font-medium">${formatCryptoPrice(btcPrice || 0)}</p>
+              <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs px-2 py-0.5 rounded-full inline-block">
+                {btcDom.toFixed(1)}% Dominance
               </div>
             </div>
           </div>
@@ -298,24 +300,15 @@ const MarketLeadersCard = memo(({ btcPrice, ethPrice, btcDominance, ethDominance
               <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png" alt="Ethereum" className="w-8 h-8 mr-3" />
               <div>
                 <p className="font-medium">Ethereum</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">ETH</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">ETH</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="font-bold">{formatCryptoPrice(ethPrice || 0)}</p>
-              <div className="flex items-center justify-end space-x-1">
-                <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full">
-                  <span>{ethDom.toFixed(1)}% DOM</span>
-                </div>
+              <p className="font-medium">${formatCryptoPrice(ethPrice || 0)}</p>
+              <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full inline-block">
+                {ethDom.toFixed(1)}% Dominance
               </div>
             </div>
-          </div>
-          
-          {/* Market insight */}
-          <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Combined market dominance: {(btcDom + ethDom).toFixed(1)}%
-            </p>
           </div>
         </div>
       )}
@@ -521,6 +514,16 @@ function PortfolioDashboardComponent() {
     setTimeout(loadInitialData, 500);
   }, [refreshData, globalData, btcPrice, ethPrice]);
   
+  // Trigger a portfolio refresh when we get new price data
+  useEffect(() => {
+    // If we have price data but the portfolio is showing 0 values,
+    // refresh the portfolio to recalculate with current prices
+    if (btcPrice && ethPrice && portfolio && portfolio.totalValueUsd === 0 && portfolio.items.length > 0) {
+      console.log("Prices available but portfolio value is 0 - refreshing portfolio data...");
+      refreshPortfolio();
+    }
+  }, [btcPrice, ethPrice, portfolio, refreshPortfolio]);
+  
   // After first data load is complete, trigger main content visibility
   useEffect(() => {
     if (!loading && !error) {
@@ -649,7 +652,7 @@ function PortfolioDashboardComponent() {
             ethPrice={ethPrice}
             btcDominance={typeof globalData?.btcDominance === 'number' ? globalData.btcDominance : 0}
             ethDominance={typeof globalData?.ethDominance === 'number' ? globalData.ethDominance : 0}
-            loading={loadingPrices}
+            loading={loadingPrices || !btcPrice || !ethPrice}
           />
         </div>
       </div>
