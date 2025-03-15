@@ -4,13 +4,33 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-// Singleton pattern for Supabase client
-let supabaseInstance: ReturnType<typeof createClient> | null = null;
+// Declare the global variable to hold the Supabase instance across module loads during development
+declare global {
+  var __supabaseClient: ReturnType<typeof createClient> | undefined;
+}
 
-// Get or create the Supabase client (singleton)
-const getSupabaseClient = () => {
-  if (supabaseInstance === null) {
-    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+/**
+ * This singleton implementation uses a global variable to survive React Fast Refresh
+ * in development mode, which prevents multiple instances warning
+ */
+const getSupabaseClient = (): ReturnType<typeof createClient> => {
+  // In production, we can use a simple module-level singleton
+  if (process.env.NODE_ENV === 'production') {
+    if (!globalThis.__supabaseClient) {
+      globalThis.__supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          detectSessionInUrl: true,
+          persistSession: true,
+          autoRefreshToken: true
+        }
+      });
+    }
+    return globalThis.__supabaseClient;
+  }
+  
+  // In development, we use global to survive Fast Refresh
+  if (!global.__supabaseClient) {
+    global.__supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         detectSessionInUrl: true,
         persistSession: true,
@@ -18,7 +38,8 @@ const getSupabaseClient = () => {
       }
     });
   }
-  return supabaseInstance;
+  
+  return global.__supabaseClient;
 };
 
 // Create and export the Supabase client

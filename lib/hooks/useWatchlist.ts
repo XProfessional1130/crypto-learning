@@ -241,16 +241,22 @@ export function useWatchlist() {
       if (canUseGlobalCache) {
         setWatchlist(globalCacheForUser.data);
         setLoading(false);
-        console.log('Using global cache (in cooldown)');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Using global cache (in cooldown)');
+        }
         return;
       } else if (canUseLocalCache) {
         setWatchlist(localCacheRef.current!.data);
         setLoading(false);
-        console.log('Using local cache (in cooldown)');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Using local cache (in cooldown)');
+        }
         return;
       }
-      // If no cache but in cooldown, we have to wait
-      console.log(`Rate limited. Wait ${Math.ceil((REFRESH_COOLDOWN - timeSinceLastRefresh)/1000)}s`);
+      // If no cache but in cooldown, we have to wait - only log in dev mode
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Rate limited. Wait ${Math.ceil((REFRESH_COOLDOWN - timeSinceLastRefresh)/1000)}s`);
+      }
       return;
     }
     
@@ -332,7 +338,9 @@ export function useWatchlist() {
     // Enforce a stricter cooldown of 30 seconds minimum between refreshes
     // unless bypassRateLimit is true
     if (!bypassRateLimit && timeSinceLastRefresh < REFRESH_COOLDOWN) {
-      console.log(`Refresh rate limited. Skipping refresh, last refresh was ${Math.ceil(timeSinceLastRefresh/1000)}s ago`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Refresh rate limited. Skipping refresh, last refresh was ${Math.ceil(timeSinceLastRefresh/1000)}s ago`);
+      }
       return;
     }
     
