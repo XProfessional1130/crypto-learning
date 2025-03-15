@@ -407,11 +407,16 @@ function PortfolioDashboardComponent() {
   const [isAssetDetailModalOpen, setIsAssetDetailModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [renderKey, setRenderKey] = useState(Date.now()); // Add a key to force re-render if needed
   const hasRefreshedRef = useRef(false);
   const lastRefreshAttemptRef = useRef(0);
+  const mountedRef = useRef(true); // Track if component is mounted
   
-  // Calculate loading and error states
-  const loading = portfolioLoading || watchlistLoading;
+  // Calculate loading and error states - IMPROVED to prevent stuck loading
+  // Only consider the component in a loading state during initial load or explicit refresh
+  const effectivePortfolioLoading = portfolioLoading && !initialLoadComplete;
+  const effectivePriceLoading = loadingPrices && !initialLoadComplete && !btcPrice && !ethPrice;
+  const loading = (effectivePortfolioLoading || effectivePriceLoading) && !initialLoadComplete;
   const error = portfolioError || watchlistError;
   
   // Create a sorted version of the portfolio items
@@ -431,6 +436,24 @@ function PortfolioDashboardComponent() {
   const contentAnimationClass = initialLoadComplete ? "animate-fadeIn" : "opacity-0 transition-opacity-transform";
   const cardAnimationClass = initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform";
   const listItemAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
+  
+  // Reset loading state when component unmounts and remounts
+  // This is crucial for preventing stuck loading states after navigation
+  useEffect(() => {
+    // Mark as mounted
+    mountedRef.current = true;
+    
+    // Check if we already have data and set initial load complete if we do
+    if ((btcPrice && ethPrice) || portfolio) {
+      setInitialLoadComplete(true);
+    }
+    
+    // On unmount, reset state
+    return () => {
+      mountedRef.current = false;
+      hasRefreshedRef.current = false;
+    };
+  }, [btcPrice, ethPrice, portfolio]);
   
   // Throttled refresh function to prevent excessive calls
   const throttledRefresh = useCallback(async () => {
@@ -481,12 +504,21 @@ function PortfolioDashboardComponent() {
       })
       .finally(() => {
         // Add a minimum duration for the refresh animation
-        setTimeout(() => setIsRefreshing(false), 500);
+        setTimeout(() => {
+          if (mountedRef.current) {
+            setIsRefreshing(false);
+          }
+        }, 500);
       });
   }, [throttledRefresh]);
   
   // Only run this once on mount with debounce
-  const loadInitialData = async () => {
+  const loadInitialData = useCallback(async () => {
+    // If already complete, don't reload
+    if (initialLoadComplete && (btcPrice || ethPrice)) {
+      return;
+    }
+
     try {
       // Check if we have data in the cache already
       if (btcPrice && ethPrice && globalData) {
@@ -517,40 +549,42 @@ function PortfolioDashboardComponent() {
       // Even on error, mark as refreshed to prevent retry storms
       hasRefreshedRef.current = true;
     } finally {
-      setIsRefreshing(false);
-      // Set initial load as complete whether we succeeded or failed
-      setInitialLoadComplete(true);
+      if (mountedRef.current) {
+        setIsRefreshing(false);
+        // Set initial load as complete whether we succeeded or failed
+        setInitialLoadComplete(true);
+      }
     }
-  };
+  }, [btcPrice, ethPrice, globalData, refreshData, initialLoadComplete]);
   
   // Initialize data on mount - with optimization to prevent duplicate initialization
   useEffect(() => {
-    // Skip if we've already refreshed
-    if (hasRefreshedRef.current) {
-      return;
-    }
-    
-    // Skip if we already have the important data
-    if (btcPrice && ethPrice && globalData) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log("Dashboard already has complete data, initialization not needed");
-      }
-      hasRefreshedRef.current = true;
+    // Always set initial load complete if we have price data
+    // This ensures we recover from interrupted loads
+    if (btcPrice && ethPrice) {
       setInitialLoadComplete(true);
       return;
     }
     
-    // Use a larger delay to avoid race conditions with other initializations
-    // Also mark initializing immediately to prevent duplicate initialization attempts
-    hasRefreshedRef.current = true;
+    // If we already have portfolio data, show it immediately
+    if (portfolio && !portfolioLoading) {
+      setInitialLoadComplete(true);
+    }
+    
+    // Skip if already initialized
+    if (hasRefreshedRef.current && initialLoadComplete) {
+      return;
+    }
+    
+    // Use a smaller delay for faster startup
     const timer = setTimeout(() => {
-      // Reset the flag before actually trying to load
-      hasRefreshedRef.current = false;
-      loadInitialData();
-    }, 500); // Reduced from 1000ms to 500ms for faster startup
+      if (mountedRef.current) {
+        loadInitialData();
+      }
+    }, 200);
     
     return () => clearTimeout(timer);
-  }, [refreshData, globalData, btcPrice, ethPrice]);
+  }, [loadInitialData, btcPrice, ethPrice, portfolio, portfolioLoading, initialLoadComplete]);
   
   // Trigger a portfolio refresh when we get new price data - optimized with conditions
   useEffect(() => {
@@ -571,17 +605,106 @@ function PortfolioDashboardComponent() {
     }
   }, [btcPrice, ethPrice, portfolio, refreshPortfolio, portfolioLoading]);
   
-  // After first data load is complete, trigger main content visibility
+  // Handle the case of returning to the page with data but stuck loading
+  // This is crucial for recovering from navigation
   useEffect(() => {
-    if (!loading && !error && !initialLoadComplete) {
+    if ((btcPrice || ethPrice || portfolio) && !initialLoadComplete) {
       // Short delay to ensure data is processed before showing animations
       const timer = setTimeout(() => {
-        setInitialLoadComplete(true);
+        if (mountedRef.current) {
+          setInitialLoadComplete(true);
+        }
       }, 100);
       
       return () => clearTimeout(timer);
     }
-  }, [loading, error, initialLoadComplete]);
+  }, [btcPrice, ethPrice, portfolio, initialLoadComplete]);
+  
+  // Emergency recovery for stuck loading state
+  useEffect(() => {
+    // If we've been in loading state for more than 5 seconds despite having data
+    // force a reset of the component state
+    const timer = setTimeout(() => {
+      if (mountedRef.current && (btcPrice || ethPrice || portfolio) && !initialLoadComplete) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log("Emergency recovery from stuck loading state");
+        }
+        setInitialLoadComplete(true);
+        setRenderKey(Date.now()); // Force re-render
+      }
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, [btcPrice, ethPrice, portfolio, initialLoadComplete]);
+  
+  // If we're still showing the loading skeleton but we have data,
+  // force a recovery to the normal view
+  if (loading && (portfolio || (btcPrice && ethPrice)) && !initialLoadComplete) {
+    // Force render complete view instead of skeleton
+    return (
+      <div className="container mx-auto pt-2 pb-6 px-4 max-w-7xl" key={renderKey}>
+        {/* Emergency fallback content */}
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Your Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-300">
+              Welcome back, {user?.email?.split('@')[0] || 'partnerships'}!
+            </p>
+          </div>
+          <button 
+            onClick={handleManualRefresh}
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500"
+            aria-label="Refresh dashboard"
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2"
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              className="w-5 h-5 text-gray-500 dark:text-gray-400"
+            >
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+            </svg>
+          </button>
+        </div>
+        
+        {/* Render actual content with forced initialization */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <PortfolioStatsCard 
+            portfolioValue={portfolio?.totalValueUsd || 0}
+            dailyChange={portfolio?.dailyChangePercentage || 0}
+            loading={false}
+            portfolioItems={sortedPortfolioItems}
+          />
+          
+          <MarketLeadersCard 
+            btcPrice={btcPrice}
+            ethPrice={ethPrice}
+            btcDominance={typeof globalData?.btcDominance === 'number' ? globalData.btcDominance : 0}
+            ethDominance={typeof globalData?.ethDominance === 'number' ? globalData.ethDominance : 0}
+            loading={false}
+          />
+        </div>
+        
+        {/* Emergency refresh button to recover UI */}
+        <div className="text-center mb-4">
+          <button 
+            onClick={() => {
+              setInitialLoadComplete(true);
+              setRenderKey(Date.now());
+              handleManualRefresh();
+            }}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Click to refresh dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   if (loading) {
     return (
