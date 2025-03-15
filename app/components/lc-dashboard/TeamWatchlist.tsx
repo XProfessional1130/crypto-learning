@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, memo } from 'react';
 import { WatchlistItem } from '@/lib/hooks/useWatchlist';
 import { GlobalData } from '@/lib/services/coinmarketcap';
-import { useTeamWatchlist } from '@/lib/hooks/useTeamWatchlist';
+import { useTeamData } from '@/lib/context/team-data-context';
 import { CoinData } from '@/types/portfolio';
 import { PlusCircle, Edit2, Trash } from 'lucide-react';
 import TeamAddToWatchlistModal from './TeamAddToWatchlistModal';
@@ -17,7 +17,7 @@ interface TeamWatchlistProps {
   getTargetPercentage: (item: WatchlistItem) => number;
 }
 
-export default function TeamWatchlist({
+function TeamWatchlistComponent({
   watchlist,
   loading,
   error,
@@ -25,7 +25,7 @@ export default function TeamWatchlist({
   globalData,
   getTargetPercentage
 }: TeamWatchlistProps) {
-  const { isAdmin, addToWatchlist, updatePriceTarget, removeFromWatchlist, refreshWatchlist } = useTeamWatchlist();
+  const { isAdmin, addToWatchlist, updatePriceTarget, removeFromWatchlist, refreshWatchlist, isInWatchlist } = useTeamData();
   const [showAddToWatchlistModal, setShowAddToWatchlistModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
   const [showItemDetailModal, setShowItemDetailModal] = useState(false);
@@ -102,12 +102,7 @@ export default function TeamWatchlist({
           )}
         </div>
         
-        {/* Add To Watchlist Modal - needed here too for empty state */}
-        <TeamAddToWatchlistModal
-          isOpen={showAddToWatchlistModal}
-          onClose={() => setShowAddToWatchlistModal(false)}
-          onCoinAdded={handleAddToWatchlist}
-        />
+        {/* TeamAddToWatchlistModal is now rendered only once at the bottom of the component */}
       </div>
     );
   }
@@ -207,7 +202,7 @@ export default function TeamWatchlist({
         </p>
       </div>
 
-      {/* Add To Watchlist Modal - always render but control visibility with isOpen */}
+      {/* Add To Watchlist Modal - Single instance for the entire component */}
       <TeamAddToWatchlistModal
         isOpen={showAddToWatchlistModal}
         onClose={() => setShowAddToWatchlistModal(false)}
@@ -234,4 +229,20 @@ export default function TeamWatchlist({
       )}
     </div>
   );
-} 
+}
+
+// Create a memoized version with custom comparison
+const TeamWatchlist = memo(
+  TeamWatchlistComponent,
+  (prevProps, nextProps) => {
+    // Re-render only if relevant props change
+    return (
+      prevProps.loading === nextProps.loading &&
+      prevProps.error === nextProps.error &&
+      prevProps.isDataLoading === nextProps.isDataLoading &&
+      prevProps.watchlist === nextProps.watchlist
+    );
+  }
+);
+
+export default TeamWatchlist; 

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { CoinData } from '@/types/portfolio';
-import { useTeamWatchlist } from '@/lib/hooks/useTeamWatchlist';
+import { useTeamData } from '@/lib/context/team-data-context';
 import { searchCoins } from '@/lib/services/coinmarketcap';
 
 interface TeamAddToWatchlistModalProps {
@@ -9,9 +9,16 @@ interface TeamAddToWatchlistModalProps {
   onCoinAdded?: (coin: CoinData, priceTarget?: number) => Promise<any>;
 }
 
-export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }: TeamAddToWatchlistModalProps) {
-  console.log('TeamAddToWatchlistModal rendered with isOpen:', isOpen);
-
+function TeamAddToWatchlistModalComponent({ 
+  isOpen, 
+  onClose, 
+  onCoinAdded 
+}: TeamAddToWatchlistModalProps) {
+  // Early return if modal is not open to avoid unnecessary processing
+  if (!isOpen) {
+    return null;
+  }
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<CoinData[]>([]);
   const [selectedCoin, setSelectedCoin] = useState<CoinData | null>(null);
@@ -21,21 +28,18 @@ export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }
   const [searchError, setSearchError] = useState<string | null>(null);
   const [noResults, setNoResults] = useState(false);
   
-  const { isInWatchlist } = useTeamWatchlist();
+  const { isInWatchlist } = useTeamData();
   
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
     
-    console.log('handleSearch called with query:', searchQuery);
     setIsSearching(true);
     setSearchError(null);
     setNoResults(false);
     setSearchResults([]);
     
     try {
-      console.log('Calling searchCoins API');
       const results = await searchCoins(searchQuery);
-      console.log(`Found ${results.length} results:`, results);
       
       setSearchResults(results);
       
@@ -48,31 +52,24 @@ export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }
     } finally {
       setIsSearching(false);
     }
-  };
+  }, [searchQuery]);
   
-  const handleSelectCoin = (coin: CoinData) => {
+  const handleSelectCoin = useCallback((coin: CoinData) => {
     setSelectedCoin(coin);
     // Set default price target 20% above current price
     setPriceTarget(parseFloat((coin.priceUsd * 1.2).toFixed(coin.priceUsd < 1 ? 6 : 2)));
     setSearchResults([]);
     setSearchQuery('');
-  };
+  }, []);
   
-  const handleAddCoin = async () => {
+  const handleAddCoin = useCallback(async () => {
     if (!selectedCoin) return;
-    
-    console.log('handleAddCoin called with coin:', selectedCoin);
-    console.log('Price target:', priceTarget > 0 ? priceTarget : undefined);
     
     setIsAdding(true);
     try {
       // Call the onCoinAdded callback if provided
       if (onCoinAdded) {
-        console.log('Calling onCoinAdded callback');
         await onCoinAdded(selectedCoin, priceTarget > 0 ? priceTarget : undefined);
-        console.log('onCoinAdded callback completed successfully');
-      } else {
-        console.warn('onCoinAdded callback is not provided');
       }
       
       // Reset form and close modal
@@ -83,29 +80,23 @@ export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }
     } finally {
       setIsAdding(false);
     }
-  };
+  }, [selectedCoin, priceTarget, onCoinAdded, onClose]);
   
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setSearchQuery('');
     setSearchResults([]);
     setSelectedCoin(null);
     setPriceTarget(0);
     setSearchError(null);
     setNoResults(false);
-  };
+  }, []);
   
   // Add an onSubmit handler for the search form
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleSearchSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     handleSearch();
-  };
-  
-  if (!isOpen) {
-    console.log('TeamAddToWatchlistModal returning null because isOpen is false');
-    return null;
-  }
+  }, [handleSearch]);
 
-  console.log('TeamAddToWatchlistModal rendering content');
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
@@ -289,4 +280,15 @@ export default function TeamAddToWatchlistModal({ isOpen, onClose, onCoinAdded }
       </div>
     </div>
   );
-} 
+}
+
+// Create a memoized version with custom comparison
+const TeamAddToWatchlistModal = memo(
+  TeamAddToWatchlistModalComponent,
+  (prevProps, nextProps) => {
+    // Only re-render if isOpen changes
+    return prevProps.isOpen === nextProps.isOpen;
+  }
+);
+
+export default TeamAddToWatchlistModal; 

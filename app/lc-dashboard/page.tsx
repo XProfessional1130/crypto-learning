@@ -1,22 +1,24 @@
 'use client';
 
-import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useState, useEffect, useMemo, Suspense, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTeamPortfolio } from '@/lib/hooks/useTeamPortfolio';
-import { useTeamWatchlist } from '@/lib/hooks/useTeamWatchlist';
+import { useTeamData } from '@/lib/context/team-data-context';
 import { getBtcPrice, getEthPrice, getGlobalData, GlobalData } from '@/lib/services/coinmarketcap';
 import dynamic from 'next/dynamic';
 import { ReactNode } from 'react';
 import { TrendingUp, TrendingDown, Activity, DollarSign, AlertCircle } from 'lucide-react';
 
-// Dynamically import heavy components
+// Dynamically import heavy components with proper loading skeletons
 const TeamPortfolio = dynamic(() => import('../components/lc-dashboard/TeamPortfolio'), {
-  loading: () => <PortfolioLoadingSkeleton />
+  loading: () => <PortfolioLoadingSkeleton />,
+  ssr: false // Disable SSR for these components to prevent double initialization
 });
+
 const TeamWatchlist = dynamic(() => import('../components/lc-dashboard/TeamWatchlist'), {
-  loading: () => <WatchlistLoadingSkeleton />
+  loading: () => <WatchlistLoadingSkeleton />,
+  ssr: false // Disable SSR for these components to prevent double initialization
 });
 
 // Loading skeletons for better UX during component loading
@@ -307,17 +309,17 @@ export default function LCDashboard() {
   const [ethPrice, setEthPrice] = useState<number | null>(null);
   const [globalData, setGlobalData] = useState<GlobalData | null>(null);
 
-  // Load team portfolio data
-  const { portfolio, loading: portfolioLoading, error: portfolioError } = useTeamPortfolio();
-  
-  // Load team watchlist data
+  // Use the unified team data context instead of separate hooks
   const { 
-    watchlist, 
-    loading: watchlistLoading, 
-    error: watchlistError,
-    getTargetPercentage 
-  } = useTeamWatchlist();
-
+    portfolio, 
+    portfolioLoading,
+    portfolioError,
+    watchlist,
+    watchlistLoading,
+    watchlistError,
+    getTargetPercentage
+  } = useTeamData();
+  
   // Check authentication once
   useEffect(() => {
     if (!authLoading && !user) {
@@ -390,7 +392,10 @@ export default function LCDashboard() {
         {/* Team Portfolio Section - Takes up 2/3 of the space */}
         <div className="lg:col-span-2">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6" style={{ minHeight: 'calc(100vh - 24rem)' }}>
-            <Suspense fallback={<PortfolioLoadingSkeleton />}>
+            {/* Render without Suspense to prevent duplicate initialization */}
+            {portfolioLoading ? (
+              <PortfolioLoadingSkeleton />
+            ) : (
               <TeamPortfolio 
                 portfolio={portfolio}
                 loading={portfolioLoading}
@@ -400,7 +405,7 @@ export default function LCDashboard() {
                 ethPrice={ethPrice}
                 globalData={globalData}
               />
-            </Suspense>
+            )}
           </div>
         </div>
         
@@ -408,7 +413,10 @@ export default function LCDashboard() {
         <div className="lg:col-span-1">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6" style={{ minHeight: 'calc(100vh - 24rem)' }}>
             <h2 className="text-xl font-bold mb-4">Altcoin Watchlist</h2>
-            <Suspense fallback={<WatchlistLoadingSkeleton />}>
+            {/* Render without Suspense to prevent duplicate initialization */}
+            {watchlistLoading ? (
+              <WatchlistLoadingSkeleton />
+            ) : (
               <TeamWatchlist 
                 watchlist={watchlist}
                 loading={watchlistLoading}
@@ -417,7 +425,7 @@ export default function LCDashboard() {
                 globalData={globalData}
                 getTargetPercentage={getTargetPercentage}
               />
-            </Suspense>
+            )}
           </div>
         </div>
       </div>

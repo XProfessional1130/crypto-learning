@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { initCoinDataService } from '@/lib/services/coinmarketcap';
+import { initCoinDataService, isCoinDataServiceInitialized } from '@/lib/services/coinmarketcap';
 
 /**
  * DataPrefetcher component that initializes data services on app load
@@ -12,8 +12,13 @@ export default function DataPrefetcher() {
     // Initialize the coin data service
     const initializeData = async () => {
       try {
-        await initCoinDataService();
-        console.log('Data services initialized');
+        if (!isCoinDataServiceInitialized()) {
+          console.log('DataPrefetcher: Initializing coin data service...');
+          await initCoinDataService();
+          console.log('DataPrefetcher: Data services initialized');
+        } else {
+          console.log('DataPrefetcher: Data services already initialized, skipping');
+        }
       } catch (error) {
         console.error('Error initializing data services:', error);
       }

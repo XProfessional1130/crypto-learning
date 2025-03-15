@@ -6,6 +6,7 @@ import AddToWatchlistModal from './AddToWatchlistModal';
 import { cn } from '@/lib/utils/classnames';
 import { calculateProgressPercentage, formatCryptoPrice, formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
 import Image from 'next/image';
+import { Skeleton } from '../ui/skeleton';
 
 // Define props interface for WatchlistComponent
 interface WatchlistComponentProps {
@@ -105,6 +106,26 @@ const WatchlistItemCard = memo(({
 });
 WatchlistItemCard.displayName = 'WatchlistItemCard';
 
+// Create a memoized WatchlistItemSkeleton component for better loading UX
+const WatchlistItemSkeleton = memo(() => {
+  return (
+    <div className="animate-pulse flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
+      <div className="flex items-center gap-3">
+        <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+        <div className="space-y-2">
+          <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        <div className="h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      </div>
+    </div>
+  );
+});
+WatchlistItemSkeleton.displayName = 'WatchlistItemSkeleton';
+
 const WatchlistComponent = ({ onRefresh }: WatchlistComponentProps) => {
   const {
     watchlist,
@@ -195,7 +216,18 @@ const WatchlistComponent = ({ onRefresh }: WatchlistComponentProps) => {
         </button>
       </div>
 
-      {watchlist.length === 0 ? (
+      {loading ? (
+        // Show skeleton UI while loading
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+          <div className="border-b border-gray-100 dark:border-gray-700 p-4 flex justify-between items-center">
+            <div className="animate-pulse h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="animate-pulse h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+          </div>
+          {[...Array(5)].map((_, i) => (
+            <WatchlistItemSkeleton key={i} />
+          ))}
+        </div>
+      ) : watchlist.length === 0 ? (
         <div className="text-center py-10 flex-grow">
           <p className="text-lg mb-4">Your watchlist is empty</p>
           <button 

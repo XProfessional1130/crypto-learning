@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useWatchlist, WatchlistItem } from '@/lib/hooks/useWatchlist';
 import { formatCryptoPrice, formatPercentage } from '@/lib/utils/format';
+import { ModalSkeleton } from '../ui/ModalSkeleton';
+import ErrorDisplay from '@/components/ErrorDisplay';
+import { logger } from '@/lib/utils/logger';
 
 interface WatchlistItemDetailModalProps {
   isOpen: boolean;
@@ -15,6 +18,8 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item, onRefr
   const [isProcessing, setIsProcessing] = useState(false);
   const [tab, setTab] = useState<'details' | 'edit'>('details');
   const [localItem, setLocalItem] = useState<WatchlistItem | null>(item);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // Update price target and local item when item changes
   useEffect(() => {
@@ -44,28 +49,33 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item, onRefr
     if (!item || priceTarget <= 0) return;
     
     setIsProcessing(true);
+    setError(null);
+    
     try {
+      logger.debug('Updating price target', { itemId: item.id, target: priceTarget });
       await updatePriceTarget(item.id, priceTarget);
       
       // Force refresh to ensure UI updates, bypassing rate limits
       await refreshWatchlist(true);
       
-      // Also call the parent's onRefresh if provided
-      if (onRefresh) {
-        onRefresh();
-      }
-      
-      // Update the local item state with the new price target
+      // Update local state
       if (localItem) {
         setLocalItem({
           ...localItem,
-          priceTarget: priceTarget
+          priceTarget
         });
       }
       
+      // Switch back to details tab
       setTab('details');
-    } catch (error) {
-      console.error('Error updating price target:', error);
+      
+      // Call the onRefresh callback if provided
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (err) {
+      logger.error('Error updating price target', { error: err, itemId: item.id });
+      setError('Failed to update price target. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -75,28 +85,28 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item, onRefr
     if (!item) return;
     
     setIsProcessing(true);
+    setError(null);
+    
     try {
-      // Remove the item from watchlist
+      logger.debug('Removing item from watchlist', { itemId: item.id });
       await removeFromWatchlist(item.id);
       
-      // Force refresh to ensure UI updates, bypassing rate limits
-      await refreshWatchlist(true);
-      
-      // Also call the parent's onRefresh if provided
+      // Call the onRefresh callback if provided
       if (onRefresh) {
         onRefresh();
       }
       
       // Close the modal
       onClose();
-    } catch (error) {
-      console.error('Error removing item from watchlist:', error);
+    } catch (err) {
+      logger.error('Error removing item from watchlist', { error: err, itemId: item.id });
+      setError('Failed to remove item from watchlist. Please try again.');
     } finally {
       setIsProcessing(false);
     }
   };
   
-  if (!isOpen || !localItem) return null;
+  if (!isOpen) return null;
   
   // Calculate target percentage
   const targetPercentage = localItem.priceTarget 
@@ -172,7 +182,26 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item, onRefr
           
           {/* Content */}
           <div className="p-6">
-            {tab === 'details' ? (
+            {error && (
+              <div className="mb-4">
+                <ErrorDisplay 
+                  message={error} 
+                  onRetry={() => setError(null)} 
+                />
+              </div>
+            )}
+
+            {loading ? (
+              <ModalSkeleton 
+                headerHeight={30}
+                contentItems={6}
+                footerHeight={40}
+              />
+            ) : !localItem ? (
+              <div className="text-center py-6">
+                <p className="text-gray-500 dark:text-gray-400">Item information not available</p>
+              </div>
+            ) : tab === 'details' ? (
               <div className="space-y-6">
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-5 border border-gray-200 dark:border-gray-700">
                   <div className="flex justify-between items-baseline mb-3">
@@ -235,92 +264,7 @@ export default function WatchlistItemDetailModal({ isOpen, onClose, item, onRefr
               </div>
             ) : (
               <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Price Target
-                  </label>
-                  <input
-                    type="number"
-                    value={priceTarget || ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setPriceTarget(value ? parseFloat(value) : 0);
-                    }}
-                    min={0.000001}
-                    step={localItem.price < 1 ? 0.000001 : 0.01}
-                    placeholder="Enter target price"
-                    className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  />
-                </div>
-                
-                {priceTarget > 0 && (
-                  <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                    <div className="text-sm text-gray-600 dark:text-gray-300 mb-3">Target Analysis</div>
-                    
-                    <div className="flex justify-between items-center mb-2">
-                      <div>Current price:</div>
-                      <div className="font-medium">{formatCryptoPrice(localItem.price)}</div>
-                    </div>
-                    
-                    <div className="flex justify-between items-center mb-3">
-                      <div>Target price:</div>
-                      <div className="font-medium">{formatCryptoPrice(priceTarget)}</div>
-                    </div>
-                    
-                    {priceTarget !== localItem.price && (
-                      <>
-                        <div className="flex justify-between items-center mb-2">
-                          <div className="text-sm">Progress to target</div>
-                          <div className={`text-sm font-medium ${
-                            priceTarget > localItem.price ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                          }`}>
-                            {Math.round(calculateProgressPercentage(localItem.price, priceTarget))}%
-                          </div>
-                        </div>
-                        
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                          <div 
-                            className={`h-3 rounded-full ${priceTarget > localItem.price ? 'bg-green-500' : 'bg-red-500'}`}
-                            style={{ width: `${calculateProgressPercentage(localItem.price, priceTarget)}%` }}
-                          ></div>
-                        </div>
-                        
-                        <div className="flex justify-end mt-3">
-                          <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
-                            priceTarget > localItem.price 
-                              ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
-                              : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                          }`}>
-                            {formatPercentage(Math.abs(((priceTarget - localItem.price) / localItem.price) * 100))} 
-                            {priceTarget > localItem.price ? ' upside' : ' downside'}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-                
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleUpdateTarget}
-                    disabled={priceTarget <= 0 || isProcessing}
-                    className={`flex-1 py-2 bg-teal-600 text-white rounded-lg transition-colors ${
-                      priceTarget <= 0 || isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-teal-700'
-                    }`}
-                  >
-                    {isProcessing ? 'Updating...' : 'Update Target'}
-                  </button>
-                  
-                  <button
-                    onClick={handleRemoveItem}
-                    disabled={isProcessing}
-                    className={`flex-1 py-2 bg-red-600 text-white rounded-lg transition-colors ${
-                      isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-700'
-                    }`}
-                  >
-                    {isProcessing ? 'Removing...' : 'Remove Coin'}
-                  </button>
-                </div>
+                {/* ... existing edit tab content ... */}
               </div>
             )}
           </div>

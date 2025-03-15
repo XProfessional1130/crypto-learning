@@ -3,6 +3,8 @@ import { CoinData } from '@/types/portfolio';
 import { useWatchlist } from '@/lib/hooks/useWatchlist';
 import { searchCoins } from '@/lib/services/coinmarketcap';
 import { formatCryptoPrice, formatPercentage } from '@/lib/utils/format';
+import { ModalSkeleton, FormInputSkeleton, AssetItemSkeleton } from '../ui/ModalSkeleton';
+import ErrorDisplay from '@/components/ErrorDisplay';
 
 interface AddToWatchlistModalProps {
   isOpen: boolean;
@@ -19,6 +21,8 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
   const [isAdding, setIsAdding] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [noResults, setNoResults] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   
   const { addToWatchlist, isInWatchlist, refreshWatchlist } = useWatchlist();
   
@@ -112,198 +116,217 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
           </div>
           
           <div className="p-6">
-            {!selectedCoin ? (
-              <>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Search for a coin
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                      placeholder="Search by name or symbol (e.g. Bitcoin, BTC)"
-                      className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    />
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      {isSearching ? (
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-                      ) : (
-                        <button onClick={handleSearch} type="button">
-                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                {searchResults.length > 0 && (
-                  <div className="mt-4 max-h-[300px] overflow-y-auto">
-                    {searchResults.map((coin) => {
-                      const alreadyInWatchlist = isInWatchlist(coin.id);
-                      return (
-                        <button
-                          key={coin.id}
-                          onClick={() => handleSelectCoin(coin)}
-                          className={`w-full p-3 flex items-center rounded-lg transition-colors border-b border-gray-200 dark:border-gray-700 ${
-                            alreadyInWatchlist 
-                              ? 'opacity-60 bg-gray-50 dark:bg-gray-700 cursor-not-allowed' 
-                              : 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'
-                          }`}
-                          disabled={alreadyInWatchlist}
-                        >
-                          <div className="flex items-center flex-1">
-                            <div className="relative">
-                              <img 
-                                src={coin.logoUrl || `https://s2.coinmarketcap.com/static/img/coins/64x64/${coin.id}.png`} 
-                                alt={coin.symbol} 
-                                className="w-8 h-8 mr-3 rounded-full bg-gray-100"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.src = 'https://via.placeholder.com/32';
-                                  target.style.display = 'none';
-                                  target.parentElement?.classList.add('bg-gray-200', 'dark:bg-gray-700', 'w-8', 'h-8', 'rounded-full', 'flex', 'items-center', 'justify-center', 'text-xs', 'font-bold');
-                                  target.parentElement!.innerHTML = `<span>${coin.symbol.substring(0, 2)}</span>`;
-                                }}
-                              />
-                              
-                              {coin.cmcRank && (
-                                <div className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-[8px] font-bold border border-gray-200 dark:border-gray-700 overflow-hidden text-blue-500">
-                                  #{coin.cmcRank}
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="text-left">
-                              <div className="font-medium flex items-center">
-                                {coin.symbol}
-                                {alreadyInWatchlist && (
-                                  <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">
-                                    In Watchlist
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                                <span className="truncate max-w-[150px]">{coin.name}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div>
-                              {formatCryptoPrice(coin.priceUsd)}
-                            </div>
-                            <div className={`text-xs ${coin.priceChange24h >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                              {formatPercentage(coin.priceChange24h)}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                
-                {noResults && searchQuery && !isSearching && (
-                  <div className="mt-4 p-4 text-center text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg">
-                    No coins found matching "{searchQuery}"
-                  </div>
-                )}
-                
-                {searchError && (
-                  <div className="mt-4 p-4 text-center text-red-500 border border-red-200 dark:border-red-800 rounded-lg">
-                    {searchError}
-                  </div>
-                )}
-                
-                {isSearching && (
-                  <div className="mt-4 p-4 text-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
-                    <p>Searching...</p>
-                  </div>
-                )}
-              </>
+            {error && (
+              <div className="mb-4">
+                <ErrorDisplay 
+                  message={error} 
+                  onRetry={() => setError(null)} 
+                />
+              </div>
+            )}
+
+            {loading && !error ? (
+              <ModalSkeleton 
+                headerHeight={30}
+                contentItems={8}
+                footerHeight={40}
+              />
             ) : (
               <>
-                <div className="flex items-center mb-6">
-                  <img 
-                    src={selectedCoin.logoUrl || `https://s2.coinmarketcap.com/static/img/coins/64x64/${selectedCoin.id}.png`} 
-                    alt={selectedCoin.symbol} 
-                    className="w-8 h-8 mr-3 rounded-full"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/32';
-                    }}
-                  />
-                  <div>
-                    <div className="font-medium">{selectedCoin.symbol}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{selectedCoin.name}</div>
-                  </div>
-                  <div className="ml-auto font-medium">
-                    {formatCryptoPrice(selectedCoin.priceUsd)}
-                  </div>
-                </div>
-                
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Price Target
-                  </label>
-                  <input
-                    type="number"
-                    value={priceTarget || ''}
-                    onChange={(e) => setPriceTarget(e.target.value ? parseFloat(e.target.value) : 0)}
-                    min={0.000001}
-                    step={selectedCoin.priceUsd < 1 ? 0.000001 : 0.01}
-                    placeholder="Enter target price"
-                    className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  />
-                </div>
-                
-                {priceTarget > 0 && (
-                  <div className="mb-6 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                    <div className="text-sm font-medium mb-2">Target Analysis</div>
+                {!selectedCoin ? (
+                  <>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Search for a coin
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                          placeholder="Search by name or symbol (e.g. Bitcoin, BTC)"
+                          className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                          {isSearching ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                          ) : (
+                            <button onClick={handleSearch} type="button">
+                              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                     
-                    {priceTarget !== selectedCoin.priceUsd && (
-                      <div className="text-sm">
-                        You're setting a price target that's 
-                        <span className={`font-bold ${
-                          priceTarget > selectedCoin.priceUsd 
-                            ? 'text-green-600 dark:text-green-400' 
-                            : 'text-red-600 dark:text-red-400'
-                        }`}>
-                          {' '}
-                          {priceTarget > selectedCoin.priceUsd ? 'above' : 'below'}{' '}
-                        </span>
-                        the current price by{' '}
-                        <span className="font-bold">
-                          {formatPercentage(Math.abs(((priceTarget - selectedCoin.priceUsd) / selectedCoin.priceUsd) * 100))}
-                        </span>
+                    {searchResults.length > 0 && (
+                      <div className="mt-4 max-h-[300px] overflow-y-auto">
+                        {searchResults.map((coin) => {
+                          const alreadyInWatchlist = isInWatchlist(coin.id);
+                          return (
+                            <button
+                              key={coin.id}
+                              onClick={() => handleSelectCoin(coin)}
+                              className={`w-full p-3 flex items-center rounded-lg transition-colors border-b border-gray-200 dark:border-gray-700 ${
+                                alreadyInWatchlist 
+                                  ? 'opacity-60 bg-gray-50 dark:bg-gray-700 cursor-not-allowed' 
+                                  : 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'
+                              }`}
+                              disabled={alreadyInWatchlist}
+                            >
+                              <div className="flex items-center flex-1">
+                                <div className="relative">
+                                  <img 
+                                    src={coin.logoUrl || `https://s2.coinmarketcap.com/static/img/coins/64x64/${coin.id}.png`} 
+                                    alt={coin.symbol} 
+                                    className="w-8 h-8 mr-3 rounded-full bg-gray-100"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = 'https://via.placeholder.com/32';
+                                      target.style.display = 'none';
+                                      target.parentElement?.classList.add('bg-gray-200', 'dark:bg-gray-700', 'w-8', 'h-8', 'rounded-full', 'flex', 'items-center', 'justify-center', 'text-xs', 'font-bold');
+                                      target.parentElement!.innerHTML = `<span>${coin.symbol.substring(0, 2)}</span>`;
+                                    }}
+                                  />
+                                  
+                                  {coin.cmcRank && (
+                                    <div className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-[8px] font-bold border border-gray-200 dark:border-gray-700 overflow-hidden text-blue-500">
+                                      #{coin.cmcRank}
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="text-left">
+                                  <div className="font-medium flex items-center">
+                                    {coin.symbol}
+                                    {alreadyInWatchlist && (
+                                      <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">
+                                        In Watchlist
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
+                                    <span className="truncate max-w-[150px]">{coin.name}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div>
+                                  {formatCryptoPrice(coin.priceUsd)}
+                                </div>
+                                <div className={`text-xs ${coin.priceChange24h >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                  {formatPercentage(coin.priceChange24h)}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
-                  </div>
+                    
+                    {noResults && searchQuery && !isSearching && (
+                      <div className="mt-4 p-4 text-center text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        No coins found matching "{searchQuery}"
+                      </div>
+                    )}
+                    
+                    {searchError && (
+                      <div className="mt-4 p-4 text-center text-red-500 border border-red-200 dark:border-red-800 rounded-lg">
+                        {searchError}
+                      </div>
+                    )}
+                    
+                    {isSearching && (
+                      <div className="mt-4 p-4 text-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                        <p>Searching...</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center mb-6">
+                      <img 
+                        src={selectedCoin.logoUrl || `https://s2.coinmarketcap.com/static/img/coins/64x64/${selectedCoin.id}.png`} 
+                        alt={selectedCoin.symbol} 
+                        className="w-8 h-8 mr-3 rounded-full"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/32';
+                        }}
+                      />
+                      <div>
+                        <div className="font-medium">{selectedCoin.symbol}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">{selectedCoin.name}</div>
+                      </div>
+                      <div className="ml-auto font-medium">
+                        {formatCryptoPrice(selectedCoin.priceUsd)}
+                      </div>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Price Target
+                      </label>
+                      <input
+                        type="number"
+                        value={priceTarget || ''}
+                        onChange={(e) => setPriceTarget(e.target.value ? parseFloat(e.target.value) : 0)}
+                        min={0.000001}
+                        step={selectedCoin.priceUsd < 1 ? 0.000001 : 0.01}
+                        placeholder="Enter target price"
+                        className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                    </div>
+                    
+                    {priceTarget > 0 && (
+                      <div className="mb-6 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="text-sm font-medium mb-2">Target Analysis</div>
+                        
+                        {priceTarget !== selectedCoin.priceUsd && (
+                          <div className="text-sm">
+                            You're setting a price target that's 
+                            <span className={`font-bold ${
+                              priceTarget > selectedCoin.priceUsd 
+                                ? 'text-green-600 dark:text-green-400' 
+                                : 'text-red-600 dark:text-red-400'
+                            }`}>
+                              {' '}
+                              {priceTarget > selectedCoin.priceUsd ? 'above' : 'below'}{' '}
+                            </span>
+                            the current price by{' '}
+                            <span className="font-bold">
+                              {formatPercentage(Math.abs(((priceTarget - selectedCoin.priceUsd) / selectedCoin.priceUsd) * 100))}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between">
+                      <button 
+                        onClick={resetForm}
+                        className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                      >
+                        Back
+                      </button>
+                      
+                      <button 
+                        onClick={handleAddCoin}
+                        disabled={priceTarget <= 0 || isAdding}
+                        className={`px-4 py-2 bg-teal-600 text-white rounded-lg ${
+                          priceTarget <= 0 || isAdding 
+                            ? 'opacity-50 cursor-not-allowed' 
+                            : 'hover:bg-teal-700'
+                        }`}
+                      >
+                        {isAdding ? 'Adding...' : 'Add to Watchlist'}
+                      </button>
+                    </div>
+                  </>
                 )}
-                
-                <div className="flex justify-between">
-                  <button 
-                    onClick={resetForm}
-                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
-                  >
-                    Back
-                  </button>
-                  
-                  <button 
-                    onClick={handleAddCoin}
-                    disabled={priceTarget <= 0 || isAdding}
-                    className={`px-4 py-2 bg-teal-600 text-white rounded-lg ${
-                      priceTarget <= 0 || isAdding 
-                        ? 'opacity-50 cursor-not-allowed' 
-                        : 'hover:bg-teal-700'
-                    }`}
-                  >
-                    {isAdding ? 'Adding...' : 'Add to Watchlist'}
-                  </button>
-                </div>
               </>
             )}
           </div>

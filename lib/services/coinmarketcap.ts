@@ -81,69 +81,85 @@ const persistCacheToStorage = () => {
   }
 };
 
+// Add initialization tracking
+let isServiceInitialized = false;
+
 /**
  * Initialize the service by prefetching top coins and global data
  * Call this at app startup
  */
 export async function initCoinDataService(): Promise<void> {
-  // Only run this on the client side
-  if (typeof window === 'undefined') {
-    console.log('Skipping coin data service initialization - running on server');
-    return;
-  }
-
-  // If already initialized or initializing, return existing promise
-  if (isInitialized) {
+  // Prevent multiple initializations
+  if (isServiceInitialized) {
+    console.log('Coin data service already initialized, skipping...');
     return;
   }
   
-  if (isInitializing && initializationPromise) {
-    return initializationPromise;
-  }
-
-  isInitializing = true;
-  initializationPromise = new Promise<void>(async (resolve) => {
-    try {
-      console.log('Initializing coin data service...');
-      
-      // Use cached data if valid before making network requests
-      const needTopCoins = !topCoinsCache || !isCacheValid(topCoinsCache.timestamp, TOP_COINS_CACHE_TTL);
-      const needGlobalData = !globalDataCache || !isCacheValid(globalDataCache.timestamp, GLOBAL_CACHE_TTL);
-      
-      // Only fetch what we need
-      const fetchPromises = [];
-      
-      if (needTopCoins) {
-        fetchPromises.push(prefetchTopCoins().catch(err => {
-          console.error('Error prefetching top coins, continuing anyway:', err);
-          return []; // Return empty array to prevent Promise.all from failing
-        }));
-      }
-      
-      if (needGlobalData) {
-        fetchPromises.push(getGlobalData().catch(err => {
-          console.error('Error fetching global data, continuing anyway:', err);
-          return null; // Return null to prevent Promise.all from failing
-        }));
-      }
-      
-      // Only run Promise.all if we have promises to run
-      if (fetchPromises.length > 0) {
-        await Promise.all(fetchPromises);
-      }
-      
-      isInitialized = true;
-      console.log('Coin data service initialized');
-      resolve();
-    } catch (error) {
-      console.error('Error initializing coin data service:', error);
-      resolve(); // We still resolve to prevent breaking the app
-    } finally {
-      isInitializing = false;
+  console.log('Initializing coin data service...');
+  
+  try {
+    // Only run this on the client side
+    if (typeof window === 'undefined') {
+      console.log('Skipping coin data service initialization - running on server');
+      return;
     }
-  });
-  
-  return initializationPromise;
+
+    // If already initialized or initializing, return existing promise
+    if (isInitialized) {
+      isServiceInitialized = true;
+      return;
+    }
+    
+    if (isInitializing && initializationPromise) {
+      return initializationPromise;
+    }
+
+    isInitializing = true;
+    initializationPromise = new Promise<void>(async (resolve) => {
+      try {
+        // Use cached data if valid before making network requests
+        const needTopCoins = !topCoinsCache || !isCacheValid(topCoinsCache.timestamp, TOP_COINS_CACHE_TTL);
+        const needGlobalData = !globalDataCache || !isCacheValid(globalDataCache.timestamp, GLOBAL_CACHE_TTL);
+        
+        // Only fetch what we need
+        const fetchPromises = [];
+        
+        if (needTopCoins) {
+          fetchPromises.push(prefetchTopCoins().catch(err => {
+            console.error('Error prefetching top coins, continuing anyway:', err);
+            return []; // Return empty array to prevent Promise.all from failing
+          }));
+        }
+        
+        if (needGlobalData) {
+          fetchPromises.push(getGlobalData().catch(err => {
+            console.error('Error fetching global data, continuing anyway:', err);
+            return null; // Return null to prevent Promise.all from failing
+          }));
+        }
+        
+        // Only run Promise.all if we have promises to run
+        if (fetchPromises.length > 0) {
+          await Promise.all(fetchPromises);
+        }
+        
+        isInitialized = true;
+        isServiceInitialized = true;
+        console.log('Coin data service initialized');
+        resolve();
+      } catch (error) {
+        console.error('Error initializing coin data service:', error);
+        resolve(); // We still resolve to prevent breaking the app
+      } finally {
+        isInitializing = false;
+      }
+    });
+    
+    return initializationPromise;
+  } catch (error) {
+    console.error('Failed to initialize coin data service:', error);
+    throw error;
+  }
 }
 
 /**
@@ -557,4 +573,9 @@ export function cleanupCaches(): void {
   });
   
   console.log('Cleaned up expired cache entries');
+}
+
+// Add a function to check if already initialized
+export function isCoinDataServiceInitialized() {
+  return isServiceInitialized;
 } 

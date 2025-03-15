@@ -19,9 +19,13 @@ export default function CoinDataInitializer() {
         const module = await import('@/lib/services/coinmarketcap');
         
         if (module && typeof module.initCoinDataService === 'function') {
-          console.log('Initializing coin data service from app/components/CoinDataInitializer.tsx...');
-          await module.initCoinDataService();
-          console.log('Coin data service initialized from app router');
+          if (!module.isCoinDataServiceInitialized()) {
+            console.log('Initializing coin data service from app/components/CoinDataInitializer.tsx...');
+            await module.initCoinDataService();
+            console.log('Coin data service initialized from app router');
+          } else {
+            console.log('CoinDataInitializer: Coin data service already initialized, skipping');
+          }
           setInitialized(true);
         } else {
           console.warn('Coin data service module loaded but initCoinDataService function not found');
