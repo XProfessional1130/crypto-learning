@@ -12,8 +12,8 @@ interface ThemeLogoProps {
 
 export default function ThemeLogo({ 
   className = "", 
-  width = 200, 
-  height = 50 
+  width = 130, 
+  height = 32 
 }: ThemeLogoProps) {
   const { theme } = useTheme();
   
@@ -28,7 +28,7 @@ export default function ThemeLogo({
         width={width}
         height={height}
         priority // Makes logo load with priority
-        className="w-auto h-auto"
+        className="w-auto h-auto transition-all duration-300 hover:opacity-90"
       />
     </Link>
   );

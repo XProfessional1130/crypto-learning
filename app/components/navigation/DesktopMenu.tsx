@@ -13,13 +13,14 @@ interface DesktopMenuProps {
   pathname: string | null;
   user: User | null;
   loading: boolean;
+  isScrolled?: boolean;
 }
 
 /**
  * DesktopMenu - Handles desktop navigation display
  * Shows navigation links and auth buttons on desktop devices
  */
-export default function DesktopMenu({ navItems, pathname, user, loading }: DesktopMenuProps) {
+export default function DesktopMenu({ navItems, pathname, user, loading, isScrolled = false }: DesktopMenuProps) {
   const { signOut: authSignOut } = useAuth();
   
   // Create a wrapper function with the expected return type
@@ -29,29 +30,22 @@ export default function DesktopMenu({ navItems, pathname, user, loading }: Deskt
   }, [authSignOut]);
   
   return (
-    <div className="hidden items-center md:flex">
-      {/* Desktop navigation links */}
-      <div className="hidden space-x-4 md:flex">
+    <div className="hidden md:flex items-center justify-center">
+      {/* Desktop navigation links - centered */}
+      <div className="hidden md:flex space-x-8">
         {navItems.map((item) => (
           <NavLink 
             key={item.href} 
             href={item.href} 
             active={pathname === item.href}
+            isScrolled={isScrolled}
           >
             {item.name}
           </NavLink>
         ))}
       </div>
       
-      {/* Theme toggle */}
-      <div className="ml-4">
-        <ThemeToggle />
-      </div>
-      
-      {/* Auth buttons */}
-      <div className="ml-4">
-        <AuthButtons user={user} onSignOut={handleSignOut} />
-      </div>
+      {/* Theme toggle and auth buttons are now moved to the right side in NavigationContainer */}
     </div>
   );
 } 

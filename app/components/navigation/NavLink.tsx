@@ -10,6 +10,7 @@ interface NavLinkProps {
   onClick?: () => void;
   className?: string;
   activeClassName?: string;
+  isScrolled?: boolean;
 }
 
 export default function NavLink({ 
@@ -18,7 +19,8 @@ export default function NavLink({
   active, 
   onClick,
   className,
-  activeClassName
+  activeClassName,
+  isScrolled = false
 }: NavLinkProps) {
   // Client-side state
   const [mounted, setMounted] = useState(false);
@@ -28,7 +30,11 @@ export default function NavLink({
     setMounted(true);
   }, []);
 
-  const baseClasses = className || 'relative px-3 py-1.5 text-sm font-medium transition-colors duration-200 rounded-full hover:bg-gray-200/40 dark:hover:bg-white/5';
+  const baseClasses = className || `relative px-3 py-1.5 text-sm font-medium transition-all duration-300 rounded-full ${
+    isScrolled 
+      ? 'hover:bg-gray-200/60 dark:hover:bg-white/10' 
+      : 'hover:bg-gray-200/40 dark:hover:bg-white/5'
+  }`;
   
   const activeClasses = activeClassName || 'text-brand-primary dark:text-brand-light font-medium';
   const inactiveClasses = 'text-gray-700 dark:text-dark-text-primary hover:text-brand-primary dark:hover:text-brand-light';
@@ -68,13 +74,21 @@ export default function NavLink({
         
         {/* Indicator with mobile-specific positioning */}
         <div className={`absolute bottom-[-6px] inset-x-0 flex justify-center mobile-nav-indicator`}>
-          <div className={`w-1 h-1 rounded-full ${indicatorColor}`} aria-hidden="true" />
+          <div className={`h-1 transition-all duration-300 rounded-full ${indicatorColor} ${
+            active ? 'w-1/2' : 'w-1'
+          }`} aria-hidden="true" />
         </div>
       </div>
       
       {/* Always render the background highlight, but conditionally apply visibility */}
       <span 
-        className={`absolute inset-0 rounded-full -z-10 ${active ? 'bg-gray-200/30 dark:bg-white/5' : 'bg-transparent'}`} 
+        className={`absolute inset-0 rounded-full -z-10 transition-all duration-300 ${
+          active 
+            ? isScrolled 
+              ? 'bg-gray-200/50 dark:bg-white/8' 
+              : 'bg-gray-200/30 dark:bg-white/5'
+            : 'bg-transparent'
+        }`} 
         aria-hidden="true" 
       />
     </Link>
