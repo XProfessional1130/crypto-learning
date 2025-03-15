@@ -1,45 +1,116 @@
 'use client';
 
 import { User } from '@supabase/supabase-js';
+import { AnimatePresence, motion } from 'framer-motion';
 import NavLink from './NavLink';
 import AuthButtons from './AuthButtons';
+import ThemeToggle from '../ThemeToggle';
+import { NavItem } from '@/types/components/navigation';
+import { useAuth } from '@/lib/auth-context';
+import { useCallback } from 'react';
+
+// Import the NAV_ITEMS directly since we need to know the type
+import { NAV_ITEMS } from '@/lib/config/navigation';
+
+// Use the type of NAV_ITEMS items
+type NavItemType = typeof NAV_ITEMS[0];
 
 interface MobileMenuProps {
-  navItems: Array<{ name: string; href: string; public: boolean }>;
-  user: User | null;
+  isOpen: boolean;
+  toggle: () => void;
+  navItems: NavItem[];
   pathname: string | null;
-  onSignOut: () => Promise<void>;
-  onItemClick: () => void;
+  user: User | null;
+  loading: boolean;
 }
 
-export default function MobileMenu({
-  navItems,
-  user,
-  pathname,
-  onSignOut,
-  onItemClick,
+/**
+ * MobileMenu - Handles mobile navigation display
+ * Shows/hides mobile navigation drawer with animation
+ */
+export default function MobileMenu({ 
+  isOpen, 
+  toggle, 
+  navItems, 
+  pathname, 
+  user, 
+  loading 
 }: MobileMenuProps) {
+  const { signOut: authSignOut } = useAuth();
+  
+  // Create a wrapper function with the expected return type
+  const handleSignOut = useCallback(async (): Promise<void> => {
+    await authSignOut();
+    // Function explicitly returns void
+  }, [authSignOut]);
+  
+  // Hamburger icon button
+  const renderHamburger = () => (
+    <button
+      className="text-light-text-primary dark:text-dark-text-primary md:hidden"
+      onClick={toggle}
+      aria-label="Toggle mobile menu"
+    >
+      <svg
+        className="h-6 w-6"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        {isOpen ? (
+          <path d="M6 18L18 6M6 6l12 12" />
+        ) : (
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        )}
+      </svg>
+    </button>
+  );
+
   return (
-    <div className="sm:hidden animate-fade-in">
-      <div className="space-y-1 pb-4 pt-3 px-2">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.name}
-            href={item.href}
-            active={pathname === item.href}
-            onClick={onItemClick}
-            className="block px-3 py-2.5 text-base font-medium rounded-lg transition-all duration-200 hover:bg-white/10 dark:hover:bg-dark-bg-accent/20 hover:text-brand-primary dark:hover:text-brand-light"
-            activeClassName="bg-white/10 dark:bg-dark-bg-accent/20 text-brand-primary dark:text-brand-light font-semibold"
-          >
-            {item.name}
-          </NavLink>
-        ))}
-      </div>
-      <div className="border-t border-white/10 dark:border-white/5 pb-4 pt-4">
-        <div className="px-5">
-          <AuthButtons user={user} onSignOut={onSignOut} mobile />
+    <>
+      {/* Mobile hamburger button */}
+      <div className="flex items-center md:hidden">
+        <div className="mr-2">
+          <ThemeToggle />
         </div>
+        {renderHamburger()}
       </div>
-    </div>
+
+      {/* Mobile menu drawer */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute left-0 right-0 top-16 bg-light-bg-card dark:bg-dark-bg-card md:hidden"
+          >
+            <div className="flex flex-col space-y-4 p-4">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  active={pathname === item.href}
+                  onClick={toggle}
+                >
+                  {item.name}
+                </NavLink>
+              ))}
+              <div className="mt-4 border-t border-light-border dark:border-dark-border pt-4">
+                <AuthButtons 
+                  user={user} 
+                  onSignOut={handleSignOut} 
+                  mobile={true}
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 } 

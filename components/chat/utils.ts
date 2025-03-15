@@ -1,169 +1,73 @@
-/**
- * Format message content for display
- * Handles typing state and formatting special characters
- */
-export const formatMessageContent = (content: string, isBeingTyped = false) => {
-  // Handle undefined or null content
-  if (!content) return '';
-  
-  // Trim the content to remove whitespace
-  const trimmedContent = content.trim();
-  
-  // If this message is currently being typed, remove any ellipsis
-  if (isBeingTyped) {
-    // Remove all types of ellipsis from anywhere in the text
-    return trimmedContent.replace(/\.{3,}|…/g, '');
-  }
-  
-  // Process markdown formatting
-  let formattedContent = trimmedContent;
-  
-  // Handle code blocks first (```code```)
-  formattedContent = formattedContent.replace(
-    /```([\s\S]*?)```/g,
-    '<pre class="bg-gray-100 dark:bg-gray-800 p-3 rounded-md my-3 overflow-x-auto"><code>$1</code></pre>'
-  );
-  
-  // Handle horizontal rules (---, ***, ___)
-  formattedContent = formattedContent.replace(
-    /^(\*{3,}|-{3,}|_{3,})$/gm,
-    '<hr class="my-4 border-t border-gray-300 dark:border-gray-700">'
-  );
-  
-  // Replace headings with appropriate HTML tags
-  // H1: # Heading
-  formattedContent = formattedContent.replace(/^# (.*?)$/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>');
-  // H2: ## Heading
-  formattedContent = formattedContent.replace(/^## (.*?)$/gm, '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>');
-  // H3: ### Heading
-  formattedContent = formattedContent.replace(/^### (.*?)$/gm, '<h3 class="text-lg font-bold mt-3 mb-2">$1</h3>');
-  // H4: #### Heading
-  formattedContent = formattedContent.replace(/^#### (.*?)$/gm, '<h4 class="text-base font-bold mt-3 mb-1">$1</h4>');
-  // H5: ##### Heading
-  formattedContent = formattedContent.replace(/^##### (.*?)$/gm, '<h5 class="text-sm font-bold mt-2 mb-1">$1</h5>');
-  // H6: ###### Heading
-  formattedContent = formattedContent.replace(/^###### (.*?)$/gm, '<h6 class="text-xs font-bold mt-2 mb-1">$1</h6>');
-  
-  // Process lists - must be done before other inline formatting
+import { AIPersonality } from '@/types/ai';
 
-  // Handle multi-line unordered lists
-  // Find all consecutive lines starting with - or * and wrap them in <ul><li>...</li></ul>
-  formattedContent = formattedContent.replace(
-    /(^[*-] .*?$(\n^[*-] .*?$)*)/gm,
-    (match) => {
-      // Replace each line with <li>...</li>
-      const listItems = match.split('\n').map(line => 
-        `<li>${line.replace(/^[*-] /, '')}</li>`
-      ).join('');
-      return `<ul class="list-disc ml-5 my-2">${listItems}</ul>`;
-    }
-  );
+interface SamplePrompt {
+  text: string;
+  personality: 'tobo' | 'heido';
+}
 
-  // Handle multi-line ordered lists
-  // Find all consecutive lines starting with 1. 2. etc and wrap them in <ol><li>...</li></ol>
-  formattedContent = formattedContent.replace(
-    /(^[0-9]+\. .*?$(\n^[0-9]+\. .*?$)*)/gm,
-    (match) => {
-      // Replace each line with <li>...</li>
-      const listItems = match.split('\n').map(line => 
-        `<li>${line.replace(/^[0-9]+\. /, '')}</li>`
-      ).join('');
-      return `<ol class="list-decimal ml-5 my-2">${listItems}</ol>`;
-    }
-  );
-  
-  // Handle paragraph breaks
-  formattedContent = formattedContent.replace(/\n\n/g, '</p><p class="mb-3">');
-  
-  // Replace **text** with <strong>text</strong> for bold formatting
-  // Note: Must process bold before italic to avoid format interference
-  formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
-  // Replace _text_ or *text* with <em>text</em> for italic formatting
-  // We use a pattern that won't match inside already processed bold text
-  formattedContent = formattedContent.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
-  formattedContent = formattedContent.replace(/\_(.*?)\_/g, '<em>$1</em>');
-  
-  // Replace `code` with <code>code</code> for inline code
-  formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1 rounded text-sm font-mono">$1</code>');
-  
-  // Replace [text](url) with <a href="url">text</a> for links
-  formattedContent = formattedContent.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-brand-primary underline">$1</a>');
-  
-  // Wrap the content in paragraph tags if not already done
-  if (!formattedContent.includes('<p') && !formattedContent.startsWith('<h') && !formattedContent.startsWith('<ul') && 
-      !formattedContent.startsWith('<ol') && !formattedContent.startsWith('<pre')) {
-    formattedContent = `<p>${formattedContent}</p>`;
-  }
-  
-  // Return the formatted content with HTML tags for markdown
+// Sample prompts for the chat
+export const samplePrompts: SamplePrompt[] = [
+  { text: "What is cryptocurrency?", personality: 'tobo' },
+  { text: "How does Bitcoin work?", personality: 'tobo' },
+  { text: "What is a blockchain?", personality: 'tobo' },
+  { text: "Explain Ethereum to me.", personality: 'tobo' },
+  { text: "What is DeFi?", personality: 'tobo' },
+  { text: "How do I buy Bitcoin?", personality: 'tobo' },
+  { text: "What is a crypto wallet?", personality: 'tobo' },
+  { text: "Explain NFTs to me.", personality: 'tobo' },
+  { text: "What is a smart contract?", personality: 'tobo' },
+  { text: "What are the risks of crypto investing?", personality: 'tobo' },
+  { text: "What's the difference between coins and tokens?", personality: 'heido' },
+  { text: "How do I stay safe in crypto?", personality: 'heido' },
+  { text: "Explain mining to me.", personality: 'heido' },
+  { text: "What is staking?", personality: 'heido' },
+  { text: "How do decentralized exchanges work?", personality: 'heido' },
+  { text: "What are layer 2 solutions?", personality: 'heido' },
+  { text: "Explain proof of stake vs proof of work.", personality: 'heido' },
+  { text: "What is a crypto market cycle?", personality: 'heido' },
+  { text: "How do I do my own research (DYOR)?", personality: 'heido' },
+  { text: "What is a seed phrase?", personality: 'heido' }
+];
+
+// Filter prompts by personality
+export const getPromptsByPersonality = (personality: AIPersonality): string[] => {
+  return samplePrompts
+    .filter(prompt => prompt.personality === personality || prompt.personality === 'tobo')
+    .map(prompt => prompt.text);
+};
+
+// Format message content for display
+export const formatMessageContent = (content: string): string => {
+  // Handle code blocks with proper syntax highlighting
+  const formattedContent = content
+    .replace(/```(\w+)?\n([\s\S]*?)```/g, (match, language, code) => {
+      return `<pre class="code-block ${language || ''}"><code>${escapeHtml(code.trim())}</code></pre>`;
+    })
+    // Format single backtick code snippets
+    .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
+    // Format links
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
+    // Format bullet points
+    .replace(/^\s*[-*+]\s+(.*)$/gm, '<li>$1</li>')
+    // Format numbered lists
+    .replace(/^\s*(\d+)\.\s+(.*)$/gm, '<li value="$1">$2</li>')
+    // Handle paragraphs
+    .split('\n\n').map(paragraph => {
+      if (paragraph.trim().startsWith('<li>') && paragraph.trim().endsWith('</li>')) {
+        return `<ul>${paragraph}</ul>`;
+      }
+      return `<p>${paragraph}</p>`;
+    }).join('');
+
   return formattedContent;
 };
 
-// Sample prompts for new users
-export const samplePrompts = [
-  {
-    text: "Explain blockchain technology in simple terms",
-    personality: "tobo" as const
-  },
-  {
-    text: "What's the difference between Bitcoin and Ethereum?",
-    personality: "tobo" as const
-  },
-  {
-    text: "How do smart contracts work?",
-    personality: "heido" as const
-  },
-  {
-    text: "What are NFTs and why are they valuable?",
-    personality: "tobo" as const
-  },
-  {
-    text: "Explain what DeFi (Decentralized Finance) is and its main applications",
-    personality: "heido" as const
-  },
-  {
-    text: "What are the environmental concerns with Bitcoin mining?",
-    personality: "tobo" as const
-  },
-  {
-    text: "How do cryptocurrency wallets work?",
-    personality: "tobo" as const
-  },
-  {
-    text: "What is the difference between a hot wallet and a cold wallet?",
-    personality: "heido" as const
-  },
-  {
-    text: "Explain how proof of stake works compared to proof of work",
-    personality: "heido" as const
-  },
-  {
-    text: "What are Layer 2 solutions and why are they important?",
-    personality: "tobo" as const
-  },
-  {
-    text: "What is the Metaverse and how is it related to crypto?",
-    personality: "tobo" as const
-  },
-  {
-    text: "How do stablecoins maintain their value?",
-    personality: "heido" as const
-  },
-  {
-    text: "What are the risks of investing in cryptocurrencies?",
-    personality: "tobo" as const
-  },
-  {
-    text: "Explain what 'gas fees' are in Ethereum",
-    personality: "heido" as const
-  },
-  {
-    text: "What is a DAO (Decentralized Autonomous Organization)?",
-    personality: "heido" as const
-  },
-  {
-    text: "How do blockchain bridges work?",
-    personality: "tobo" as const
-  }
-]; 
+// Helper to escape HTML for code blocks
+const escapeHtml = (unsafe: string): string => {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}; 
