@@ -73,7 +73,7 @@ const MarketLeadersCard = memo(({
               </div>
             </div>
             <div className="text-right">
-              <p className="font-medium">${formatCryptoPrice(btcPrice || 0)}</p>
+              <p className="font-medium">{formatCryptoPrice(btcPrice || 0)}</p>
               <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs px-2 py-0.5 rounded-full inline-block">
                 {btcDom.toFixed(1)}% Dominance
               </div>
@@ -90,7 +90,7 @@ const MarketLeadersCard = memo(({
               </div>
             </div>
             <div className="text-right">
-              <p className="font-medium">${formatCryptoPrice(ethPrice || 0)}</p>
+              <p className="font-medium">{formatCryptoPrice(ethPrice || 0)}</p>
               <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full inline-block">
                 {ethDom.toFixed(1)}% Dominance
               </div>

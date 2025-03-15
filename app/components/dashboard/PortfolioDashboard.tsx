@@ -343,7 +343,6 @@ function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolea
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const mountedRef = useRef(true); // Track if component is mounted
   const hasInitializedRef = useRef(false); // Track initial data load
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Calculate loading and error states
   const [hasShownContent, setHasShownContent] = useState(false);
@@ -378,41 +377,34 @@ function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolea
   useEffect(() => {
     mountedRef.current = true;
 
-    // Handle initial data loading
+    // Handle initial data loading (only once per component lifecycle)
     if (!hasInitializedRef.current) {
       hasInitializedRef.current = true;
       
-      // Set initial load complete immediately to avoid loading state issues
+      // Set initial load complete state to improve perceived performance
       setInitialLoadComplete(true);
       
-      // Only fetch data if we don't have it yet (but don't cause a refresh loop)
+      // Check what data we need to refresh, but don't refresh unnecessarily
       const needsDataRefresh = !btcPrice || !ethPrice;
       const needsPortfolioRefresh = !portfolio || !portfolio.items || portfolio.items.length === 0;
       const needsWatchlistRefresh = !watchlist || watchlist.length === 0;
       
+      // Only refresh data if we actually need to
       if (needsDataRefresh || needsPortfolioRefresh || needsWatchlistRefresh) {
-        // Small delay to prevent race conditions
-        refreshTimeoutRef.current = setTimeout(() => {
-          if (!mountedRef.current) return;
-          
-          // Use Promise.all to batch all requests - include watchlist refresh
-          Promise.all([
-            needsDataRefresh ? refreshData().catch(err => console.error("Data refresh error:", err)) : Promise.resolve(),
-            needsPortfolioRefresh ? refreshPortfolio(false).catch(err => console.error("Portfolio refresh error:", err)) : Promise.resolve(),
-            needsWatchlistRefresh ? refreshWatchlist(false).catch(err => console.error("Watchlist refresh error:", err)) : Promise.resolve()
-          ]);
-        }, 100);
+        // Use Promise.all to batch all requests together for efficiency
+        Promise.all([
+          needsDataRefresh ? refreshData().catch(err => console.error("Data refresh error:", err)) : Promise.resolve(),
+          needsPortfolioRefresh ? refreshPortfolio(false).catch(err => console.error("Portfolio refresh error:", err)) : Promise.resolve(),
+          needsWatchlistRefresh ? refreshWatchlist(false).catch(err => console.error("Watchlist refresh error:", err)) : Promise.resolve()
+        ]);
       }
     }
     
     // Cleanup on unmount
     return () => {
       mountedRef.current = false;
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
     };
-  }, [btcPrice, ethPrice, portfolio, refreshData, refreshPortfolio, refreshWatchlist]);
+  }, [btcPrice, ethPrice, portfolio, watchlist, refreshData, refreshPortfolio, refreshWatchlist]);
   
   // Throttled refresh function to prevent excessive calls
   const throttledRefresh = useCallback(async () => {

@@ -10,26 +10,14 @@ const MemoizedPortfolioDashboard = memo(PortfolioDashboard);
  * Dashboard page - shows the user's portfolio and watchlist
  */
 export default function DashboardPage() {
-  const [hasTimedOut, setHasTimedOut] = useState(false);
-
-  // Add a fail-safe timeout to ensure we eventually show content even if data fetching fails
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setHasTimedOut(true);
-    }, 7000); // 7 seconds should be plenty of time for data to load
-
-    return () => clearTimeout(timeoutId);
-  }, []);
+  // Removed the hasTimedOut state and timeout as it causes an unnecessary re-render
+  // This was causing the page to refresh around 5-7 seconds after loading
 
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
-      {hasTimedOut ? (
-        <MemoizedPortfolioDashboard forceShow={true} />
-      ) : (
-        <Suspense fallback={<DashboardSkeleton />}>
-          <MemoizedPortfolioDashboard />
-        </Suspense>
-      )}
+      <Suspense fallback={<DashboardSkeleton />}>
+        <MemoizedPortfolioDashboard />
+      </Suspense>
     </main>
   );
 }

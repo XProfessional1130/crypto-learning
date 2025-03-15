@@ -132,7 +132,7 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
-  // Add failsafe timer to ensure we always exit loading state faster (reduced from 5000ms to 2000ms)
+  // Add a fail-safe timeout to ensure we always exit loading state faster (reduced from 5000ms to 2000ms)
   useEffect(() => {
     if (isLoading) {
       const timeoutId = setTimeout(() => {
@@ -236,7 +236,7 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
     const refreshTimeout = setTimeout(() => {
       if (isRefreshing) return; // Don't start a refresh if one is already in progress
       refreshDataIfNeeded();
-    }, 2000); // Increased from 100ms to 2000ms to prevent double load
+    }, 5000); // Increased from 2000ms to 5000ms to reduce the chances of causing a visible reload
     
     // Set up auto-refresh interval with a much longer delay
     const intervalId = setInterval(() => {
