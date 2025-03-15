@@ -10,6 +10,7 @@ import { useDataCache } from '@/lib/context/data-cache-context';
  * This component should be included only once, in the root layout.
  * 
  * UPDATED: Now primarily uses DataCache which gets data from Supabase
+ * OPTIMIZED: Faster initialization, prioritized data loading
  */
 export default function DataPrefetcher() {
   const { refreshData } = useDataCache();
@@ -28,12 +29,15 @@ export default function DataPrefetcher() {
   }, []);
     
   useEffect(() => {
-    // Only run this once and prevent concurrent attempts
+    // Important: Only run initialization once
     if (hasInitializedRef.current || isInitializingRef.current) {
+      if (verbose) {
+        console.log('DataPrefetcher: Already initialized or initializing, skipping');
+      }
       return;
     }
     
-    // Mark as initializing to prevent concurrent initialization attempts
+    // Mark as initializing immediately to prevent concurrent attempts
     isInitializingRef.current = true;
     
     // Check for existing initialization by other components
@@ -43,98 +47,61 @@ export default function DataPrefetcher() {
       }
       hasInitializedRef.current = true;
       isInitializingRef.current = false;
-      
-      // Still attempt to refresh data from Supabase via DataCache (only in dev mode)
-      if (process.env.NODE_ENV === 'development') {
-        refreshTimeoutRef.current = setTimeout(async () => {
-          try {
-            await refreshData();
-            if (verbose) {
-              console.log('DataPrefetcher: Data successfully refreshed from Supabase via DataCache');
-            }
-          } catch (err) {
-            console.error('Error refreshing data:', err);
-          }
-        }, 2000); // Increased timeout to further stagger initialization
-      }
-      
       return;
     }
     
-    // Initialize by using the DataCache for data refreshing (which uses Supabase)
-    const initializeData = async () => {
-      try {
-        // Set global initialization flag
-        if (typeof window !== 'undefined') {
-          window.__DATA_SERVICE_INITIALIZING__ = true;
-        }
-        
-        // Primary approach: Just use DataCache which uses Supabase
-        if (verbose) {
-          console.log('DataPrefetcher: Using DataCache (via Supabase) as primary data source');
-        }
-        
-        try {
-          // First try to refresh data using DataCache (Supabase)
-          await refreshData();
-          if (verbose) {
-            console.log('DataPrefetcher: Successfully loaded data from Supabase via DataCache');
-          }
-          
-          // Set global initialized flag
-          if (typeof window !== 'undefined') {
-            window.__DATA_SERVICE_INITIALIZED__ = true;
-            window.__DATA_SERVICE_INITIALIZING__ = false;
-          }
-          
-          // Set initialization flag to prevent multiple calls
-          hasInitializedRef.current = true;
-          isInitializingRef.current = false;
-        } catch (dataError) {
-          console.error('Error refreshing data via DataCache:', dataError);
-          
-          // Fallback: Initialize coin data service if DataCache fails
-          if (!isCoinDataServiceInitialized()) {
-            if (verbose) {
-              console.log('DataPrefetcher: DataCache failed, initializing legacy coin data service...');
-            }
-            await initCoinDataService();
-            if (verbose) {
-              console.log('DataPrefetcher: Legacy data service initialized');
-            }
-            
-            // Set global initialized flag
-            if (typeof window !== 'undefined') {
-              window.__DATA_SERVICE_INITIALIZED__ = true;
-              window.__DATA_SERVICE_INITIALIZING__ = false;
-            }
-          }
-          
-          // Set initialization flag to prevent multiple calls
-          hasInitializedRef.current = true;
-          isInitializingRef.current = false;
-        }
-      } catch (error) {
-        console.error('Error initializing data services:', error);
-        
-        // Reset flag on error
-        if (typeof window !== 'undefined') {
-          window.__DATA_SERVICE_INITIALIZING__ = false;
-        }
-        isInitializingRef.current = false;
-      }
-    };
-
-    // Initialize on component mount with a delay to prevent race conditions
+    // Set initialization flag now to prevent other components from trying
     if (typeof window !== 'undefined') {
-      refreshTimeoutRef.current = setTimeout(initializeData, 800);
+      window.__DATA_SERVICE_INITIALIZING__ = true;
     }
     
-    return () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
+    // Initialize data with a longer delay to avoid race conditions
+    refreshTimeoutRef.current = setTimeout(async () => {
+      try {
+        if (verbose) {
+          console.log('DataPrefetcher: Initializing data services...');
+        }
+        
+        await refreshData();
+        
+        if (verbose) {
+          console.log('DataPrefetcher: Successfully initialized data services');
+        }
+        
+        // Mark as successfully initialized
+        if (typeof window !== 'undefined') {
+          window.__DATA_SERVICE_INITIALIZED__ = true;
+          window.__DATA_SERVICE_INITIALIZING__ = false;
+        }
+        
+        hasInitializedRef.current = true;
+      } catch (error) {
+        console.error('Error in DataPrefetcher initialization:', error);
+        
+        // Try fallback initialization
+        try {
+          if (!isCoinDataServiceInitialized()) {
+            await initCoinDataService();
+            if (verbose) {
+              console.log('DataPrefetcher: Used fallback initialization');
+            }
+          }
+        } catch (fallbackError) {
+          console.error('Fallback initialization also failed:', fallbackError);
+        }
+        
+        // Still mark as initialized to prevent further attempts
+        if (typeof window !== 'undefined') {
+          window.__DATA_SERVICE_INITIALIZED__ = true;
+          window.__DATA_SERVICE_INITIALIZING__ = false;
+        }
+        
+        hasInitializedRef.current = true;
+      } finally {
+        isInitializingRef.current = false;
       }
-    };
+    }, 500); // Longer delay to avoid race conditions
+    
   }, [refreshData, verbose]);
 
   // This component doesn't render anything

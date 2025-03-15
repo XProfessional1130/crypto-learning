@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, memo } from 'react';
+import { Suspense, memo, useState, useEffect } from 'react';
 import PortfolioDashboard from '@/app/components/dashboard/PortfolioDashboard';
 
 // Memoize the PortfolioDashboard component to prevent unnecessary re-renders
@@ -10,11 +10,26 @@ const MemoizedPortfolioDashboard = memo(PortfolioDashboard);
  * Dashboard page - shows the user's portfolio and watchlist
  */
 export default function DashboardPage() {
+  const [hasTimedOut, setHasTimedOut] = useState(false);
+
+  // Add a fail-safe timeout to ensure we eventually show content even if data fetching fails
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setHasTimedOut(true);
+    }, 7000); // 7 seconds should be plenty of time for data to load
+
+    return () => clearTimeout(timeoutId);
+  }, []);
+
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
-      <Suspense fallback={<DashboardSkeleton />}>
-        <MemoizedPortfolioDashboard />
-      </Suspense>
+      {hasTimedOut ? (
+        <MemoizedPortfolioDashboard forceShow={true} />
+      ) : (
+        <Suspense fallback={<DashboardSkeleton />}>
+          <MemoizedPortfolioDashboard />
+        </Suspense>
+      )}
     </main>
   );
 }

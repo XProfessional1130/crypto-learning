@@ -218,6 +218,9 @@ export default function LCDashboard() {
   const { user, authLoading, showContent } = useAuthRedirect();
   const router = useRouter();
   
+  // Add a fail-safe timeout to ensure we eventually exit the loading state
+  const [hasTimedOut, setHasTimedOut] = useState(false);
+  
   // Use our shared data cache for market data
   const { 
     btcPrice, 
@@ -242,35 +245,74 @@ export default function LCDashboard() {
     refreshWatchlist
   } = useTeamData();
   
-  // Calculate loading states
-  const isLoading = marketDataLoading || portfolioLoading || watchlistLoading;
-  const error = portfolioError || watchlistError;
+  // Create consistent animation classes based on loading state - initialize to true to avoid flicker
+  const [initialLoadComplete, setInitialLoadComplete] = useState(true);
   
-  // Create consistent animation classes based on loading state
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const contentAnimationClass = initialLoadComplete ? "animate-fadeIn" : "opacity-0 transition-opacity-transform";
-  const cardAnimationClass = initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform";
-  const listItemAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
+  // Track if content has been shown - once shown, never go back to loading
+  const [hasShownContent, setHasShownContent] = useState(false);
   
-  // After first data load is complete, trigger main content visibility
+  // Effect to track if content has been shown
   useEffect(() => {
-    if (!isLoading && !error) {
-      // Short delay to ensure data is processed before showing animations
-      const timer = setTimeout(() => {
-        setInitialLoadComplete(true);
-      }, 100);
-      
-      return () => clearTimeout(timer);
+    if (!marketDataLoading && !portfolioLoading && !watchlistLoading && 
+        (portfolio || btcPrice || ethPrice || watchlist)) {
+      setHasShownContent(true);
     }
-  }, [isLoading, error]);
+  }, [marketDataLoading, portfolioLoading, watchlistLoading, 
+      portfolio, btcPrice, ethPrice, watchlist]);
   
-  // Manual refresh function with visual feedback
+  // Ensure we exit loading state after a reasonable timeout
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setHasTimedOut(true);
+      setInitialLoadComplete(true);
+      setHasShownContent(true);
+    }, 5000); // Reduced to 5 seconds
+    
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  // Force immediate data prefetch on first render to avoid white flash in widgets
+  useEffect(() => {
+    // This runs only once and immediately prefetches all data
+    const fetchAllData = async () => {
+      try {
+        if (!btcPrice || !ethPrice || !globalData) {
+          console.log('Prefetching market data');
+          refreshData().catch(err => console.error('Error prefetching market data:', err));
+        }
+        
+        if (!portfolio) {
+          console.log('Prefetching portfolio data');
+          refreshPortfolio().catch(err => console.error('Error prefetching portfolio data:', err));
+        }
+        
+        if (!watchlist) {
+          console.log('Prefetching watchlist data');
+          refreshWatchlist().catch(err => console.error('Error prefetching watchlist data:', err));
+        }
+      } catch (error) {
+        console.error('Error during prefetch:', error);
+      }
+    };
+    
+    fetchAllData();
+  }, []); // Empty dependency array means this runs once on mount
+  
+  // Simplify loading state logic - never go back to loading once content shown
+  const isLoading = hasTimedOut || hasShownContent ? false : 
+                   (marketDataLoading || portfolioLoading || watchlistLoading);
+  
+  // Manual refresh function with visual feedback - simplified to prevent additional re-renders
   const handleManualRefresh = useCallback(() => {
-    Promise.all([
+    const refreshPromises = [
       refreshPortfolio(),
       refreshWatchlist(),
       refreshData()
-    ]).catch(console.error);
+    ];
+    
+    Promise.all(refreshPromises).catch(error => {
+      console.error("Error during manual refresh:", error);
+    });
   }, [refreshPortfolio, refreshWatchlist, refreshData]);
 
   // Show loading state while auth is being checked
@@ -311,49 +353,48 @@ export default function LCDashboard() {
       
       {/* Market Analysis Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className={cardAnimationClass} style={{ transitionDelay: '100ms', animationDelay: '100ms' }}>
+        <div className={initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform"} style={{ transitionDelay: '100ms', animationDelay: '100ms' }}>
           <FearGreedCard loading={isLoading} />
         </div>
-        <div className={cardAnimationClass} style={{ transitionDelay: '150ms', animationDelay: '150ms' }}>
-          <OnChainActivityCard loading={isLoading} />
+        
+        {/* Make sure all cards use dark theme appropriate skeletons */}
+        <div className={initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform"} style={{ transitionDelay: '150ms', animationDelay: '150ms' }}>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-card-hover">
+            <h3 className="text-sm text-gray-500 dark:text-gray-400 mb-4">Market Cap</h3>
+            {isLoading ? (
+              <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-2xl font-bold">${globalData?.totalMarketCap ? (globalData.totalMarketCap / 1e12).toFixed(2) : '0'}T</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Global cryptocurrency market cap</p>
+              </div>
+            )}
+          </div>
         </div>
-        <div className={cardAnimationClass} style={{ transitionDelay: '200ms', animationDelay: '200ms' }}>
-          <WhaleTrackingCard loading={isLoading} />
+        <div className={initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform"} style={{ transitionDelay: '200ms', animationDelay: '200ms' }}>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-card-hover">
+            <h3 className="text-sm text-gray-500 dark:text-gray-400 mb-4">BTC Dominance</h3>
+            {isLoading ? (
+              <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-2xl font-bold">{globalData?.btcDominance?.toFixed(1) || '0'}%</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Percentage of market cap</p>
+              </div>
+            )}
+          </div>
         </div>
-        <div className={cardAnimationClass} style={{ transitionDelay: '250ms', animationDelay: '250ms' }}>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover transform hover:-translate-y-1">
-            <div className="flex items-center mb-3">
-              <TrendingUp className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">Market Overview</p>
-            </div>
-            
-            {/* Simple Market Overview without fancy components */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Market Cap:</span>
-                <span className="font-semibold">
-                  ${globalData?.totalMarketCap ? (globalData.totalMarketCap / 1e12).toFixed(2) : '---'}T
-                </span>
+        <div className={initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform"} style={{ transitionDelay: '250ms', animationDelay: '250ms' }}>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-card-hover">
+            <h3 className="text-sm text-gray-500 dark:text-gray-400 mb-4">24h Volume</h3>
+            {isLoading ? (
+              <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-2xl font-bold">${globalData?.totalVolume24h ? (globalData.totalVolume24h / 1e9).toFixed(2) : '0'}B</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total trading volume in 24h</p>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500 dark:text-gray-400">24h Volume:</span>
-                <span className="font-semibold">
-                  ${globalData?.totalVolume24h ? (globalData.totalVolume24h / 1e9).toFixed(2) : '---'}B
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500 dark:text-gray-400">BTC:</span>
-                <span className="font-semibold">
-                  {btcPrice ? `$${btcPrice.toLocaleString(undefined, {maximumFractionDigits: 0})}` : '---'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500 dark:text-gray-400">ETH:</span>
-                <span className="font-semibold">
-                  {ethPrice ? `$${ethPrice.toLocaleString(undefined, {maximumFractionDigits: 0})}` : '---'}
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -361,7 +402,7 @@ export default function LCDashboard() {
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Team Portfolio Section - Takes up 2/3 of the space */}
-        <div className={`lg:col-span-2 ${contentAnimationClass}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
+        <div className={`lg:col-span-2 ${initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform"}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)' }}>
             {/* Render without Suspense to prevent duplicate initialization */}
             {portfolioLoading ? (
@@ -381,7 +422,7 @@ export default function LCDashboard() {
         </div>
         
         {/* Team Watchlist Section - Takes up 1/3 of the space */}
-        <div className={`lg:col-span-1 ${contentAnimationClass}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
+        <div className={`lg:col-span-1 ${initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform"}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)' }}>
             <h2 className="text-xl font-bold mb-4">Altcoin Watchlist</h2>
             {/* Render without Suspense to prevent duplicate initialization */}

@@ -11,6 +11,7 @@ import { PortfolioItemWithPrice } from '@/types/portfolio';
 import WatchlistComponent from './WatchlistComponent';
 import { formatCryptoPrice, formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
 import { useDataCache } from '@/lib/context/data-cache-context';
+import MarketLeadersCard from './MarketLeadersCard';
 
 // Memoized Stats Card component
 const StatsCard = memo(({ title, value, icon = null, dominance = null, loading = false, valueClassName = '', changeInfo = null, showChangeIcon = false }: {
@@ -250,73 +251,6 @@ const PortfolioStatsCard = memo(({ portfolioValue, dailyChange, loading = false,
 });
 PortfolioStatsCard.displayName = 'PortfolioStatsCard';
 
-// Memoized Market Leaders Card component
-const MarketLeadersCard = memo(({ btcPrice, ethPrice, btcDominance, ethDominance, loading = false }: {
-  btcPrice: number | null;
-  ethPrice: number | null;
-  btcDominance: number;
-  ethDominance: number;
-  loading?: boolean;
-}) => {
-  // Use default values of 0 for any null values
-  const btcDom = typeof btcDominance === 'number' ? btcDominance : 0;
-  const ethDom = typeof ethDominance === 'number' ? ethDominance : 0;
-  
-  // Add additional check to ensure we're not showing empty data
-  const hasValidData = btcPrice && btcPrice > 0 && ethPrice && ethPrice > 0;
-  const isLoading = loading || !hasValidData;
-  
-  return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover">
-      <h3 className="text-sm text-gray-500 dark:text-gray-400 mb-4">Market Leaders</h3>
-      
-      {isLoading ? (
-        <div className="space-y-4">
-          <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {/* Bitcoin row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1.png" alt="Bitcoin" className="w-8 h-8 mr-3" />
-              <div>
-                <p className="font-medium">Bitcoin</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">BTC</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="font-medium">${formatCryptoPrice(btcPrice || 0)}</p>
-              <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs px-2 py-0.5 rounded-full inline-block">
-                {btcDom.toFixed(1)}% Dominance
-              </div>
-            </div>
-          </div>
-          
-          {/* Ethereum row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png" alt="Ethereum" className="w-8 h-8 mr-3" />
-              <div>
-                <p className="font-medium">Ethereum</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">ETH</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="font-medium">${formatCryptoPrice(ethPrice || 0)}</p>
-              <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full inline-block">
-                {ethDom.toFixed(1)}% Dominance
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-});
-MarketLeadersCard.displayName = 'MarketLeadersCard';
-
 // Memoized Portfolio Item component
 const PortfolioItem = memo(({ item, onItemClick, totalPortfolioValue }: {
   item: PortfolioItemWithPrice;
@@ -375,7 +309,7 @@ const PortfolioItem = memo(({ item, onItemClick, totalPortfolioValue }: {
 PortfolioItem.displayName = 'PortfolioItem';
 
 // Create a memoized component for the PortfolioDashboard
-function PortfolioDashboardComponent() {
+function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolean }) {
   const { 
     portfolio, 
     loading: portfolioLoading, 
@@ -411,9 +345,17 @@ function PortfolioDashboardComponent() {
   const hasInitializedRef = useRef(false); // Track initial data load
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Calculate loading and error states - IMPROVED to prevent stuck loading
-  const loading = (portfolioLoading || loadingPrices) && !initialLoadComplete;
+  // Calculate loading and error states
+  const [hasShownContent, setHasShownContent] = useState(false);
+  const loading = forceShow ? false : (hasShownContent ? false : (portfolioLoading || loadingPrices));
   const error = portfolioError || watchlistError;
+  
+  // Effect to track if content has been shown - once shown, never go back to loading state
+  useEffect(() => {
+    if (!portfolioLoading && !loadingPrices && (portfolio || btcPrice || ethPrice)) {
+      setHasShownContent(true);
+    }
+  }, [portfolioLoading, loadingPrices, portfolio, btcPrice, ethPrice]);
   
   // Create a sorted version of the portfolio items
   const sortedPortfolioItems = useMemo(() => {
@@ -432,50 +374,35 @@ function PortfolioDashboardComponent() {
   const cardAnimationClass = initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform";
   const listItemAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
   
-  // Single comprehensive useEffect for component initialization and cleanup
+  // Simplified useEffect for component initialization and cleanup
   useEffect(() => {
-    // Component mount initialization
     mountedRef.current = true;
 
-    // If we haven't initialized yet
+    // Handle initial data loading
     if (!hasInitializedRef.current) {
       hasInitializedRef.current = true;
       
-      // Check if we already have data and set initial load complete if we do
-      if ((btcPrice && ethPrice) || portfolio) {
-        setInitialLoadComplete(true);
-      }
+      // Set initial load complete immediately to avoid loading state issues
+      setInitialLoadComplete(true);
       
-      // Critical fix: don't refresh portfolio data if it's already loaded 
-      // This prevents data loss when navigating back to the dashboard
-      if (portfolio && Object.keys(portfolio).length > 0 && portfolio.items && portfolio.items.length > 0) {
-        // We already have portfolio data, just set initial load complete
-        setInitialLoadComplete(true);
-        
-        // Only refresh prices if needed
-        if (!btcPrice || !ethPrice) {
-          refreshData().catch(err => console.error("Data refresh error:", err));
-        }
-      } else {
-        // Initial data refresh with debounce to prevent duplicate calls
+      // Only fetch data if we don't have it yet (but don't cause a refresh loop)
+      const needsDataRefresh = !btcPrice || !ethPrice;
+      const needsPortfolioRefresh = !portfolio || !portfolio.items || portfolio.items.length === 0;
+      const needsWatchlistRefresh = !watchlist || watchlist.length === 0;
+      
+      if (needsDataRefresh || needsPortfolioRefresh || needsWatchlistRefresh) {
+        // Small delay to prevent race conditions
         refreshTimeoutRef.current = setTimeout(() => {
-          if (mountedRef.current) {
-            // Load crypto prices first
-            refreshData().catch(err => console.error("Data refresh error:", err));
-            
-            // Then load portfolio data (which needs prices)
-            refreshPortfolio(false).catch(err => console.error("Portfolio refresh error:", err));
-          }
-        }, 200);
+          if (!mountedRef.current) return;
+          
+          // Use Promise.all to batch all requests - include watchlist refresh
+          Promise.all([
+            needsDataRefresh ? refreshData().catch(err => console.error("Data refresh error:", err)) : Promise.resolve(),
+            needsPortfolioRefresh ? refreshPortfolio(false).catch(err => console.error("Portfolio refresh error:", err)) : Promise.resolve(),
+            needsWatchlistRefresh ? refreshWatchlist(false).catch(err => console.error("Watchlist refresh error:", err)) : Promise.resolve()
+          ]);
+        }, 100);
       }
-      
-      // Set initial load complete after reasonable timeout
-      // This prevents indefinite loading states
-      setTimeout(() => {
-        if (mountedRef.current && !initialLoadComplete) {
-          setInitialLoadComplete(true);
-        }
-      }, 3000);
     }
     
     // Cleanup on unmount
@@ -485,7 +412,7 @@ function PortfolioDashboardComponent() {
         clearTimeout(refreshTimeoutRef.current);
       }
     };
-  }, [btcPrice, ethPrice, portfolio, refreshData, refreshPortfolio, initialLoadComplete]);
+  }, [btcPrice, ethPrice, portfolio, refreshData, refreshPortfolio, refreshWatchlist]);
   
   // Throttled refresh function to prevent excessive calls
   const throttledRefresh = useCallback(async () => {
@@ -535,74 +462,6 @@ function PortfolioDashboardComponent() {
   const handleManualRefresh = useCallback(() => {
     throttledRefresh();
   }, [throttledRefresh]);
-  
-  // If we're still showing the loading skeleton but we have data,
-  // force a recovery to the normal view
-  if (loading && (portfolio || (btcPrice && ethPrice)) && !initialLoadComplete) {
-    // Force render complete view instead of skeleton
-    return (
-      <div className="container mx-auto pt-2 pb-6 px-4 max-w-7xl" key={Date.now()}>
-        {/* Emergency fallback content */}
-        <div className="mb-6 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Your Dashboard</h1>
-            <p className="text-gray-600 dark:text-gray-300">
-              Welcome back, {user?.email?.split('@')[0] || 'partnerships'}!
-            </p>
-          </div>
-          <button 
-            onClick={handleManualRefresh}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500"
-            aria-label="Refresh dashboard"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2"
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              className="w-5 h-5 text-gray-500 dark:text-gray-400"
-            >
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-            </svg>
-          </button>
-        </div>
-        
-        {/* Render actual content with forced initialization */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <PortfolioStatsCard 
-            portfolioValue={portfolio?.totalValueUsd || 0}
-            dailyChange={portfolio?.dailyChangePercentage || 0}
-            loading={false}
-            portfolioItems={sortedPortfolioItems}
-          />
-          
-          <MarketLeadersCard 
-            btcPrice={btcPrice}
-            ethPrice={ethPrice}
-            btcDominance={typeof globalData?.btcDominance === 'number' ? globalData.btcDominance : 0}
-            ethDominance={typeof globalData?.ethDominance === 'number' ? globalData.ethDominance : 0}
-            loading={false}
-          />
-        </div>
-        
-        {/* Emergency refresh button to recover UI */}
-        <div className="text-center mb-4">
-          <button 
-            onClick={() => {
-              setInitialLoadComplete(true);
-              handleManualRefresh();
-            }}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Click to refresh dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
   
   if (loading) {
     return (
@@ -720,7 +579,7 @@ function PortfolioDashboardComponent() {
             ethPrice={ethPrice}
             btcDominance={typeof globalData?.btcDominance === 'number' ? globalData.btcDominance : 0}
             ethDominance={typeof globalData?.ethDominance === 'number' ? globalData.ethDominance : 0}
-            loading={loadingPrices || !btcPrice || !ethPrice}
+            loading={loading}
           />
         </div>
       </div>

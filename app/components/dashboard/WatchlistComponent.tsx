@@ -111,18 +111,23 @@ WatchlistItemCard.displayName = 'WatchlistItemCard';
 // Create a memoized WatchlistItemSkeleton component for better loading UX
 const WatchlistItemSkeleton = memo(() => {
   return (
-    <div className="animate-pulse flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
-      <div className="flex items-center gap-3">
-        <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-        <div className="space-y-2">
-          <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-200 dark:border-gray-700 w-full animate-pulse">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700"></div>
+          <div>
+            <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
+            <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          </div>
+        </div>
+        <div className="flex items-end gap-3">
+          <div className="text-right">
+            <div className="h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
+            <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          </div>
         </div>
       </div>
-      <div className="space-y-2">
-        <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
-        <div className="h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
-      </div>
+      <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full mt-2"></div>
     </div>
   );
 });
@@ -209,11 +214,11 @@ const WatchlistComponent = ({ onRefresh, initialLoadComplete = false }: Watchlis
     />
   ) : null;
 
-  // Load coin data for watchlist items
+  // Load coin data for watchlist items - Modified to load immediately
   useEffect(() => {
-    // Skip if we're already done loading or if there's no watchlist
-    if (!watchlistLoading && initialLoadComplete && watchlist?.length > 0) {
-      console.log("DEBUG: Loading watchlist coin data, items:", watchlist.length);
+    // Load watchlist data immediately on mount, regardless of initialLoadComplete
+    if (!watchlistLoading && watchlist?.length > 0) {
+      console.log("Loading watchlist coin data, items:", watchlist.length);
       
       // Extract coin IDs from watchlist
       const coinIds = watchlist.map(item => item.coinId.toString());
@@ -222,7 +227,7 @@ const WatchlistComponent = ({ onRefresh, initialLoadComplete = false }: Watchlis
       setIsDataLoading(true);
       getMultipleCoinsData(coinIds)
         .then(data => {
-          console.log(`DEBUG: Got data for ${Object.keys(data).length}/${coinIds.length} watchlist coins`);
+          console.log(`Got data for ${Object.keys(data).length}/${coinIds.length} watchlist coins`);
           setCoinDataMap(data);
         })
         .catch(error => {
@@ -231,16 +236,16 @@ const WatchlistComponent = ({ onRefresh, initialLoadComplete = false }: Watchlis
         .finally(() => {
           setIsDataLoading(false);
         });
-    } else if (initialLoadComplete && !watchlist?.length) {
-      console.log("DEBUG: No watchlist items to load");
+    } else if (!watchlistLoading && !watchlist?.length) {
+      console.log("No watchlist items to load");
       // No watchlist items, so no loading needed
       setIsDataLoading(false);
     }
-  }, [watchlist, watchlistLoading, getMultipleCoinsData, initialLoadComplete]);
+  }, [watchlist, watchlistLoading, getMultipleCoinsData]);
 
   if (watchlistLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 flex flex-col" style={{ height: 'calc(100vh - 24rem)' }}>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 flex flex-col border border-gray-100 dark:border-gray-700" style={{ height: 'calc(100vh - 24rem)' }}>
         <div className="flex justify-between items-center mb-6">
           <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
           <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
@@ -248,24 +253,7 @@ const WatchlistComponent = ({ onRefresh, initialLoadComplete = false }: Watchlis
         
         <div className="space-y-4 w-full">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-200 dark:border-gray-700 w-full animate-pulse">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700"></div>
-                  <div>
-                    <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
-                    <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                  </div>
-                </div>
-                <div className="flex items-end gap-3">
-                  <div className="text-right">
-                    <div className="h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
-                    <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                  </div>
-                </div>
-              </div>
-              <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full mt-2"></div>
-            </div>
+            <WatchlistItemSkeleton key={i} />
           ))}
         </div>
       </div>

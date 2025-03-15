@@ -67,12 +67,12 @@ module.exports = {
         'fade-in': 'fade-in 0.3s ease-out',
         'slide-in': 'slide-in 0.3s ease-out',
         'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'fadeIn': 'fadeIn 0.5s ease-in-out',
-        'scaleIn': 'scaleIn 0.3s ease-out',
+        'fadeIn': 'fadeIn 0.3s ease-in-out',
+        'scaleIn': 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         'float': 'float 3s ease-in-out infinite',
         'shimmer': 'shimmer 2s infinite linear',
         'refresh-spin': 'refresh-spin 0.5s ease-out',
-        'slide-up': 'slide-up 0.3s ease-out',
+        'slide-up': 'slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         'subtle-bounce': 'subtle-bounce 0.3s ease-in-out'
       },
       keyframes: {
@@ -86,10 +86,12 @@ module.exports = {
         },
         'fadeIn': {
           '0%': { opacity: '0' },
+          '30%': { opacity: '0.3' },
           '100%': { opacity: '1' }
         },
         'scaleIn': {
-          '0%': { transform: 'scale(0.95)', opacity: '0' },
+          '0%': { transform: 'scale(0.97)', opacity: '0' },
+          '20%': { opacity: '0.4' },
           '100%': { transform: 'scale(1)', opacity: '1' }
         },
         'float': {
@@ -106,6 +108,7 @@ module.exports = {
         },
         'slide-up': {
           '0%': { transform: 'translateY(8px)', opacity: '0' },
+          '30%': { opacity: '0.4' },
           '100%': { transform: 'translateY(0)', opacity: '1' }
         },
         'subtle-bounce': {
@@ -150,8 +153,8 @@ module.exports = {
       const newUtilities = {
         '.transition-opacity-transform': {
           'transition-property': 'opacity, transform',
-          'transition-timing-function': 'cubic-bezier(0.4, 0, 0.2, 1)',
-          'transition-duration': '400ms',
+          'transition-timing-function': 'cubic-bezier(0.16, 1, 0.3, 1)',
+          'transition-duration': '300ms',
         },
       }
       addUtilities(newUtilities)

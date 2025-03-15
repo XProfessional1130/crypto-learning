@@ -268,33 +268,57 @@ export function TeamDataProvider({ children }: { children: ReactNode }) {
     let cacheCleanupIntervalId: NodeJS.Timeout | null = null;
     
     const setup = async () => {
-      // Initialize service first
-      await initializeServiceRef.current();
-      
-      if (!isActive) return;
-      
-      // Fetch initial data in parallel
-      await Promise.all([
-        fetchPortfolio(true),
-        fetchWatchlist(true)
-      ]);
-      
-      if (!isActive) return;
-      
-      // Set up refresh interval
-      refreshIntervalId = setInterval(() => {
-        console.log('Auto-refreshing team data...');
-        fetchPortfolio();
-        fetchWatchlist();
-      }, AUTO_REFRESH_INTERVAL);
-      
-      // Set up cache cleanup interval
-      cacheCleanupIntervalId = setInterval(() => {
-        console.log('Cleaning up coin data caches...');
-        cleanupCaches();
-      }, CACHE_CLEANUP_INTERVAL);
+      try {
+        // Initialize service first
+        await initializeServiceRef.current();
+        
+        if (!isActive) return;
+        
+        // Set loading states first
+        setPortfolioLoading(true);
+        setWatchlistLoading(true);
+        
+        // Fetch initial data in parallel
+        const results = await Promise.allSettled([
+          fetchPortfolio(true),
+          fetchWatchlist(true)
+        ]);
+        
+        if (!isActive) return;
+        
+        // Handle results
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            console.error(`Failed to fetch ${index === 0 ? 'portfolio' : 'watchlist'}:`, result.reason);
+          }
+        });
+        
+        // Set loading states to false regardless of success/failure
+        setPortfolioLoading(false);
+        setWatchlistLoading(false);
+        
+        // Set up refresh interval
+        refreshIntervalId = setInterval(() => {
+          console.log('Auto-refreshing team data...');
+          fetchPortfolio().catch(err => console.error('Error refreshing portfolio:', err));
+          fetchWatchlist().catch(err => console.error('Error refreshing watchlist:', err));
+        }, AUTO_REFRESH_INTERVAL);
+        
+        // Set up cache cleanup interval
+        cacheCleanupIntervalId = setInterval(() => {
+          console.log('Cleaning up coin data caches...');
+          cleanupCaches();
+        }, CACHE_CLEANUP_INTERVAL);
+      } catch (error) {
+        console.error('Error in team data setup:', error);
+        
+        // Ensure loading states are set to false even if initialization fails
+        setPortfolioLoading(false);
+        setWatchlistLoading(false);
+      }
     };
     
+    // Start setup
     setup();
     
     return () => {
