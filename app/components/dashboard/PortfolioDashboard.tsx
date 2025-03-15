@@ -6,7 +6,7 @@ import AddCoinModal from './AddCoinModal';
 import AssetDetailModal from './AssetDetailModal';
 import CryptoNews from './CryptoNews';
 import Image from 'next/image';
-import { getBtcPrice, getEthPrice, getGlobalData, GlobalData } from '@/lib/services/coinmarketcap';
+import { getBtcPrice, getEthPrice, getGlobalData, GlobalData, clearGlobalDataCache } from '@/lib/services/coinmarketcap';
 import { PortfolioItemWithPrice } from '@/types/portfolio';
 import WatchlistComponent from './WatchlistComponent';
 import { formatCryptoPrice, formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
@@ -260,6 +260,12 @@ const MarketLeadersCard = memo(({ btcPrice, ethPrice, btcDominance, ethDominance
   ethDominance: number | null;
   loading?: boolean;
 }) => {
+  console.log('MarketLeadersCard received dominance values:', { btcDominance, ethDominance });
+  
+  // Provide default values if dominance is null
+  const btcDom = btcDominance !== null ? btcDominance : 0;
+  const ethDom = ethDominance !== null ? ethDominance : 0;
+  
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover">
       <h3 className="text-sm text-gray-500 dark:text-gray-400 mb-4">Market Leaders</h3>
@@ -284,7 +290,7 @@ const MarketLeadersCard = memo(({ btcPrice, ethPrice, btcDominance, ethDominance
               <p className="font-bold">{formatCryptoPrice(btcPrice || 0)}</p>
               <div className="flex items-center justify-end space-x-1">
                 <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs px-2 py-0.5 rounded-full">
-                  <span>{btcDominance ? btcDominance.toFixed(1) : '---'}% DOM</span>
+                  <span>{btcDom.toFixed(1)}% DOM</span>
                 </div>
               </div>
             </div>
@@ -303,7 +309,7 @@ const MarketLeadersCard = memo(({ btcPrice, ethPrice, btcDominance, ethDominance
               <p className="font-bold">{formatCryptoPrice(ethPrice || 0)}</p>
               <div className="flex items-center justify-end space-x-1">
                 <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full">
-                  <span>{ethDominance ? ethDominance.toFixed(1) : '---'}% DOM</span>
+                  <span>{ethDom.toFixed(1)}% DOM</span>
                 </div>
               </div>
             </div>
@@ -312,7 +318,7 @@ const MarketLeadersCard = memo(({ btcPrice, ethPrice, btcDominance, ethDominance
           {/* Market insight */}
           <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Combined market dominance: {((btcDominance || 0) + (ethDominance || 0)).toFixed(1)}%
+              Combined market dominance: {(btcDom + ethDom).toFixed(1)}%
             </p>
           </div>
         </div>
@@ -478,12 +484,17 @@ function PortfolioDashboardComponent() {
       }
       
       try {
+        // Clear the global data cache to force a fresh fetch
+        clearGlobalDataCache();
+        
         // Fetch prices and global data in parallel
         const [btcPriceData, ethPriceData, globalMarketData] = await Promise.all([
           getBtcPrice(),
           getEthPrice(),
           getGlobalData()
         ]);
+        
+        console.log('Received global market data:', globalMarketData);
         
         setBtcPrice(btcPriceData);
         setEthPrice(ethPriceData);

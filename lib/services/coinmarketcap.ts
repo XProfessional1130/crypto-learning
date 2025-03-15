@@ -522,11 +522,12 @@ export async function getGlobalData(): Promise<GlobalData | null> {
       throw new Error(result.error || 'Failed to fetch global data');
     }
     
+    // Handle both camelCase and snake_case property names in API response
     const globalData: GlobalData = {
-      btcDominance: result.data.btc_dominance || 0,
-      ethDominance: result.data.eth_dominance || 0,
-      totalMarketCap: result.data.total_market_cap || 0,
-      totalVolume24h: result.data.total_volume_24h || 0
+      btcDominance: result.data.btcDominance || result.data.btc_dominance || 0,
+      ethDominance: result.data.ethDominance || result.data.eth_dominance || 0,
+      totalMarketCap: result.data.totalMarketCap || result.data.total_market_cap || 0,
+      totalVolume24h: result.data.totalVolume24h || result.data.total_volume_24h || 0
     };
     
     // Update cache
@@ -578,4 +579,16 @@ export function cleanupCaches(): void {
 // Add a function to check if already initialized
 export function isCoinDataServiceInitialized() {
   return isServiceInitialized;
+}
+
+// Add a function to clear the global data cache
+export function clearGlobalDataCache(): void {
+  globalDataCache = null;
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('lc_global_data');
+    } catch (e) {
+      console.error('Error clearing global data cache:', e);
+    }
+  }
 } 
