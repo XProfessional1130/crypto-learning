@@ -21,7 +21,8 @@ import {
   addToTeamWatchlist,
   updateTeamWatchlistPriceTarget,
   removeFromTeamWatchlist,
-  processWatchlistItems
+  processWatchlistItems,
+  processWatchlistItemsWithCache
 } from '@/lib/services/team-watchlist';
 import { useDataCache } from '@/lib/context/data-cache-context';
 import supabase from '@/lib/services/supabase-client';
@@ -72,29 +73,31 @@ const TeamDataContext = createContext<TeamDataContextType | null>(null);
 
 // Provider component
 export function TeamDataProvider({ children }: { children: ReactNode }) {
-  // Portfolio state
-  const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
-  const [portfolioLoading, setPortfolioLoading] = useState(true);
-  const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  // Refs for deduplication
+  const portfolioPromiseRef = useRef<Promise<PortfolioSummary | null> | null>(null);
+  const watchlistPromiseRef = useRef<Promise<{ items: WatchlistItem[] } | null> | null>(null);
   
-  // Watchlist state
+  // State for portfolio
+  const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
+  const [portfolioLoading, setPortfolioLoading] = useState<boolean>(false);
+  const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  const [portfolioLastRefreshed, setPortfolioLastRefreshed] = useState<Date | null>(null);
+  
+  // State for watchlist
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
-  const [watchlistLoading, setWatchlistLoading] = useState(true);
+  const [watchlistLoading, setWatchlistLoading] = useState<boolean>(false);
   const [watchlistError, setWatchlistError] = useState<string | null>(null);
+  const [watchlistLastRefreshed, setWatchlistLastRefreshed] = useState<Date | null>(null);
   
   // Admin state
   const [isAdmin, setIsAdmin] = useState(false);
-  
-  // Refs for tracking promise state
-  const portfolioPromiseRef = useRef<Promise<PortfolioSummary> | null>(null);
-  const watchlistPromiseRef = useRef<Promise<{ items: WatchlistItem[] }> | null>(null);
   
   // Hooks
   const toast = useToast();
   const { user } = useAuth();
   
   // Use the DataCacheProvider for coin prices
-  const { getMultipleCoinsData } = useDataCache();
+  const { getMultipleCoinsData, setCoinData } = useDataCache();
   
   // Use refs to make functions stable across renders
   const initializeServiceRef = useRef(async () => {
@@ -129,66 +132,37 @@ export function TeamDataProvider({ children }: { children: ReactNode }) {
     // Create new request
     try {
       setPortfolioLoading(true);
-      
-      // Store the promise for deduplication
-      const fetchPortfolioPromise = async () => {
-        console.log('Starting Supabase query for team_portfolio');
-        
-        try {
-          // Fetch raw portfolio items from Supabase
-          const { data: portfolioItems, error } = await supabase
-            .from('team_portfolio')
-            .select('*')
-            .order('coin_name', { ascending: true });
-          
-          if (error) {
-            console.error('Supabase query error:', error);
-            throw new Error(`Failed to fetch portfolio items: ${error.message}`);
-          }
-
-          console.log(`Supabase query successful: got ${portfolioItems?.length || 0} items`);
-          
-          // Process the portfolio items using the DataCacheProvider
-          return processTeamPortfolioWithCache(portfolioItems || [], getMultipleCoinsData);
-        } catch (err) {
-          console.error('Error in fetch portfolio promise:', err);
-          throw err;
-        }
-      };
-      
-      portfolioPromiseRef.current = fetchPortfolioPromise();
-      
-      // Wait for data
-      console.log('Fetching team portfolio...');
-      const data = await portfolioPromiseRef.current;
-      console.log(`Team portfolio fetched successfully with ${data.items.length} items`);
-      
-      // Update state
-      setPortfolio(data);
-      setPortfolioLoading(false);
       setPortfolioError(null);
       
-      return data;
-    } catch (err) {
-      console.error('Error fetching team portfolio:', err);
-      setPortfolioError('Failed to load team portfolio');
-      setPortfolioLoading(false);
+      // Fetch raw portfolio data from Supabase
+      const { data: portfolioItems, error } = await supabase
+        .from('team_portfolio')
+        .select('*');
+        
+      if (error) {
+        console.error('Error fetching team portfolio:', error);
+        setPortfolioError('Failed to load portfolio data');
+        return null;
+      }
       
-      // Display error
-      toast({
-        title: 'Error',
-        description: 'Failed to load team portfolio',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      // Use the cache-aware processor with our data cache
+      const processed = await processTeamPortfolioWithCache(portfolioItems || [], getMultipleCoinsData);
       
+      // Set the portfolio data
+      setPortfolio(processed);
+      
+      // Set last refreshed timestamp
+      setPortfolioLastRefreshed(new Date());
+      
+      return processed;
+    } catch (error) {
+      console.error('Error fetching team portfolio:', error);
+      setPortfolioError('Failed to load portfolio data');
       return null;
     } finally {
-      // Clear promise reference
-      portfolioPromiseRef.current = null;
+      setPortfolioLoading(false);
     }
-  }, [toast, getMultipleCoinsData]);
+  }, [getMultipleCoinsData]);
   
   // Fetch watchlist data with request deduplication
   const fetchWatchlist = useCallback(async (forceFetch = false): Promise<{ items: WatchlistItem[] } | null> => {
@@ -199,67 +173,37 @@ export function TeamDataProvider({ children }: { children: ReactNode }) {
     
     try {
       setWatchlistLoading(true);
-      
-      // Store the promise for deduplication
-      const fetchWatchlistPromise = async () => {
-        console.log('Starting Supabase query for team_watchlist');
-        
-        try {
-          // Direct Supabase query instead of using getTeamWatchlist
-          const { data: watchlistItems, error } = await supabase
-            .from('team_watchlist')
-            .select('*')
-            .order('name', { ascending: true });
-          
-          if (error) {
-            console.error('Supabase watchlist query error:', error);
-            throw new Error(`Failed to fetch watchlist items: ${error.message}`);
-          }
-          
-          console.log(`Supabase watchlist query successful: got ${watchlistItems?.length || 0} items`);
-          
-          // Process the items with the existing function
-          const processedData = await processWatchlistItems(watchlistItems || []);
-          return processedData;
-        } catch (err) {
-          console.error('Error in fetch watchlist promise:', err);
-          throw err;
-        }
-      };
-      
-      watchlistPromiseRef.current = fetchWatchlistPromise();
-      
-      // Wait for data
-      console.log('Fetching team watchlist...');
-      const data = await watchlistPromiseRef.current;
-      console.log(`Team watchlist fetched successfully with ${data.items.length} items`);
-      
-      // Update state
-      setWatchlist(data.items);
-      setWatchlistLoading(false);
       setWatchlistError(null);
       
-      return data;
-    } catch (err) {
-      console.error('Error fetching team watchlist:', err);
-      setWatchlistError('Failed to load team watchlist');
-      setWatchlistLoading(false);
+      // Fetch raw watchlist data from Supabase
+      const { data: watchlistItems, error } = await supabase
+        .from('team_watchlist')
+        .select('*');
+        
+      if (error) {
+        console.error('Error fetching team watchlist:', error);
+        setWatchlistError('Failed to load watchlist data');
+        return null;
+      }
       
-      // Display error
-      toast({
-        title: 'Error',
-        description: 'Failed to load team watchlist',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      // Use the cache-aware processor with our data cache
+      const processed = await processWatchlistItemsWithCache(watchlistItems || [], getMultipleCoinsData);
       
+      // Set the watchlist data
+      setWatchlist(processed.items);
+      
+      // Set last refreshed timestamp
+      setWatchlistLastRefreshed(new Date());
+      
+      return processed;
+    } catch (error) {
+      console.error('Error fetching team watchlist:', error);
+      setWatchlistError('Failed to load watchlist data');
       return null;
     } finally {
-      // Clear promise reference
-      watchlistPromiseRef.current = null;
+      setWatchlistLoading(false);
     }
-  }, [toast]);
+  }, [getMultipleCoinsData]);
   
   // Initialize service and data when component mounts
   useEffect(() => {

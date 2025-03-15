@@ -4,12 +4,12 @@ import { useState, useEffect, useMemo, Suspense, useCallback } from 'react';
 import { useTeamData } from '@/lib/context/team-data-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GlobalData } from '@/lib/services/coinmarketcap';
 import dynamic from 'next/dynamic';
 import { ReactNode } from 'react';
 import { TrendingUp, TrendingDown, Activity, DollarSign, AlertCircle } from 'lucide-react';
 import { useAuthRedirect } from '@/lib/hooks/useAuthRedirect';
 import { useDataCache } from '@/lib/context/data-cache-context';
+import type { GlobalData } from '@/lib/services/coinmarketcap';
 import DashboardLayout from '@/app/components/dashboard/DashboardLayout';
 import { 
   DataCard,

@@ -205,4 +205,43 @@ export async function processWatchlistItems(watchlistItems: any[]): Promise<{ it
   });
   
   return { items };
+}
+
+/**
+ * Process watchlist items and add price data using DataCache
+ * This function should be used in conjunction with the DataCacheProvider
+ */
+export async function processWatchlistItemsWithCache(
+  watchlistItems: any[],
+  getCoinsDataFn: (coinIds: string[]) => Promise<Record<string, CoinData>>
+): Promise<{ items: WatchlistItem[] }> {
+  if (!watchlistItems || watchlistItems.length === 0) {
+    console.log('No watchlist items found in the team watchlist.');
+    // Return empty watchlist if no items exist yet
+    return { items: [] };
+  }
+  
+  // Get all coin prices using the provided function (from DataCacheProvider)
+  const coinIds = watchlistItems.map(item => String(item.coin_id));
+  const coinsData = await getCoinsDataFn(coinIds);
+  
+  const items: WatchlistItem[] = watchlistItems.map((item: any) => {
+    // Ensure we're looking up with a string ID
+    const coinStringId = String(item.coin_id);
+    const coinData = coinsData[coinStringId];
+    
+    return {
+      id: item.id,
+      coinId: item.coin_id,
+      symbol: item.symbol,
+      name: item.name,
+      price: coinData?.priceUsd || 0,
+      change24h: coinData?.priceChange24h || 0,
+      icon: item.symbol,
+      priceTarget: item.price_target || undefined,
+      createdAt: item.created_at
+    };
+  });
+  
+  return { items };
 } 
