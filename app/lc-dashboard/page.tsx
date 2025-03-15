@@ -24,23 +24,23 @@ const TeamWatchlist = dynamic(() => import('../components/lc-dashboard/TeamWatch
 // Loading skeletons for better UX during component loading
 const PortfolioLoadingSkeleton = () => (
   <div className="animate-pulse space-y-4">
-    <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
       {[...Array(3)].map((_, i) => (
-        <div key={i} className="bg-gray-100 p-6 rounded-lg">
-          <div className="h-6 bg-gray-200 rounded w-1/2 mb-3"></div>
-          <div className="h-10 bg-gray-200 rounded w-3/4"></div>
+        <div key={i} className="bg-gray-100 dark:bg-gray-800 p-6 rounded-lg">
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div>
+          <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
         </div>
       ))}
     </div>
     <div className="mt-6">
-      <div className="h-10 bg-gray-200 rounded w-full mb-4"></div>
+      <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="flex justify-between items-center p-3 border-b border-gray-100">
-          <div className="h-6 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-6 bg-gray-200 rounded w-1/5"></div>
-          <div className="h-6 bg-gray-200 rounded w-1/6"></div>
+        <div key={i} className="flex justify-between items-center p-3 border-b border-gray-100 dark:border-gray-700">
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/5"></div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
         </div>
       ))}
     </div>
@@ -49,16 +49,16 @@ const PortfolioLoadingSkeleton = () => (
 
 const WatchlistLoadingSkeleton = () => (
   <div className="animate-pulse space-y-4">
-    <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
     <div className="mt-6">
-      <div className="h-10 bg-gray-200 rounded w-full mb-4"></div>
+      <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
       {[...Array(5)].map((_, i) => (
-        <div key={i} className="flex justify-between items-center p-3 border-b border-gray-100">
-          <div className="h-6 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-6 bg-gray-200 rounded w-1/5"></div>
-          <div className="h-6 bg-gray-200 rounded w-1/6"></div>
-          <div className="h-6 bg-gray-200 rounded w-1/6"></div>
+        <div key={i} className="flex justify-between items-center p-3 border-b border-gray-100 dark:border-gray-700">
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/5"></div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
         </div>
       ))}
     </div>
@@ -80,7 +80,7 @@ const FearGreedCard = ({ loading = false }) => {
   const colorClass = sentimentColors[sentiment];
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover transform hover:-translate-y-1">
       <div className="flex items-center mb-3">
         <AlertCircle className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
         <p className="text-sm text-gray-500 dark:text-gray-400">Fear & Greed Index</p>
@@ -95,80 +95,73 @@ const FearGreedCard = ({ loading = false }) => {
         <>
           <div className="flex justify-between items-center mb-2">
             <span className="text-3xl font-bold">{fearGreedValue}</span>
-            <span className={`text-sm font-semibold px-2 py-1 rounded-full ${
-              sentiment === "Greed" || sentiment === "Extreme Greed" 
-                ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400" 
-                : sentiment === "Neutral" 
-                  ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400"
-                  : "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
-            }`}>
-              {sentiment}
-            </span>
+            {/* Conditional rendering of spans */}
+            {sentiment === "Greed" || sentiment === "Extreme Greed" ? (
+              <span className="text-sm font-semibold px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                {sentiment}
+              </span>
+            ) : sentiment === "Neutral" ? (
+              <span className="text-sm font-semibold px-2 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400">
+                {sentiment}
+              </span>
+            ) : (
+              <span className="text-sm font-semibold px-2 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                {sentiment}
+              </span>
+            )}
           </div>
-          <div className="relative h-3 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+          
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2">
             <div 
-              className={`absolute left-0 top-0 h-full ${colorClass}`} 
+              className={`h-2.5 rounded-full ${colorClass}`} 
               style={{ width: `${fearGreedValue}%` }}
             ></div>
           </div>
-          <p className="mt-3 text-xs text-gray-600 dark:text-gray-300">
-            Market sentiment indicates caution as investors show signs of greed. Consider reviewing portfolio allocations.
-          </p>
+          
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+            <span>Extreme Fear</span>
+            <span>Extreme Greed</span>
+          </div>
         </>
       )}
     </div>
   );
 };
 
-// On-Chain Activity Card Component
+// On-chain Activity Card Component
 const OnChainActivityCard = ({ loading = false }) => {
   // Placeholder data - would come from API
-  const onChainMetrics = [
-    { name: "BTC Active Addresses", value: "+12%", trend: "up" },
-    { name: "ETH Gas Price", value: "-8%", trend: "down" },
-    { name: "Exchange BTC Reserves", value: "-2.3%", trend: "up" }
-  ];
+  const activeAddresses = "1.2M";
+  const changePercentage = 5.3;
+  const isPositiveChange = changePercentage > 0;
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover transform hover:-translate-y-1">
       <div className="flex items-center mb-3">
         <Activity className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
-        <p className="text-sm text-gray-500 dark:text-gray-400">On-Chain Activity</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">On-chain Activity</p>
       </div>
       
       {loading ? (
-        <div className="animate-pulse space-y-3">
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-3"></div>
           <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
         </div>
       ) : (
-        <div className="space-y-3">
-          {onChainMetrics.map((metric, index) => (
-            <div key={index} className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-300">{metric.name}</span>
-              <span className={`text-sm font-medium ${
-                metric.trend === "up" 
-                  ? "text-green-500" 
-                  : "text-red-500"
-              }`}>
-                {metric.trend === "up" ? 
-                  <span className="flex items-center">
-                    {metric.value} 
-                    <TrendingUp className="w-3 h-3 ml-1" />
-                  </span> : 
-                  <span className="flex items-center">
-                    {metric.value}
-                    <TrendingDown className="w-3 h-3 ml-1" />
-                  </span>
-                }
-              </span>
-            </div>
-          ))}
-          <p className="mt-2 text-xs text-gray-600 dark:text-gray-300 pt-2 border-t border-gray-100 dark:border-gray-700">
-            Decreasing exchange reserves suggest accumulation phase is ongoing.
-          </p>
-        </div>
+        <>
+          <div className="flex justify-between items-center">
+            <span className="text-3xl font-bold">{activeAddresses}</span>
+            <span className={`flex items-center text-sm font-semibold px-2 py-1 rounded-full ${
+              isPositiveChange 
+                ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400" 
+                : "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+            }`}>
+              {isPositiveChange ? <TrendingUp className="h-3.5 w-3.5 mr-1" /> : <TrendingDown className="h-3.5 w-3.5 mr-1" />}
+              {Math.abs(changePercentage)}%
+            </span>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Active addresses in the last 24h</p>
+        </>
       )}
     </div>
   );
@@ -177,54 +170,43 @@ const OnChainActivityCard = ({ loading = false }) => {
 // Whale Tracking Card Component
 const WhaleTrackingCard = ({ loading = false }) => {
   // Placeholder data - would come from API
-  const whaleTransactions = [
-    { wallet: "0x7a2...3f1b", action: "Buy", asset: "BTC", amount: "235 BTC", valueUsd: "$9.7M" },
-    { wallet: "0x3b4...9c7e", action: "Sell", asset: "ETH", amount: "1,250 ETH", valueUsd: "$2.8M" }
-  ];
+  const largeTransactions = "3,251";
+  const changePercentage = -2.7;
+  const isPositiveChange = changePercentage > 0;
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover transform hover:-translate-y-1">
       <div className="flex items-center mb-3">
         <DollarSign className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
-        <p className="text-sm text-gray-500 dark:text-gray-400">Whale Tracking</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Whale Transactions</p>
       </div>
       
       {loading ? (
-        <div className="animate-pulse space-y-3">
-          <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
-          <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-3"></div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
         </div>
       ) : (
-        <div className="space-y-3">
-          {whaleTransactions.map((tx, index) => (
-            <div key={index} className="flex items-center justify-between text-sm border-b border-gray-100 dark:border-gray-700 pb-2">
-              <div className="flex items-center">
-                <div className={`w-2 h-2 rounded-full mr-2 ${
-                  tx.action === "Buy" ? "bg-green-500" : "bg-red-500"
-                }`}></div>
-                <span className="text-gray-600 dark:text-gray-300 mr-2">{tx.wallet}</span>
-                <span className={`font-medium ${
-                  tx.action === "Buy" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                }`}>
-                  {tx.action}
-                </span>
-              </div>
-              <div className="text-right">
-                <div className="font-medium text-gray-800 dark:text-gray-200">{tx.amount}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{tx.valueUsd}</div>
-              </div>
-            </div>
-          ))}
-          <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">
-            Significant BTC accumulation by whales suggests confidence in medium-term outlook.
-          </p>
-        </div>
+        <>
+          <div className="flex justify-between items-center">
+            <span className="text-3xl font-bold">{largeTransactions}</span>
+            <span className={`flex items-center text-sm font-semibold px-2 py-1 rounded-full ${
+              isPositiveChange 
+                ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400" 
+                : "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+            }`}>
+              {isPositiveChange ? <TrendingUp className="h-3.5 w-3.5 mr-1" /> : <TrendingDown className="h-3.5 w-3.5 mr-1" />}
+              {Math.abs(changePercentage)}%
+            </span>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Large transactions (>$100K) in the past 24h</p>
+        </>
       )}
     </div>
   );
 };
 
-// Market Overview Card Component
+// Market Overview Component
 const MarketOverviewCard = ({ 
   loading = false, 
   btcPrice, 
@@ -236,22 +218,19 @@ const MarketOverviewCard = ({
   ethPrice: number | null;
   globalData: GlobalData | null;
 }) => {
-  // Some derived metrics - in real app would come from API
-  const btcDominance = globalData?.btcDominance || 52.4;
-  const totalMarketCap = globalData?.totalMarketCap || "1.89T";
-  const vol24h = globalData?.totalVolume24h || "98.7B";
-  
+  // Format crypto prices with appropriate number of decimals
   const formatCryptoPrice = (price: number): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(price || 0);
+    if (price >= 1000) {
+      return `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    } else if (price >= 1) {
+      return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } else {
+      return `$${price.toLocaleString(undefined, { minimumSignificantDigits: 2, maximumSignificantDigits: 4 })}`;
+    }
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover transform hover:-translate-y-1">
       <div className="flex items-center mb-3">
         <TrendingUp className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
         <p className="text-sm text-gray-500 dark:text-gray-400">Market Overview</p>
@@ -259,43 +238,40 @@ const MarketOverviewCard = ({
       
       {loading ? (
         <div className="animate-pulse space-y-3">
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-28"></div>
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-36"></div>
         </div>
       ) : (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Market Cap</div>
-              <div className="text-sm font-medium">${totalMarketCap}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">24h Volume</div>
-              <div className="text-sm font-medium">${vol24h}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">BTC Price</div>
-              <div className="text-sm font-medium">{formatCryptoPrice(btcPrice || 0)}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">ETH Price</div>
-              <div className="text-sm font-medium">{formatCryptoPrice(ethPrice || 0)}</div>
-            </div>
-          </div>
-          <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+        <>
+          <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-500 dark:text-gray-400">BTC Dominance</span>
-              <span className="text-xs font-medium">{btcDominance.toFixed(1)}%</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Market Cap:</span>
+              <span className="font-semibold">
+                ${globalData?.totalMarketCap ? (globalData.totalMarketCap / 1e12).toFixed(2) : '---'}T
+              </span>
             </div>
-            <div className="mt-1 relative h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-              <div 
-                className="absolute left-0 top-0 h-full bg-orange-500" 
-                style={{ width: `${btcDominance}%` }}
-              ></div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500 dark:text-gray-400">24h Volume:</span>
+              <span className="font-semibold">
+                ${globalData?.totalVolume24h ? (globalData.totalVolume24h / 1e9).toFixed(2) : '---'}B
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500 dark:text-gray-400">BTC:</span>
+              <span className="font-semibold">
+                {btcPrice ? formatCryptoPrice(btcPrice) : '---'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500 dark:text-gray-400">ETH:</span>
+              <span className="font-semibold">
+                {ethPrice ? formatCryptoPrice(ethPrice) : '---'}
+              </span>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
@@ -308,6 +284,9 @@ export default function LCDashboard() {
   const [btcPrice, setBtcPrice] = useState<number | null>(null);
   const [ethPrice, setEthPrice] = useState<number | null>(null);
   const [globalData, setGlobalData] = useState<GlobalData | null>(null);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [showContent, setShowContent] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Use the unified team data context instead of separate hooks
   const { 
@@ -317,8 +296,19 @@ export default function LCDashboard() {
     watchlist,
     watchlistLoading,
     watchlistError,
-    getTargetPercentage
+    getTargetPercentage,
+    refreshPortfolio,
+    refreshWatchlist
   } = useTeamData();
+  
+  // Calculate loading states
+  const loading = isLoading || portfolioLoading || watchlistLoading;
+  const error = portfolioError || watchlistError;
+  
+  // Create consistent animation classes based on loading state
+  const contentAnimationClass = initialLoadComplete ? "animate-fadeIn" : "opacity-0 transition-opacity-transform";
+  const cardAnimationClass = initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform";
+  const listItemAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
   
   // Check authentication once
   useEffect(() => {
@@ -326,6 +316,29 @@ export default function LCDashboard() {
       router.push('/auth/signin');
     }
   }, [user, authLoading, router]);
+  
+  // Add a smooth transition for the main content
+  useEffect(() => {
+    if (!authLoading && user) {
+      const timer = setTimeout(() => {
+        setShowContent(true);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [authLoading, user]);
+
+  // After first data load is complete, trigger main content visibility
+  useEffect(() => {
+    if (!loading && !error) {
+      // Short delay to ensure data is processed before showing animations
+      const timer = setTimeout(() => {
+        setInitialLoadComplete(true);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [loading, error]);
 
   // Fetch price data in a single effect
   useEffect(() => {
@@ -356,42 +369,91 @@ export default function LCDashboard() {
       return () => clearInterval(intervalId);
     }
   }, [user]);
+  
+  // Manual refresh function with visual feedback
+  const handleManualRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    
+    Promise.all([
+      refreshPortfolio(),
+      refreshWatchlist(),
+      getBtcPrice().then(setBtcPrice),
+      getEthPrice().then(setEthPrice),
+      getGlobalData().then(setGlobalData)
+    ]).finally(() => {
+      // Add a minimum duration for the refresh animation
+      setTimeout(() => setIsRefreshing(false), 500);
+    });
+  }, [refreshPortfolio, refreshWatchlist]);
 
   // Show loading state while auth is being checked
   if (authLoading || !user) {
     return (
       <div className="flex min-h-[calc(100vh-16rem)] items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300 animate-pulse">Loading your dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-7xl">
+    <div className={`container mx-auto py-6 px-4 max-w-7xl transition-opacity-transform duration-600 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
       {/* Dashboard Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">LC Team Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-300">Welcome to the Learning Crypto team dashboard!</p>
+      <div className="mb-6 flex justify-between items-center">
+        <div className={contentAnimationClass} style={{ transitionDelay: '0ms' }}>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">LC Team Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-300">Welcome to the Learning Crypto team dashboard!</p>
+        </div>
+        
+        <button 
+          onClick={handleManualRefresh}
+          className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${contentAnimationClass}`}
+          style={{ transitionDelay: '50ms' }}
+          aria-label="Refresh dashboard"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2"
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            className={`w-5 h-5 text-gray-500 dark:text-gray-400 ${isRefreshing ? 'animate-refresh-spin' : ''}`}
+          >
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+          </svg>
+        </button>
       </div>
       
       {/* Market Analysis Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <FearGreedCard loading={isLoading} />
-        <OnChainActivityCard loading={isLoading} />
-        <WhaleTrackingCard loading={isLoading} />
-        <MarketOverviewCard 
-          loading={isLoading} 
-          btcPrice={btcPrice} 
-          ethPrice={ethPrice} 
-          globalData={globalData}
-        />
+        <div className={cardAnimationClass} style={{ transitionDelay: '100ms', animationDelay: '100ms' }}>
+          <FearGreedCard loading={isLoading} />
+        </div>
+        <div className={cardAnimationClass} style={{ transitionDelay: '150ms', animationDelay: '150ms' }}>
+          <OnChainActivityCard loading={isLoading} />
+        </div>
+        <div className={cardAnimationClass} style={{ transitionDelay: '200ms', animationDelay: '200ms' }}>
+          <WhaleTrackingCard loading={isLoading} />
+        </div>
+        <div className={cardAnimationClass} style={{ transitionDelay: '250ms', animationDelay: '250ms' }}>
+          <MarketOverviewCard 
+            loading={isLoading} 
+            btcPrice={btcPrice} 
+            ethPrice={ethPrice} 
+            globalData={globalData}
+          />
+        </div>
       </div>
       
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Team Portfolio Section - Takes up 2/3 of the space */}
-        <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6" style={{ minHeight: 'calc(100vh - 24rem)' }}>
+        <div className={`lg:col-span-2 ${contentAnimationClass}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)' }}>
             {/* Render without Suspense to prevent duplicate initialization */}
             {portfolioLoading ? (
               <PortfolioLoadingSkeleton />
@@ -410,8 +472,8 @@ export default function LCDashboard() {
         </div>
         
         {/* Team Watchlist Section - Takes up 1/3 of the space */}
-        <div className="lg:col-span-1">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6" style={{ minHeight: 'calc(100vh - 24rem)' }}>
+        <div className={`lg:col-span-1 ${contentAnimationClass}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)' }}>
             <h2 className="text-xl font-bold mb-4">Altcoin Watchlist</h2>
             {/* Render without Suspense to prevent duplicate initialization */}
             {watchlistLoading ? (
