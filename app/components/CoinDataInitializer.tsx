@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 
 /**
  * A client component that initializes the coin data service
- * This is separate from the main layout to avoid SSR issues
+ * This is deprecated and only kept for backward compatibility.
+ * New code should use the DataPrefetcher component in app/layout.tsx instead.
  */
 export default function CoinDataInitializer() {
   const [initialized, setInitialized] = useState(false);
@@ -14,6 +15,13 @@ export default function CoinDataInitializer() {
     if (initialized) return;
     
     const initService = async () => {
+      // Check if already being initialized by DataPrefetcher
+      if (typeof window !== 'undefined' && window.__DATA_SERVICE_INITIALIZING__) {
+        console.log('CoinDataInitializer: Initialization already handled by DataPrefetcher, skipping');
+        setInitialized(true);
+        return;
+      }
+      
       try {
         // Dynamic import to safely load the module only on client-side
         const module = await import('@/lib/services/coinmarketcap');
@@ -40,4 +48,11 @@ export default function CoinDataInitializer() {
   
   // This component doesn't render anything
   return null;
+}
+
+// Make sure TypeScript knows about the global property
+declare global {
+  interface Window {
+    __DATA_SERVICE_INITIALIZING__?: boolean;
+  }
 } 

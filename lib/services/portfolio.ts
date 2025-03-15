@@ -1,5 +1,5 @@
 import { PortfolioItem, PortfolioItemWithPrice, PortfolioSummary } from '@/types/portfolio';
-import { getCoinData, getMultipleCoinsData, getBtcPrice } from './coinmarketcap';
+import { fetchMultipleCoinsData } from './coinmarketcap';
 import supabase from './supabase-client';
 
 const PORTFOLIO_LIMIT = 30;
@@ -25,7 +25,7 @@ export async function getUserPortfolio(userId: string): Promise<PortfolioSummary
     
     // Get all coin prices - ensure IDs are strings
     const coinIds = portfolioItems.map(item => String(item.coin_id));
-    const coinsData = await getMultipleCoinsData(coinIds);
+    const coinsData = await fetchMultipleCoinsData(coinIds);
     
     let totalValueUsd = 0;
     let totalValueBtc = 0;

@@ -66,10 +66,12 @@ export default async function handler(
     const apiKey = process.env.CMC_API_KEY;
     
     if (!apiKey) {
+      console.error('CoinMarketCap API key not configured');
       return res.status(500).json({ success: false, error: 'API key not configured' });
     }
     
     // Make request to CoinMarketCap Global Metrics endpoint
+    console.log('Fetching data from CoinMarketCap Global Metrics endpoint...');
     const response = await fetch('https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest', {
       headers: {
         'X-CMC_PRO_API_KEY': apiKey,
@@ -78,23 +80,35 @@ export default async function handler(
     });
     
     if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Could not read error response');
+      console.error(`CoinMarketCap API error: ${response.status} ${response.statusText}`, errorText);
       throw new Error(`CoinMarketCap API error: ${response.status}`);
     }
     
     const data = await response.json();
     
     if (!data.data) {
+      console.error('Invalid response from CoinMarketCap:', data);
       return res.status(500).json({ success: false, error: 'Invalid response from CoinMarketCap' });
     }
     
+    // Log the received data for debugging
+    console.log('CoinMarketCap response data structure:', {
+      btc_dominance_exists: 'btc_dominance' in data.data,
+      eth_dominance_exists: 'eth_dominance' in data.data,
+      btc_dominance_value: data.data.btc_dominance,
+      eth_dominance_value: data.data.eth_dominance,
+    });
+    
     // Extract the data we need
     const globalData = {
-      btcDominance: data.data.btc_dominance || 0,
-      ethDominance: data.data.eth_dominance || 0,
-      totalMarketCap: data.data.quote?.USD?.total_market_cap || 0,
-      totalVolume24h: data.data.quote?.USD?.total_volume_24h || 0
+      btcDominance: data.data.btc_dominance ?? 0,
+      ethDominance: data.data.eth_dominance ?? 0,
+      totalMarketCap: data.data.quote?.USD?.total_market_cap ?? 0,
+      totalVolume24h: data.data.quote?.USD?.total_volume_24h ?? 0
     };
     
+    console.log('Sending global market data to client:', globalData);
     return res.status(200).json({ success: true, data: globalData });
   } catch (error) {
     console.error('Error fetching global data:', error);

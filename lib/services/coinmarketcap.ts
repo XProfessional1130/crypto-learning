@@ -1,34 +1,6 @@
 import { CoinData } from '@/types/portfolio';
 
-// Enhanced cache settings with longer TTLs for better performance
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes for regular data
-const GLOBAL_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours for global data
-const TOP_COINS_CACHE_TTL = 60 * 60 * 1000; // 1 hour for top coins
-
-// Cache structure - use localStorage for persistence between page loads
-const priceCache = new Map<string, { data: CoinData; timestamp: number }>();
-let globalDataCache: { data: GlobalData; timestamp: number } | null = null;
-let topCoinsCache: { data: CoinData[]; timestamp: number } | null = null;
-let searchResultsCache = new Map<string, { data: CoinData[]; timestamp: number }>();
-
-// Initialize from localStorage if available
-if (typeof window !== 'undefined') {
-  try {
-    const storedGlobalData = localStorage.getItem('lc_global_data');
-    if (storedGlobalData) {
-      globalDataCache = JSON.parse(storedGlobalData);
-    }
-    
-    const storedTopCoins = localStorage.getItem('lc_top_coins');
-    if (storedTopCoins) {
-      topCoinsCache = JSON.parse(storedTopCoins);
-    }
-  } catch (e) {
-    console.error('Error loading cache from localStorage:', e);
-  }
-}
-
-// Singleton pattern
+// Singleton pattern for service initialization
 let isInitialized = false;
 let isInitializing = false;
 let initializationPromise: Promise<void> | null = null;
@@ -52,234 +24,308 @@ export interface GlobalData {
   totalVolume24h: number;
 }
 
-// Helper function to check if cache is valid
-const isCacheValid = (timestamp: number, ttl = CACHE_TTL): boolean => {
-  return Date.now() - timestamp < ttl;
-};
-
-// Helper to get base URL based on environment
-const getBaseUrl = (): string => {
-  // In production, use actual host
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  return baseUrl;
-};
-
-// Save cache data to localStorage
-const persistCacheToStorage = () => {
-  if (typeof window === 'undefined') return;
-  
+// Helper to handle API response and error handling
+const fetchWithErrorHandling = async (url: string) => {
   try {
-    if (globalDataCache) {
-      localStorage.setItem('lc_global_data', JSON.stringify(globalDataCache));
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
     }
-    
-    if (topCoinsCache) {
-      localStorage.setItem('lc_top_coins', JSON.stringify(topCoinsCache));
-    }
-  } catch (e) {
-    console.error('Error saving cache to localStorage:', e);
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching from ${url}:`, error);
+    throw error;
   }
 };
 
 // Add initialization tracking
 let isServiceInitialized = false;
+let isServiceInitializing = false;
 
 /**
- * Initialize the service by prefetching top coins and global data
+ * Initialize the service by prefetching global data
  * Call this at app startup
  */
 export async function initCoinDataService(): Promise<void> {
-  // Prevent multiple initializations
+  // Prevent multiple initializations and concurrent initializations
   if (isServiceInitialized) {
     console.log('Coin data service already initialized, skipping...');
     return;
   }
+
+  if (isServiceInitializing) {
+    console.log('Coin data service initialization already in progress, skipping duplicate call');
+    return;
+  }
   
+  isServiceInitializing = true;
   console.log('Initializing coin data service...');
   
   try {
-    // Only run this on the client side
-    if (typeof window === 'undefined') {
-      console.log('Skipping coin data service initialization - running on server');
-      return;
-    }
-
-    // If already initialized or initializing, return existing promise
-    if (isInitialized) {
-      isServiceInitialized = true;
-      return;
+    // Prefetch basic market data to initialize the service
+    console.log('Prefetching basic market data...');
+    
+    // Try to fetch global data
+    try {
+      const globalData = await getGlobalData();
+      console.log('Global data prefetched:', globalData);
+      
+      // Also prefetch Bitcoin and Ethereum prices for quick access
+      const [btcData, ethData] = await Promise.all([
+        fetchCoinData('1'),     // Bitcoin
+        fetchCoinData('1027')   // Ethereum
+      ]);
+      
+      console.log('BTC price:', btcData?.priceUsd || 0);
+      console.log('ETH price:', ethData?.priceUsd || 0);
+    } catch (dataError) {
+      console.error('Error prefetching data, but continuing initialization:', dataError);
     }
     
-    if (isInitializing && initializationPromise) {
-      return initializationPromise;
-    }
-
-    isInitializing = true;
-    initializationPromise = new Promise<void>(async (resolve) => {
-      try {
-        // Use cached data if valid before making network requests
-        const needTopCoins = !topCoinsCache || !isCacheValid(topCoinsCache.timestamp, TOP_COINS_CACHE_TTL);
-        const needGlobalData = !globalDataCache || !isCacheValid(globalDataCache.timestamp, GLOBAL_CACHE_TTL);
-        
-        // Only fetch what we need
-        const fetchPromises = [];
-        
-        if (needTopCoins) {
-          fetchPromises.push(prefetchTopCoins().catch(err => {
-            console.error('Error prefetching top coins, continuing anyway:', err);
-            return []; // Return empty array to prevent Promise.all from failing
-          }));
-        }
-        
-        if (needGlobalData) {
-          fetchPromises.push(getGlobalData().catch(err => {
-            console.error('Error fetching global data, continuing anyway:', err);
-            return null; // Return null to prevent Promise.all from failing
-          }));
-        }
-        
-        // Only run Promise.all if we have promises to run
-        if (fetchPromises.length > 0) {
-          await Promise.all(fetchPromises);
-        }
-        
-        isInitialized = true;
-        isServiceInitialized = true;
-        console.log('Coin data service initialized');
-        resolve();
-      } catch (error) {
-        console.error('Error initializing coin data service:', error);
-        resolve(); // We still resolve to prevent breaking the app
-      } finally {
-        isInitializing = false;
-      }
-    });
-    
-    return initializationPromise;
+    isServiceInitialized = true;
+    isServiceInitializing = false;
+    console.log('Coin data service initialization complete');
   } catch (error) {
+    isServiceInitializing = false;
     console.error('Failed to initialize coin data service:', error);
     throw error;
   }
 }
 
 /**
- * Prefetch the top 200 coins from CMC
- * This will be used for search results and portfolio data
+ * Check if the service is initialized
  */
-export async function prefetchTopCoins(): Promise<CoinData[]> {
-  // Check if we have a valid cache
-  if (topCoinsCache && isCacheValid(topCoinsCache.timestamp, TOP_COINS_CACHE_TTL)) {
-    return topCoinsCache.data;
-  }
-  
+export function isCoinDataServiceInitialized(): boolean {
+  return isServiceInitialized;
+}
+
+/**
+ * Get Bitcoin price in USD
+ */
+export async function getBtcPrice(): Promise<number> {
   try {
-    // Fetch top 200 coins instead of default 100
-    const response = await fetch(`${getBaseUrl()}/api/coin-list?limit=200`, {
-      // Add cache control headers
-      headers: {
-        'Cache-Control': 'public, max-age=1800' // 30 minutes
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (!result.success || !result.data) {
-      console.error('API returned error:', result.error);
-      return [];
-    }
-    
-    // Update both the top coins cache and individual price caches
-    topCoinsCache = {
-      data: result.data,
-      timestamp: Date.now()
-    };
-    
-    // Also add each coin to the individual price cache
-    result.data.forEach((coin: CoinData) => {
-      priceCache.set(coin.id, {
-        data: coin,
-        timestamp: Date.now()
-      });
-    });
-    
-    // Persist to localStorage
-    persistCacheToStorage();
-    
-    return result.data;
+    const data = await fetchCoinData('1'); // Bitcoin's ID is 1
+    return data?.priceUsd || 0;
   } catch (error) {
-    console.error('Error prefetching top coins:', error);
-    // Return cached data even if expired as fallback
-    return topCoinsCache?.data || [];
+    console.error('Error fetching BTC price:', error);
+    return 0;
   }
 }
 
 /**
- * Search for coins using cached top coins first, then fallback to API
+ * Get Ethereum price in USD
  */
-export async function searchCoins(query: string): Promise<CoinData[]> {
-  if (!query.trim()) {
-    return [];
+export async function getEthPrice(): Promise<number> {
+  try {
+    const data = await fetchCoinData('1027'); // Ethereum's ID is 1027
+    return data?.priceUsd || 0;
+  } catch (error) {
+    console.error('Error fetching ETH price:', error);
+    return 0;
   }
+}
 
-  const queryLower = query.toLowerCase().trim();
-  
-  // Check search cache first
-  const cachedSearch = searchResultsCache.get(queryLower);
-  if (cachedSearch && isCacheValid(cachedSearch.timestamp)) {
-    return cachedSearch.data;
+/**
+ * Get global market data
+ */
+export async function getGlobalData(): Promise<GlobalData> {
+  try {
+    console.log('Fetching global market data...');
+    const response = await fetch('/api/global-data');
+    
+    if (!response.ok) {
+      console.error(`Error fetching global data: ${response.status} ${response.statusText}`);
+      throw new Error(`Error fetching global data: ${response.status}`);
+    }
+    
+    const responseData = await response.json();
+    
+    if (!responseData.success || !responseData.data) {
+      console.error('Failed to get global market data, API returned:', responseData);
+      throw new Error('Failed to get global market data');
+    }
+    
+    // Process the global data and ensure values are numbers
+    // Use safe Number conversion and provide defaults of 0
+    const globalData: GlobalData = {
+      btcDominance: parseFloat(responseData.data.btcDominance) || 0,
+      ethDominance: parseFloat(responseData.data.ethDominance) || 0,
+      totalMarketCap: parseFloat(responseData.data.totalMarketCap) || 0,
+      totalVolume24h: parseFloat(responseData.data.totalVolume24h) || 0
+    };
+    
+    // Validate that all properties have valid number values
+    if (isNaN(globalData.btcDominance)) globalData.btcDominance = 0;
+    if (isNaN(globalData.ethDominance)) globalData.ethDominance = 0;
+    if (isNaN(globalData.totalMarketCap)) globalData.totalMarketCap = 0;
+    if (isNaN(globalData.totalVolume24h)) globalData.totalVolume24h = 0;
+    
+    // Log successful data retrieval to help with debugging
+    console.log('Global market data successfully fetched:', {
+      btcDominance: globalData.btcDominance,
+      ethDominance: globalData.ethDominance
+    });
+    
+    return globalData;
+  } catch (error) {
+    console.error('Error fetching global market data:', error);
+    // Return default values when the API call fails
+    return {
+      btcDominance: 0,
+      ethDominance: 0,
+      totalMarketCap: 0,
+      totalVolume24h: 0
+    };
+  }
+}
+
+/**
+ * Fetch data for a single coin by ID from API
+ * This is the underlying fetch function that should be used by the DataCacheProvider
+ */
+export async function fetchCoinData(coinId: string): Promise<CoinData | null> {
+  try {
+    const response = await fetch(`/api/coin-data?id=${coinId}`);
+    
+    if (!response.ok) {
+      throw new Error(`Error fetching coin data: ${response.status}`);
+    }
+    
+    const responseData = await response.json();
+    
+    if (!responseData.success || !responseData.data) {
+      throw new Error(`Failed to get data for coin ${coinId}`);
+    }
+    
+    const data = responseData.data;
+    
+    // Process the coin data
+    const coinData: CoinData = {
+      id: String(data.id),
+      name: data.name,
+      symbol: data.symbol,
+      priceUsd: data.priceUsd || 0,
+      priceBtc: data.priceBtc || 0,
+      priceChange24h: data.priceChange24h || 0,
+      marketCap: data.marketCap || 0,
+      volume24h: data.liquidity || 0,
+      logoUrl: data.logoUrl || `https://s2.coinmarketcap.com/static/img/coins/64x64/${data.id}.png`
+    };
+    
+    return coinData;
+  } catch (error) {
+    console.error(`Error fetching data for coin ${coinId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Fetch data for multiple coins by ID from API
+ * This is the underlying fetch function that should be used by the DataCacheProvider
+ */
+export async function fetchMultipleCoinsData(coinIds: string[]): Promise<Record<string, CoinData>> {
+  if (!coinIds || coinIds.length === 0) {
+    return {};
   }
   
   try {
-    // First try to search in our prefetched top coins
-    if (topCoinsCache) {
-      const filteredCoins = topCoinsCache.data.filter(coin => 
-        coin.name.toLowerCase().includes(queryLower) ||
-        coin.symbol.toLowerCase().includes(queryLower) ||
-        (coin.slug && coin.slug.toLowerCase().includes(queryLower))
-      );
+    // Process in batches to prevent too many IDs in URL
+    const results: Record<string, CoinData> = {};
+    
+    // Chunk the coin IDs
+    for (let i = 0; i < coinIds.length; i += BATCH_SIZE) {
+      const batch = coinIds.slice(i, i + BATCH_SIZE);
+      const response = await fetch(`/api/coin-data-batch?ids=${batch.join(',')}`);
       
-      if (filteredCoins.length > 0) {
-        // Cache this search result
-        searchResultsCache.set(queryLower, {
-          data: filteredCoins,
-          timestamp: Date.now()
-        });
-        return filteredCoins;
+      if (!response.ok) {
+        throw new Error(`Error fetching batch of coins: ${response.status}`);
       }
+      
+      const responseData = await response.json();
+      
+      if (!responseData.success || !responseData.data) {
+        throw new Error('Failed to get data for coin batch');
+      }
+      
+      const data = responseData.data;
+      
+      // Process each coin in the batch
+      Object.keys(data).forEach((coinId) => {
+        const coin = data[coinId];
+        const coinData: CoinData = {
+          id: String(coin.id),
+          name: coin.name,
+          symbol: coin.symbol,
+          priceUsd: coin.priceUsd || 0,
+          priceBtc: coin.priceBtc || 0,
+          priceChange24h: coin.priceChange24h || 0,
+          marketCap: coin.marketCap || 0,
+          volume24h: coin.liquidity || 0,
+          logoUrl: coin.logoUrl || `https://s2.coinmarketcap.com/static/img/coins/64x64/${coin.id}.png`
+        };
+        
+        results[String(coin.id)] = coinData;
+      });
     }
     
-    // If no results in cache or cache miss, then call the API
-    console.log(`Searching for coins with query: ${query}`);
-    
-    // Use our internal API endpoint
-    const response = await fetch(`${getBaseUrl()}/api/coin-search?query=${encodeURIComponent(query)}`, {
-      headers: {
-        'Cache-Control': 'public, max-age=900' // 15 minutes
-      }
-    });
+    return results;
+  } catch (error) {
+    console.error('Error fetching multiple coins data:', error);
+    return {};
+  }
+}
+
+/**
+ * Get coin data from the cache or fetch if needed
+ * This function is provided for backward compatibility - new components should use useDataCache
+ */
+export async function getCoinData(coinId: string): Promise<CoinData | null> {
+  console.warn('getCoinData is deprecated - use useDataCache().getCoinData() in components instead');
+  return fetchCoinData(coinId);
+}
+
+/**
+ * Get multiple coins data from the cache or fetch if needed
+ * This function is provided for backward compatibility - new components should use useDataCache
+ */
+export async function getMultipleCoinsData(coinIds: string[]): Promise<Record<string, CoinData>> {
+  console.warn('getMultipleCoinsData is deprecated - use useDataCache().getMultipleCoinsData() in components instead');
+  return fetchMultipleCoinsData(coinIds);
+}
+
+/**
+ * Search for coins by keyword
+ */
+export async function searchCoins(query: string): Promise<CoinData[]> {
+  if (!query || query.trim().length < 2) {
+    return [];
+  }
+  
+  try {
+    const response = await fetch(`/api/coin-search?query=${encodeURIComponent(query)}`);
     
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      throw new Error(`Error searching coins: ${response.status}`);
     }
     
-    const result = await response.json();
+    const responseData = await response.json();
     
-    if (!result.success || !result.data) {
-      console.error('API returned error:', result.error);
-      return [];
+    if (!responseData.success || !responseData.data) {
+      throw new Error('Failed to search coins');
     }
     
-    // Cache this search result
-    searchResultsCache.set(queryLower, {
-      data: result.data,
-      timestamp: Date.now()
-    });
-    
-    return result.data;
+    // Process search results
+    return responseData.data.map((item: any) => ({
+      id: String(item.id),
+      name: item.name,
+      symbol: item.symbol,
+      priceUsd: item.priceUsd || 0,
+      priceBtc: item.priceBtc || 0,
+      priceChange24h: item.priceChange24h || 0,
+      marketCap: item.marketCap || 0,
+      volume24h: item.liquidity || 0,
+      logoUrl: item.logoUrl || `https://s2.coinmarketcap.com/static/img/coins/64x64/${item.id}.png`
+    }));
   } catch (error) {
     console.error('Error searching coins:', error);
     return [];
@@ -287,308 +333,52 @@ export async function searchCoins(query: string): Promise<CoinData[]> {
 }
 
 /**
- * Process the queue of coin data requests in batches
+ * Get the top cryptocurrencies by market cap
  */
-async function processQueue(): Promise<void> {
-  if (processingQueue || requestQueue.length === 0) return;
-  
-  processingQueue = true;
-  
+export async function getTopCoins(limit = 100): Promise<CoinData[]> {
   try {
-    // Take up to BATCH_SIZE requests from the queue
-    const batch = requestQueue.splice(0, BATCH_SIZE);
-    const coinIds = batch.map(req => req.coinId);
-    
-    console.log(`Processing batch of ${batch.length} coin requests`);
-    
-    // Build the URL with all coin IDs
-    const idsParam = coinIds.join(',');
-    const response = await fetch(`${getBaseUrl()}/api/coin-data-batch?ids=${idsParam}`, {
-      headers: {
-        'Cache-Control': 'public, max-age=1800' // 30 minutes
-      }
-    });
+    const response = await fetch(`/api/coin-list?limit=${limit}`);
     
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      throw new Error(`Error fetching top coins: ${response.status}`);
     }
     
-    const result = await response.json();
+    const responseData = await response.json();
     
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to fetch coin data');
+    if (!responseData.success || !responseData.data) {
+      throw new Error('Failed to get top coins');
     }
     
-    // Update cache and resolve promises
-    for (const req of batch) {
-      const coinData = result.data[req.coinId] || null;
-      
-      if (coinData) {
-        // Update cache
-        priceCache.set(req.coinId, {
-          data: coinData,
-          timestamp: Date.now()
-        });
-        
-        // Resolve promise
-        req.resolve(coinData);
-      } else {
-        req.resolve(null);
-      }
-    }
+    // Process the top coins data
+    return responseData.data.map((coin: any) => ({
+      id: String(coin.id),
+      name: coin.name,
+      symbol: coin.symbol,
+      priceUsd: coin.priceUsd || 0,
+      priceBtc: coin.priceBtc || 0,
+      priceChange24h: coin.priceChange24h || 0,
+      marketCap: coin.marketCap || 0,
+      volume24h: coin.liquidity || 0,
+      logoUrl: coin.logoUrl || `https://s2.coinmarketcap.com/static/img/coins/64x64/${coin.id}.png`
+    }));
   } catch (error) {
-    console.error('Error processing coin data batch:', error);
-    
-    // Reject all requests in the batch
-    const batch = requestQueue.splice(0, BATCH_SIZE);
-    for (const req of batch) {
-      req.reject(error as Error);
-    }
-  } finally {
-    processingQueue = false;
-    
-    // Process next batch if there are more requests
-    if (requestQueue.length > 0) {
-      setTimeout(processQueue, QUEUE_PROCESS_DELAY);
-    }
+    console.error('Error fetching top coins:', error);
+    return [];
   }
 }
 
 /**
- * Get data for a single coin by ID
- * Uses caching and batching for efficiency
- */
-export async function getCoinData(coinId: string | number): Promise<CoinData | null> {
-  const id = String(coinId);
-  
-  // Try to serve from cache first if valid
-  const cached = priceCache.get(id);
-  if (cached && isCacheValid(cached.timestamp)) {
-    return cached.data;
-  }
-  
-  // Check if coin data is in top coins cache
-  if (topCoinsCache && isCacheValid(topCoinsCache.timestamp, TOP_COINS_CACHE_TTL)) {
-    const fromTopCoins = topCoinsCache.data.find(coin => String(coin.id) === id);
-    if (fromTopCoins) {
-      // Update the individual cache
-      priceCache.set(id, {
-        data: fromTopCoins,
-        timestamp: Date.now()
-      });
-      return fromTopCoins;
-    }
-  }
-  
-  // If not in cache or cache invalid, add to queue for batched fetch
-  return new Promise((resolve, reject) => {
-    requestQueue.push({ coinId: id, resolve, reject });
-    
-    // Start processing queue if not already processing
-    if (!processingQueue) {
-      setTimeout(processQueue, QUEUE_PROCESS_DELAY);
-    }
-  });
-}
-
-/**
- * Get data for multiple coins by ID
- * Uses caching and batching for efficiency
- */
-export async function getMultipleCoinsData(coinIds: (string | number)[]): Promise<Record<string, CoinData>> {
-  if (!coinIds.length) return {};
-  
-  const ids = coinIds.map(id => String(id));
-  const result: Record<string, CoinData> = {};
-  const idsToFetch: string[] = [];
-  
-  // First, try to serve from cache
-  for (const id of ids) {
-    const cached = priceCache.get(id);
-    if (cached && isCacheValid(cached.timestamp)) {
-      result[id] = cached.data;
-    } else {
-      // Check if in top coins cache
-      let found = false;
-      if (topCoinsCache && isCacheValid(topCoinsCache.timestamp, TOP_COINS_CACHE_TTL)) {
-        const fromTopCoins = topCoinsCache.data.find(coin => String(coin.id) === id);
-        if (fromTopCoins) {
-          // Update individual cache
-          priceCache.set(id, {
-            data: fromTopCoins,
-            timestamp: Date.now()
-          });
-          result[id] = fromTopCoins;
-          found = true;
-        }
-      }
-      
-      if (!found) {
-        idsToFetch.push(id);
-      }
-    }
-  }
-  
-  // If all data was in cache, return immediately
-  if (idsToFetch.length === 0) {
-    return result;
-  }
-  
-  // For ids not in cache, fetch in batch
-  const fetchPromises = idsToFetch.map(id => 
-    getCoinData(id)
-      .then(data => {
-        if (data) {
-          result[id] = data;
-        }
-        return data;
-      })
-      .catch(err => {
-        console.error(`Error fetching data for coin ${id}:`, err);
-        return null;
-      })
-  );
-  
-  await Promise.all(fetchPromises);
-  
-  return result;
-}
-
-/**
- * Get the current Bitcoin price in USD
- */
-export async function getBtcPrice(): Promise<number> {
-  try {
-    // Try to get from cache first
-    if (topCoinsCache && isCacheValid(topCoinsCache.timestamp, CACHE_TTL)) {
-      const btc = topCoinsCache.data.find(coin => coin.symbol === 'BTC');
-      if (btc && btc.priceUsd) {
-        return btc.priceUsd;
-      }
-    }
-    
-    const coinData = await getCoinData('1'); // Bitcoin is always ID 1
-    return coinData?.priceUsd || 0;
-  } catch (error) {
-    console.error('Error getting BTC price:', error);
-    return 0;
-  }
-}
-
-/**
- * Get the current Ethereum price in USD
- */
-export async function getEthPrice(): Promise<number> {
-  try {
-    // Try to get from cache first
-    if (topCoinsCache && isCacheValid(topCoinsCache.timestamp, CACHE_TTL)) {
-      const eth = topCoinsCache.data.find(coin => coin.symbol === 'ETH');
-      if (eth && eth.priceUsd) {
-        return eth.priceUsd;
-      }
-    }
-    
-    const coinData = await getCoinData('1027'); // Ethereum is always ID 1027
-    return coinData?.priceUsd || 0;
-  } catch (error) {
-    console.error('Error getting ETH price:', error);
-    return 0;
-  }
-}
-
-/**
- * Get global crypto market data
- */
-export async function getGlobalData(): Promise<GlobalData | null> {
-  // Check if we have valid cached data
-  if (globalDataCache && isCacheValid(globalDataCache.timestamp, GLOBAL_CACHE_TTL)) {
-    return globalDataCache.data;
-  }
-  
-  try {
-    const response = await fetch(`${getBaseUrl()}/api/global-data`, {
-      headers: {
-        'Cache-Control': 'public, max-age=3600' // 1 hour
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (!result.success || !result.data) {
-      throw new Error(result.error || 'Failed to fetch global data');
-    }
-    
-    // Handle both camelCase and snake_case property names in API response
-    const globalData: GlobalData = {
-      btcDominance: result.data.btcDominance || result.data.btc_dominance || 0,
-      ethDominance: result.data.ethDominance || result.data.eth_dominance || 0,
-      totalMarketCap: result.data.totalMarketCap || result.data.total_market_cap || 0,
-      totalVolume24h: result.data.totalVolume24h || result.data.total_volume_24h || 0
-    };
-    
-    // Update cache
-    globalDataCache = {
-      data: globalData,
-      timestamp: Date.now()
-    };
-    
-    // Persist to localStorage
-    persistCacheToStorage();
-    
-    return globalData;
-  } catch (error) {
-    console.error('Error getting global data:', error);
-    
-    // Return cached data even if expired as a fallback
-    if (globalDataCache) {
-      return globalDataCache.data;
-    }
-    
-    return null;
-  }
-}
-
-/**
- * Clean up expired items from caches to free memory
- * This is called automatically on a regular basis
+ * Clean up expired cache entries to prevent memory bloat
+ * This is a no-op now since we're using DataCacheProvider
  */
 export function cleanupCaches(): void {
-  const now = Date.now();
-  
-  // Clean up price cache
-  Array.from(priceCache.entries()).forEach(([key, value]) => {
-    if (now - value.timestamp > CACHE_TTL * 2) {
-      priceCache.delete(key);
-    }
-  });
-  
-  // Clean up search cache
-  Array.from(searchResultsCache.entries()).forEach(([key, value]) => {
-    if (now - value.timestamp > CACHE_TTL * 2) {
-      searchResultsCache.delete(key);
-    }
-  });
-  
-  console.log('Cleaned up expired cache entries');
+  console.log('cleanupCaches is deprecated - DataCacheProvider now handles cache management');
 }
 
-// Add a function to check if already initialized
-export function isCoinDataServiceInitialized() {
-  return isServiceInitialized;
-}
-
-// Add a function to clear the global data cache
+/**
+ * Clear the global data cache
+ * This is a no-op now since we're using DataCacheProvider
+ */
 export function clearGlobalDataCache(): void {
-  globalDataCache = null;
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.removeItem('lc_global_data');
-    } catch (e) {
-      console.error('Error clearing global data cache:', e);
-    }
-  }
+  console.log('clearGlobalDataCache is deprecated - use useDataCache().clearCache() instead');
 } 

@@ -1,5 +1,5 @@
 import { PortfolioItemWithPrice, PortfolioSummary, CoinData } from '@/types/portfolio';
-import { getMultipleCoinsData } from './coinmarketcap';
+import { getMultipleCoinsData, fetchMultipleCoinsData } from './coinmarketcap';
 import supabase from './supabase-client';
 
 // Admin ID is still needed for checking permissions
@@ -186,7 +186,7 @@ async function processPortfolioItems(portfolioItems: any[]): Promise<PortfolioSu
   
   // Get all coin prices - ensure IDs are strings
   const coinIds = portfolioItems.map(item => String(item.coin_id));
-  const coinsData = await getMultipleCoinsData(coinIds);
+  const coinsData = await fetchMultipleCoinsData(coinIds);
   
   let totalValueUsd = 0;
   let totalValueBtc = 0;
@@ -223,6 +223,109 @@ async function processPortfolioItems(portfolioItems: any[]): Promise<PortfolioSu
       valueBtc,
       priceChange24h: coinData?.priceChange24h || 0,
       percentage: 0, // Will be calculated after total is known
+      marketCap: coinData?.marketCap || 0,
+      logoUrl: coinData?.logoUrl
+    };
+  });
+  
+  // Calculate daily change
+  const dailyChangeUsd = totalValueUsd - totalPrevValueUsd;
+  const dailyChangeBtc = totalValueBtc - totalPrevValueBtc;
+  const dailyChangePercentage = totalPrevValueUsd > 0 
+    ? ((totalValueUsd - totalPrevValueUsd) / totalPrevValueUsd) * 100 
+    : 0;
+  
+  // Calculate percentages
+  items.forEach(item => {
+    item.percentage = totalValueUsd > 0 ? (item.valueUsd / totalValueUsd) * 100 : 0;
+  });
+  
+  return {
+    totalValueUsd,
+    totalValueBtc,
+    dailyChangePercentage,
+    dailyChangeUsd,
+    dailyChangeBtc,
+    items
+  };
+}
+
+/**
+ * Process portfolio items using the DataCacheProvider 
+ * This should be used in React components
+ * 
+ * Example usage in a component:
+ * 
+ * ```tsx
+ * import { useEffect, useState } from 'react'; 
+ * import { useDataCache } from '@/lib/context/data-cache-context';
+ * import { processTeamPortfolioWithCache } from '@/lib/services/team-portfolio';
+ * 
+ * function PortfolioComponent() {
+ *   const [portfolio, setPortfolio] = useState(null);
+ *   const { getMultipleCoinsData } = useDataCache();
+ *   
+ *   useEffect(() => {
+ *     async function loadPortfolio() {
+ *       const { data: portfolioItems } = await supabase.from('team_portfolio').select('*');
+ *       const processedPortfolio = await processTeamPortfolioWithCache(portfolioItems, getMultipleCoinsData);
+ *       setPortfolio(processedPortfolio);
+ *     }
+ *     
+ *     loadPortfolio();
+ *   }, [getMultipleCoinsData]);
+ *   
+ *   // Render portfolio
+ * }
+ * ```
+ */
+export async function processTeamPortfolioWithCache(
+  portfolioItems: any[], 
+  getCoinsDataFn: (coinIds: string[]) => Promise<Record<string, CoinData>>
+): Promise<PortfolioSummary> {
+  if (!portfolioItems || portfolioItems.length === 0) {
+    return createEmptyPortfolio();
+  }
+  
+  // Get all coin prices using the provided function (from DataCacheProvider)
+  const coinIds = portfolioItems.map(item => String(item.coin_id));
+  const coinsData = await getCoinsDataFn(coinIds);
+  
+  let totalValueUsd = 0;
+  let totalValueBtc = 0;
+  let totalPrevValueUsd = 0;
+  let totalPrevValueBtc = 0;
+  
+  const items: PortfolioItemWithPrice[] = portfolioItems.map((item: any) => {
+    // Ensure we're looking up with a string ID
+    const coinStringId = String(item.coin_id);
+    const coinData = coinsData[coinStringId];
+    const valueUsd = item.amount * (coinData?.priceUsd || 0);
+    const valueBtc = item.amount * (coinData?.priceBtc || 0);
+    const prevValueUsd = valueUsd / (1 + (coinData?.priceChange24h || 0) / 100);
+    const prevValueBtc = valueBtc / (1 + (coinData?.priceChange24h || 0) / 100);
+    
+    totalValueUsd += valueUsd;
+    totalValueBtc += valueBtc;
+    totalPrevValueUsd += prevValueUsd;
+    totalPrevValueBtc += prevValueBtc;
+    
+    return {
+      id: item.id,
+      userId: TEAM_ADMIN_ID,
+      coinId: item.coin_id,
+      coinSymbol: item.coin_symbol,
+      coinName: item.coin_name,
+      amount: item.amount,
+      preferredCurrency: item.preferred_currency as 'USD' | 'BTC',
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+      priceUsd: coinData?.priceUsd || 0,
+      priceBtc: coinData?.priceBtc || 0,
+      valueUsd,
+      valueBtc,
+      priceChange24h: coinData?.priceChange24h || 0,
+      percentage: 0,
       marketCap: coinData?.marketCap || 0,
       logoUrl: coinData?.logoUrl
     };

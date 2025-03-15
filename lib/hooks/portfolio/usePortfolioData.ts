@@ -3,7 +3,7 @@ import { useAuth } from '@/lib/auth-context';
 import { PortfolioSummary } from '@/types/portfolio';
 import { getUserPortfolio } from '@/lib/services/portfolio';
 import { useToast } from '@/lib/hooks/useToast';
-import { cleanupCaches, initCoinDataService } from '@/lib/services/coinmarketcap';
+import { cleanupCaches } from '@/lib/services/coinmarketcap';
 
 // Refresh intervals and cache settings
 const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
@@ -154,11 +154,6 @@ export function usePortfolioData() {
   };
 
   useEffect(() => {
-    // Initialize the coin data service when the component mounts
-    initCoinDataService()
-      .then(() => console.log('Coin data service initialized'))
-      .catch(err => console.error('Failed to initialize coin data service:', err));
-    
     // Initial fetch when component mounts or user changes
     if (user) {
       console.log('User authenticated, fetching portfolio...');

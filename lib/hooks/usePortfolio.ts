@@ -8,7 +8,7 @@ import {
   removeCoinFromPortfolio,
   updatePreferredCurrency
 } from '@/lib/services/portfolio';
-import { searchCoins, initCoinDataService, cleanupCaches } from '@/lib/services/coinmarketcap';
+import { searchCoins, cleanupCaches } from '@/lib/services/coinmarketcap';
 import { useToast } from '@/lib/hooks/useToast';
 
 // Refresh intervals and cache settings
@@ -161,11 +161,6 @@ export function usePortfolio() {
   };
 
   useEffect(() => {
-    // Initialize the coin data service when the component mounts
-    initCoinDataService()
-      .then(() => console.log('Coin data service initialized'))
-      .catch(err => console.error('Failed to initialize coin data service:', err));
-    
     // Initial fetch when component mounts or user changes
     if (user) {
       console.log('User authenticated, fetching portfolio...');

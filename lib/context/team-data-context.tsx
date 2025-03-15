@@ -6,16 +6,15 @@ import { WatchlistItem } from '@/lib/hooks/useWatchlist';
 import { useToast } from '@/lib/hooks/useToast';
 import { useAuth } from '@/lib/auth-context';
 import { 
-  initCoinDataService, 
-  cleanupCaches, 
-  isCoinDataServiceInitialized,
-  searchCoins 
+  searchCoins,
+  cleanupCaches,
+  isCoinDataServiceInitialized 
 } from '@/lib/services/coinmarketcap';
 import {
-  getTeamPortfolio,
   addCoinToTeamPortfolio,
   updateTeamPortfolioCoinAmount,
-  removeFromTeamPortfolio
+  removeFromTeamPortfolio,
+  processTeamPortfolioWithCache
 } from '@/lib/services/team-portfolio';
 import {
   getTeamWatchlist,
@@ -23,6 +22,8 @@ import {
   updateTeamWatchlistPriceTarget,
   removeFromTeamWatchlist
 } from '@/lib/services/team-watchlist';
+import { useDataCache } from '@/lib/context/data-cache-context';
+import supabase from '@/lib/services/supabase-client';
 
 // Admin ID for permission checks
 const TEAM_ADMIN_ID = process.env.NEXT_PUBLIC_TEAM_ADMIN_ID || '529cfde5-d8c3-4a6a-a9dc-5bb67fb039b5';
@@ -91,6 +92,9 @@ export function TeamDataProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
   const { user } = useAuth();
   
+  // Use the DataCacheProvider for coin prices
+  const { getMultipleCoinsData } = useDataCache();
+  
   // Use refs to make functions stable across renders
   const initializeServiceRef = useRef(async () => {
     if (isServiceInitializing) return;
@@ -99,13 +103,7 @@ export function TeamDataProvider({ children }: { children: ReactNode }) {
     isServiceInitializing = true;
     
     if (!isCoinDataServiceInitialized()) {
-      console.log('Initializing coin data service from TeamDataProvider');
-      try {
-        await initCoinDataService();
-        console.log('Coin data service initialized successfully');
-      } catch (err) {
-        console.error('Failed to initialize coin data service:', err);
-      }
+      console.log('TeamDataProvider: Coin data service already initialized by DataPrefetcher');
     }
     
     isServiceInitializing = false;
@@ -132,7 +130,21 @@ export function TeamDataProvider({ children }: { children: ReactNode }) {
       setPortfolioLoading(true);
       
       // Store the promise for deduplication
-      portfolioPromiseRef.current = getTeamPortfolio();
+      const fetchPortfolioPromise = async () => {
+        // Fetch raw portfolio items from Supabase
+        const { data: portfolioItems, error } = await supabase
+          .from('team_portfolio')
+          .select('*');
+        
+        if (error) {
+          throw new Error(`Failed to fetch portfolio items: ${error.message}`);
+        }
+        
+        // Process the portfolio items using the DataCacheProvider
+        return processTeamPortfolioWithCache(portfolioItems || [], getMultipleCoinsData);
+      };
+      
+      portfolioPromiseRef.current = fetchPortfolioPromise();
       
       // Wait for data
       console.log('Fetching team portfolio...');
@@ -164,7 +176,7 @@ export function TeamDataProvider({ children }: { children: ReactNode }) {
       // Clear promise reference
       portfolioPromiseRef.current = null;
     }
-  }, [toast]);
+  }, [toast, getMultipleCoinsData]);
   
   // Fetch watchlist data with request deduplication
   const fetchWatchlist = useCallback(async (forceFetch = false): Promise<{ items: WatchlistItem[] } | null> => {

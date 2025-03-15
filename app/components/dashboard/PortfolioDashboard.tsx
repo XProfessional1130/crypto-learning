@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { usePortfolio } from '@/lib/hooks/usePortfolio';
 import { useAuth } from '@/lib/auth-context';
 import { useWatchlist, WatchlistItem } from '@/lib/hooks/useWatchlist';
@@ -6,10 +6,11 @@ import AddCoinModal from './AddCoinModal';
 import AssetDetailModal from './AssetDetailModal';
 import CryptoNews from './CryptoNews';
 import Image from 'next/image';
-import { getBtcPrice, getEthPrice, getGlobalData, GlobalData, clearGlobalDataCache } from '@/lib/services/coinmarketcap';
+import { GlobalData } from '@/lib/services/coinmarketcap';
 import { PortfolioItemWithPrice } from '@/types/portfolio';
 import WatchlistComponent from './WatchlistComponent';
 import { formatCryptoPrice, formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
+import { useDataCache } from '@/lib/context/data-cache-context';
 
 // Memoized Stats Card component
 const StatsCard = memo(({ title, value, icon = null, dominance = null, loading = false, valueClassName = '', changeInfo = null, showChangeIcon = false }: {
@@ -257,11 +258,9 @@ const MarketLeadersCard = memo(({ btcPrice, ethPrice, btcDominance, ethDominance
   ethDominance: number | null;
   loading?: boolean;
 }) => {
-  console.log('MarketLeadersCard received dominance values:', { btcDominance, ethDominance });
-  
-  // Provide default values if dominance is null
-  const btcDom = btcDominance !== null ? btcDominance : 0;
-  const ethDom = ethDominance !== null ? ethDominance : 0;
+  // Use default values of 0 for any null values
+  const btcDom = typeof btcDominance === 'number' ? btcDominance : 0;
+  const ethDom = typeof ethDominance === 'number' ? ethDominance : 0;
   
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover">
@@ -399,17 +398,23 @@ function PortfolioDashboardComponent() {
     error: watchlistError,
     refreshWatchlist
   } = useWatchlist();
+
+  // Use the shared data cache for market data
+  const { 
+    btcPrice, 
+    ethPrice, 
+    globalData, 
+    isLoading: loadingPrices,
+    refreshData
+  } = useDataCache();
   
   const { user } = useAuth();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<PortfolioItemWithPrice | null>(null);
   const [isAssetDetailModalOpen, setIsAssetDetailModalOpen] = useState(false);
-  const [btcPrice, setBtcPrice] = useState<number | null>(null);
-  const [ethPrice, setEthPrice] = useState<number | null>(null);
-  const [globalData, setGlobalData] = useState<GlobalData | null>(null);
-  const [loadingPrices, setLoadingPrices] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const hasRefreshedRef = useRef(false);
   
   // Calculate loading and error states
   const loading = portfolioLoading || watchlistLoading;
@@ -463,54 +468,47 @@ function PortfolioDashboardComponent() {
   const handleManualRefresh = useCallback(() => {
     setIsRefreshing(true);
     
-    Promise.all([
-      refreshPortfolio(),
-      refreshWatchlist()
-    ]).finally(() => {
-      // Add a minimum duration for the refresh animation
-      setTimeout(() => setIsRefreshing(false), 500);
-    });
-  }, [refreshPortfolio, refreshWatchlist]);
+    // Only refresh the global data to avoid conflicts
+    refreshData()
+      .catch(error => {
+        console.error("Error refreshing global data:", error);
+      })
+      .finally(() => {
+        // Add a minimum duration for the refresh animation
+        setTimeout(() => setIsRefreshing(false), 500);
+      });
+  }, [refreshData]);
   
-  // Fetch BTC and ETH prices and global data with optimized loading
+  // Refresh data when component mounts
   useEffect(() => {
-    const fetchData = async () => {
-      // Only show loading indicator if we don't have any data yet
-      if (!btcPrice || !ethPrice || !globalData) {
-        setLoadingPrices(true);
-      }
-      
+    // Skip if we've already refreshed
+    if (hasRefreshedRef.current) {
+      return;
+    }
+
+    // Only run this once on mount
+    const loadInitialData = async () => {
       try {
-        // Clear the global data cache to force a fresh fetch
-        clearGlobalDataCache();
+        // Only show refreshing if we don't have data
+        if (!globalData) {
+          setIsRefreshing(true);
+        }
         
-        // Fetch prices and global data in parallel
-        const [btcPriceData, ethPriceData, globalMarketData] = await Promise.all([
-          getBtcPrice(),
-          getEthPrice(),
-          getGlobalData()
-        ]);
+        // Just refresh the global data which contains dominance values
+        await refreshData();
+        console.log("Dashboard data refreshed on mount");
         
-        console.log('Received global market data:', globalMarketData);
-        
-        setBtcPrice(btcPriceData);
-        setEthPrice(ethPriceData);
-        setGlobalData(globalMarketData);
+        // Mark as refreshed to prevent multiple calls
+        hasRefreshedRef.current = true;
       } catch (error) {
-        console.error('Error fetching crypto data:', error);
+        console.error("Error refreshing dashboard data:", error);
       } finally {
-        setLoadingPrices(false);
+        setIsRefreshing(false);
       }
     };
     
-    // Initial fetch
-    fetchData();
-    
-    // Set up refresh interval (5 minutes)
-    const intervalId = setInterval(fetchData, 5 * 60 * 1000);
-    
-    return () => clearInterval(intervalId);
-  }, []); // Empty dependency array as we want this to run once on mount
+    loadInitialData();
+  }, [refreshData, globalData]);
   
   // After first data load is complete, trigger main content visibility
   useEffect(() => {
@@ -638,8 +636,8 @@ function PortfolioDashboardComponent() {
           <MarketLeadersCard 
             btcPrice={btcPrice}
             ethPrice={ethPrice}
-            btcDominance={globalData?.btcDominance || null}
-            ethDominance={globalData?.ethDominance || null}
+            btcDominance={typeof globalData?.btcDominance === 'number' ? globalData.btcDominance : 0}
+            ethDominance={typeof globalData?.ethDominance === 'number' ? globalData.ethDominance : 0}
             loading={loadingPrices}
           />
         </div>

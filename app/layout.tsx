@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from 'next/font/google'
 import { AuthProvider } from "../lib/auth-context";
 import { ThemeProvider } from "../lib/theme-context";
+import { DataCacheProvider } from "../lib/context/data-cache-context";
 import QueryProvider from "../lib/providers/query-provider";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
@@ -59,29 +60,31 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>
             <ThemeProvider>
-              {/* Client components for enhancements - moved inside providers to ensure proper hydration */}
-              <AppEnhancer />
-              <GlobalStyles />
-              <AuthTokenScript />
-              <CoinDataInitializer />
-              
-              {/* Data Prefetcher and other app components */}
-              <DataPrefetcher />
-              
-              {/* App shell with background elements */}
-              <BackgroundElements />
-              
-              {/* Main layout */}
-              <div className="min-h-screen flex flex-col relative z-0 pt-20">
-                <Navigation />
-                <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in scrollbar-custom">
-                  {children}
-                </main>
-                <Footer />
-              </div>
-              
-              {/* Global Chat Component */}
-              <GlobalChat />
+              <DataCacheProvider>
+                {/* Client components for enhancements - moved inside providers to ensure proper hydration */}
+                <AppEnhancer />
+                <GlobalStyles />
+                <AuthTokenScript />
+                <CoinDataInitializer />
+                
+                {/* Data Prefetcher and other app components */}
+                <DataPrefetcher />
+                
+                {/* App shell with background elements */}
+                <BackgroundElements />
+                
+                {/* Main layout */}
+                <div className="min-h-screen flex flex-col relative z-0 pt-20">
+                  <Navigation />
+                  <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in scrollbar-custom">
+                    {children}
+                  </main>
+                  <Footer />
+                </div>
+                
+                {/* Global Chat Component */}
+                <GlobalChat />
+              </DataCacheProvider>
             </ThemeProvider>
           </AuthProvider>
         </QueryProvider>

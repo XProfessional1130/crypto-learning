@@ -1,25 +1,22 @@
 'use client';
 
 import { useState, useEffect, useMemo, Suspense, useCallback } from 'react';
-import { useAuth } from '@/lib/auth-context';
+import { useTeamData } from '@/lib/context/team-data-context';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTeamData } from '@/lib/context/team-data-context';
-import { getBtcPrice, getEthPrice, getGlobalData, GlobalData } from '@/lib/services/coinmarketcap';
+import { GlobalData } from '@/lib/services/coinmarketcap';
 import dynamic from 'next/dynamic';
 import { ReactNode } from 'react';
 import { TrendingUp, TrendingDown, Activity, DollarSign, AlertCircle } from 'lucide-react';
-
-// Dynamically import heavy components with proper loading skeletons
-const TeamPortfolio = dynamic(() => import('../components/lc-dashboard/TeamPortfolio'), {
-  loading: () => <PortfolioLoadingSkeleton />,
-  ssr: false // Disable SSR for these components to prevent double initialization
-});
-
-const TeamWatchlist = dynamic(() => import('../components/lc-dashboard/TeamWatchlist'), {
-  loading: () => <WatchlistLoadingSkeleton />,
-  ssr: false // Disable SSR for these components to prevent double initialization
-});
+import { useAuthRedirect } from '@/lib/hooks/useAuthRedirect';
+import { useDataCache } from '@/lib/context/data-cache-context';
+import DashboardLayout from '@/app/components/dashboard/DashboardLayout';
+import { 
+  DataCard,
+  SectionLoader,
+  ErrorDisplay
+} from '@/app/components/dashboard/DashboardUI';
+import MarketOverview from '@/app/components/dashboard/MarketOverview';
 
 // Loading skeletons for better UX during component loading
 const PortfolioLoadingSkeleton = () => (
@@ -64,6 +61,17 @@ const WatchlistLoadingSkeleton = () => (
     </div>
   </div>
 );
+
+// Dynamically import heavy components with proper loading skeletons
+const TeamPortfolio = dynamic(() => import('../components/lc-dashboard/TeamPortfolio'), {
+  loading: () => <PortfolioLoadingSkeleton />,
+  ssr: false // Disable SSR for these components to prevent double initialization
+});
+
+const TeamWatchlist = dynamic(() => import('../components/lc-dashboard/TeamWatchlist'), {
+  loading: () => <WatchlistLoadingSkeleton />,
+  ssr: false // Disable SSR for these components to prevent double initialization
+});
 
 // Fear & Greed Index Card Component
 const FearGreedCard = ({ loading = false }) => {
@@ -199,78 +207,7 @@ const WhaleTrackingCard = ({ loading = false }) => {
               {Math.abs(changePercentage)}%
             </span>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Large transactions (>$100K) in the past 24h</p>
-        </>
-      )}
-    </div>
-  );
-};
-
-// Market Overview Component
-const MarketOverviewCard = ({ 
-  loading = false, 
-  btcPrice, 
-  ethPrice, 
-  globalData 
-}: { 
-  loading?: boolean; 
-  btcPrice: number | null;
-  ethPrice: number | null;
-  globalData: GlobalData | null;
-}) => {
-  // Format crypto prices with appropriate number of decimals
-  const formatCryptoPrice = (price: number): string => {
-    if (price >= 1000) {
-      return `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-    } else if (price >= 1) {
-      return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    } else {
-      return `$${price.toLocaleString(undefined, { minimumSignificantDigits: 2, maximumSignificantDigits: 4 })}`;
-    }
-  };
-
-  return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover transform hover:-translate-y-1">
-      <div className="flex items-center mb-3">
-        <TrendingUp className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
-        <p className="text-sm text-gray-500 dark:text-gray-400">Market Overview</p>
-      </div>
-      
-      {loading ? (
-        <div className="animate-pulse space-y-3">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-28"></div>
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-36"></div>
-        </div>
-      ) : (
-        <>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500 dark:text-gray-400">Market Cap:</span>
-              <span className="font-semibold">
-                ${globalData?.totalMarketCap ? (globalData.totalMarketCap / 1e12).toFixed(2) : '---'}T
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500 dark:text-gray-400">24h Volume:</span>
-              <span className="font-semibold">
-                ${globalData?.totalVolume24h ? (globalData.totalVolume24h / 1e9).toFixed(2) : '---'}B
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500 dark:text-gray-400">BTC:</span>
-              <span className="font-semibold">
-                {btcPrice ? formatCryptoPrice(btcPrice) : '---'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500 dark:text-gray-400">ETH:</span>
-              <span className="font-semibold">
-                {ethPrice ? formatCryptoPrice(ethPrice) : '---'}
-              </span>
-            </div>
-          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Large transactions ({'>'}$100K) in the past 24h</p>
         </>
       )}
     </div>
@@ -278,16 +215,20 @@ const MarketOverviewCard = ({
 };
 
 export default function LCDashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, authLoading, showContent } = useAuthRedirect();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [btcPrice, setBtcPrice] = useState<number | null>(null);
-  const [ethPrice, setEthPrice] = useState<number | null>(null);
-  const [globalData, setGlobalData] = useState<GlobalData | null>(null);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [showContent, setShowContent] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
+  
+  // Use our shared data cache for market data
+  const { 
+    btcPrice, 
+    ethPrice, 
+    globalData, 
+    isLoading: marketDataLoading,
+    isRefreshing,
+    refreshData,
+    lastUpdated
+  } = useDataCache();
+  
   // Use the unified team data context instead of separate hooks
   const { 
     portfolio, 
@@ -302,35 +243,18 @@ export default function LCDashboard() {
   } = useTeamData();
   
   // Calculate loading states
-  const loading = isLoading || portfolioLoading || watchlistLoading;
+  const isLoading = marketDataLoading || portfolioLoading || watchlistLoading;
   const error = portfolioError || watchlistError;
   
   // Create consistent animation classes based on loading state
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const contentAnimationClass = initialLoadComplete ? "animate-fadeIn" : "opacity-0 transition-opacity-transform";
   const cardAnimationClass = initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform";
   const listItemAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
   
-  // Check authentication once
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/auth/signin');
-    }
-  }, [user, authLoading, router]);
-  
-  // Add a smooth transition for the main content
-  useEffect(() => {
-    if (!authLoading && user) {
-      const timer = setTimeout(() => {
-        setShowContent(true);
-      }, 300);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [authLoading, user]);
-
   // After first data load is complete, trigger main content visibility
   useEffect(() => {
-    if (!loading && !error) {
+    if (!isLoading && !error) {
       // Short delay to ensure data is processed before showing animations
       const timer = setTimeout(() => {
         setInitialLoadComplete(true);
@@ -338,53 +262,16 @@ export default function LCDashboard() {
       
       return () => clearTimeout(timer);
     }
-  }, [loading, error]);
-
-  // Fetch price data in a single effect
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch prices and global data in parallel
-        const [btcPriceData, ethPriceData, globalMarketData] = await Promise.all([
-          getBtcPrice(),
-          getEthPrice(),
-          getGlobalData()
-        ]);
-        
-        setBtcPrice(btcPriceData);
-        setEthPrice(ethPriceData);
-        setGlobalData(globalMarketData);
-      } catch (error) {
-        console.error('Error fetching crypto data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    if (user) {
-      fetchData();
-      
-      // Set up refresh interval (5 minutes)
-      const intervalId = setInterval(fetchData, 5 * 60 * 1000);
-      return () => clearInterval(intervalId);
-    }
-  }, [user]);
+  }, [isLoading, error]);
   
   // Manual refresh function with visual feedback
   const handleManualRefresh = useCallback(() => {
-    setIsRefreshing(true);
-    
     Promise.all([
       refreshPortfolio(),
       refreshWatchlist(),
-      getBtcPrice().then(setBtcPrice),
-      getEthPrice().then(setEthPrice),
-      getGlobalData().then(setGlobalData)
-    ]).finally(() => {
-      // Add a minimum duration for the refresh animation
-      setTimeout(() => setIsRefreshing(false), 500);
-    });
-  }, [refreshPortfolio, refreshWatchlist]);
+      refreshData()
+    ]).catch(console.error);
+  }, [refreshPortfolio, refreshWatchlist, refreshData]);
 
   // Show loading state while auth is being checked
   if (authLoading || !user) {
@@ -401,31 +288,25 @@ export default function LCDashboard() {
   return (
     <div className={`container mx-auto py-6 px-4 max-w-7xl transition-opacity-transform duration-600 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
       {/* Dashboard Header */}
-      <div className="mb-6 flex justify-between items-center">
-        <div className={contentAnimationClass} style={{ transitionDelay: '0ms' }}>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">LC Team Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-300">Welcome to the Learning Crypto team dashboard!</p>
-        </div>
-        
-        <button 
-          onClick={handleManualRefresh}
-          className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${contentAnimationClass}`}
-          style={{ transitionDelay: '50ms' }}
-          aria-label="Refresh dashboard"
-        >
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2"
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            className={`w-5 h-5 text-gray-500 dark:text-gray-400 ${isRefreshing ? 'animate-refresh-spin' : ''}`}
+      <div className="w-full flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-3 md:mb-0">Team Dashboard</h1>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className={`px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors flex items-center ${isRefreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
-            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-          </svg>
-        </button>
+            <svg className={`w-4 h-4 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+          </button>
+          {lastUpdated && (
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
       </div>
       
       {/* Market Analysis Cards */}
@@ -440,12 +321,40 @@ export default function LCDashboard() {
           <WhaleTrackingCard loading={isLoading} />
         </div>
         <div className={cardAnimationClass} style={{ transitionDelay: '250ms', animationDelay: '250ms' }}>
-          <MarketOverviewCard 
-            loading={isLoading} 
-            btcPrice={btcPrice} 
-            ethPrice={ethPrice} 
-            globalData={globalData}
-          />
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-card-hover transform hover:-translate-y-1">
+            <div className="flex items-center mb-3">
+              <TrendingUp className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">Market Overview</p>
+            </div>
+            
+            {/* Simple Market Overview without fancy components */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Market Cap:</span>
+                <span className="font-semibold">
+                  ${globalData?.totalMarketCap ? (globalData.totalMarketCap / 1e12).toFixed(2) : '---'}T
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-500 dark:text-gray-400">24h Volume:</span>
+                <span className="font-semibold">
+                  ${globalData?.totalVolume24h ? (globalData.totalVolume24h / 1e9).toFixed(2) : '---'}B
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-500 dark:text-gray-400">BTC:</span>
+                <span className="font-semibold">
+                  {btcPrice ? `$${btcPrice.toLocaleString(undefined, {maximumFractionDigits: 0})}` : '---'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-500 dark:text-gray-400">ETH:</span>
+                <span className="font-semibold">
+                  {ethPrice ? `$${ethPrice.toLocaleString(undefined, {maximumFractionDigits: 0})}` : '---'}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
