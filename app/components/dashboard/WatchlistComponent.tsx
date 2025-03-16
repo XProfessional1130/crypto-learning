@@ -3,16 +3,22 @@ import { useWatchlist, WatchlistItem } from '@/lib/hooks/useWatchlist';
 import { CoinData } from '@/types/portfolio';
 import WatchlistItemDetailModal from './WatchlistItemDetailModal';
 import AddToWatchlistModal from './AddToWatchlistModal';
-import { cn } from '@/lib/utils/classnames';
 import { calculateProgressPercentage, formatCryptoPrice, formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
 import Image from 'next/image';
 import { Skeleton } from '../ui/skeleton';
 import { useDataCache } from '@/lib/context/data-cache-context';
 
+// Simple utility to combine class names
+const cn = (...classes: (string | boolean | undefined)[]) => {
+  return classes.filter(Boolean).join(' ');
+};
+
 // Define props interface for WatchlistComponent
 interface WatchlistComponentProps {
   onRefresh?: () => void;
   initialLoadComplete?: boolean;
+  hideControls?: boolean;
+  className?: string;
 }
 
 // Memoized WatchlistItemCard component
@@ -21,22 +27,24 @@ const WatchlistItemCard = memo(({
   progressPercentage, 
   targetPercentage, 
   isTargetHigher, 
-  onClick 
+  onClick,
+  isFirst = false
 }: {
   item: WatchlistItem;
   progressPercentage: number;
   targetPercentage: number;
   isTargetHigher: boolean;
   onClick: (item: WatchlistItem) => void;
+  isFirst?: boolean;
 }) => {
   return (
     <div 
       onClick={() => onClick(item)}
-      className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300 border border-gray-200 dark:border-gray-700 w-full hover:shadow-card-hover transform hover:-translate-y-1"
+      className={`px-3 py-3 cursor-pointer hover:bg-gray-50/40 dark:hover:bg-gray-700/40 transition-all duration-200 border-b border-gray-100 dark:border-gray-700/50 w-full group ${isFirst ? 'border-t border-t-gray-100 dark:border-t-gray-700/50' : ''}`}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
-          <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-2 text-xs font-bold overflow-hidden">
+          <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-2 text-xs font-bold overflow-hidden">
             <img 
               src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${item.coinId}.png`}
               alt={item.symbol}
@@ -52,53 +60,50 @@ const WatchlistItemCard = memo(({
             />
           </div>
           <div>
-            <div className="font-medium">{item.symbol}</div>
+            <div className="font-medium text-gray-800 dark:text-gray-100 flex items-center">
+              {item.symbol}
+              <span className="opacity-0 group-hover:opacity-100 ml-2 transition-opacity text-xs text-teal-600 dark:text-teal-400">
+                View details
+              </span>
+            </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">{item.name}</div>
           </div>
         </div>
 
-        <div className="flex items-end gap-3">
-          <div className="text-right">
-            <div className="text-xs text-gray-500 dark:text-gray-400">Current</div>
-            <div className="font-medium">{formatCryptoPrice(item.price)}</div>
+        <div className="flex flex-col items-end">
+          <div className="font-medium text-gray-800 dark:text-white">
+            {formatCryptoPrice(item.price)}
           </div>
           
           {item.priceTarget && (
-            <div className="text-right">
-              <div className="text-xs text-gray-500 dark:text-gray-400">Target</div>
-              <div className="font-medium">{formatCryptoPrice(item.priceTarget)}</div>
+            <div className={`text-xs ${
+              isTargetHigher ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+            }`}>
+              Target: {formatCryptoPrice(item.priceTarget)}
             </div>
           )}
         </div>
       </div>
       
       {item.priceTarget && (
-        <div>
-          <div className="flex justify-between items-center mb-1">
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              Progress to target
-            </div>
-            <div className={`text-xs font-medium ${
-              isTargetHigher ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-            }`}>
-              {Math.round(progressPercentage)}%
-            </div>
-          </div>
-          
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+        <div className="pl-9"> {/* Align with the text after the icon */}
+          <div className="w-full bg-gray-100 dark:bg-gray-700/50 rounded-full h-1.5 overflow-hidden mt-1">
             <div 
-              className={`h-2 rounded-full ${isTargetHigher ? 'bg-green-500' : 'bg-red-500'}`}
+              className={`h-1.5 rounded-full ${isTargetHigher ? 'bg-green-500/70' : 'bg-red-500/70'}`}
               style={{ width: `${progressPercentage}%` }}
             ></div>
           </div>
           
-          <div className="flex justify-end mt-1">
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+          <div className="flex justify-between mt-1 text-xs">
+            <span className="text-gray-500 dark:text-gray-400">
+              {Math.round(progressPercentage)}% of target
+            </span>
+            <span className={`font-medium ${
               isTargetHigher
-                ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' 
-                : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                ? 'text-green-600 dark:text-green-400' 
+                : 'text-red-600 dark:text-red-400'
             }`}>
-              {formatPercentage(Math.abs(targetPercentage))} {isTargetHigher ? 'upside' : 'downside'}
+              {formatPercentage(Math.abs(targetPercentage))} {isTargetHigher ? '↑' : '↓'}
             </span>
           </div>
         </div>
@@ -109,35 +114,34 @@ const WatchlistItemCard = memo(({
 WatchlistItemCard.displayName = 'WatchlistItemCard';
 
 // Create a memoized WatchlistItemSkeleton component for better loading UX
-const WatchlistItemSkeleton = memo(() => {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-200 dark:border-gray-700 w-full animate-pulse">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700"></div>
-          <div>
-            <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
-            <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          </div>
-        </div>
-        <div className="flex items-end gap-3">
-          <div className="text-right">
-            <div className="h-3 w-12 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
-            <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          </div>
+const WatchlistItemSkeleton = () => (
+  <div className="px-3 py-3 border-b border-gray-100 dark:border-gray-700/50 animate-pulse">
+    <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center">
+        <div className="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 mr-2"></div>
+        <div>
+          <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          <div className="h-3 w-24 bg-gray-100 dark:bg-gray-800 rounded mt-1"></div>
         </div>
       </div>
-      <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full mt-2"></div>
+      <div className="flex flex-col items-end">
+        <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        <div className="h-3 w-16 bg-gray-100 dark:bg-gray-800 rounded mt-1"></div>
+      </div>
     </div>
-  );
-});
-WatchlistItemSkeleton.displayName = 'WatchlistItemSkeleton';
+  </div>
+);
 
-const WatchlistComponent = ({ onRefresh, initialLoadComplete = false }: WatchlistComponentProps) => {
+const WatchlistComponent = ({ 
+  onRefresh, 
+  initialLoadComplete = false,
+  hideControls = false,
+  className = ''
+}: WatchlistComponentProps) => {
   const {
     watchlist,
     loading: watchlistLoading,
-    error,
+    error: watchlistError,
     getTargetPercentage,
     refreshWatchlist
   } = useWatchlist();
@@ -155,6 +159,19 @@ const WatchlistComponent = ({ onRefresh, initialLoadComplete = false }: Watchlis
   const contentAnimationClass = initialLoadComplete ? "animate-fadeIn" : "opacity-0 transition-opacity-transform";
   const itemAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
   
+  // Listen for custom events to open the add modal
+  useEffect(() => {
+    const handleOpenAddModal = () => {
+      setIsAddModalOpen(true);
+    };
+    
+    window.addEventListener('dashboard:add-to-watchlist', handleOpenAddModal);
+    
+    return () => {
+      window.removeEventListener('dashboard:add-to-watchlist', handleOpenAddModal);
+    };
+  }, []);
+
   // Only load once on mount, with no dependencies to prevent reruns
   useEffect(() => {
     // Initial data load
@@ -245,13 +262,15 @@ const WatchlistComponent = ({ onRefresh, initialLoadComplete = false }: Watchlis
 
   if (watchlistLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 flex flex-col border border-gray-100 dark:border-gray-700" style={{ height: 'calc(100vh - 24rem)' }}>
-        <div className="flex justify-between items-center mb-6">
-          <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-        </div>
+      <div className={cn("flex flex-col", className)} style={{ height: hideControls ? 'auto' : 'calc(100vh - 24rem)' }}>
+        {!hideControls && (
+          <div className="flex justify-between items-center mb-6">
+            <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          </div>
+        )}
         
-        <div className="space-y-4 w-full">
+        <div className="space-y-1 w-full">
           {[...Array(5)].map((_, i) => (
             <WatchlistItemSkeleton key={i} />
           ))}
@@ -260,12 +279,14 @@ const WatchlistComponent = ({ onRefresh, initialLoadComplete = false }: Watchlis
     );
   }
 
-  if (error) {
+  if (watchlistError) {
     return (
-      <div className="text-center py-10">
-        <p className="text-red-500">{error}</p>
+      <div className="text-center p-6">
+        <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 mb-4">
+          <p className="text-red-600 dark:text-red-400">{watchlistError}</p>
+        </div>
         <button 
-          className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+          className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors transform hover:scale-105"
           onClick={() => refreshWatchlist(true)}
         >
           Try Again
@@ -275,80 +296,117 @@ const WatchlistComponent = ({ onRefresh, initialLoadComplete = false }: Watchlis
   }
 
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 flex flex-col ${contentAnimationClass}`} style={{ height: 'calc(100vh - 24rem)' }}>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">Watchlist</h2>
-        <div className="flex space-x-2">
-          <button 
-            onClick={handleManualRefresh}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500"
-            aria-label="Refresh watchlist"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2"
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              className={`w-5 h-5 text-gray-500 dark:text-gray-400 ${isRefreshing ? 'animate-refresh-spin' : ''}`}
-            >
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-            </svg>
-          </button>
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors transform hover:scale-105 active:scale-95 hover:shadow-md"
-          >
-            Add Coin
-          </button>
+    <div className={cn(
+      "relative h-full flex flex-col", 
+      className
+    )}>
+      {watchlistLoading ? (
+        <div className="flex-1 flex flex-col p-3 space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <WatchlistItemSkeleton key={i} />
+          ))}
         </div>
-      </div>
-
-      {watchlist.length === 0 ? (
-        <div className="text-center py-10 flex-grow">
-          <p className="text-lg mb-4">Your watchlist is empty</p>
+      ) : watchlistError ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-6">
+          <div className="w-16 h-16 mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 text-red-500">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <p className="text-lg mb-2 font-medium text-gray-800 dark:text-white">Error loading watchlist</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center">
+            An error occurred while loading your watchlist
+          </p>
           <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors transform hover:scale-105 active:scale-95"
+            onClick={() => refreshWatchlist()}
+            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
           >
-            Add your first coin
+            Refresh watchlist
           </button>
         </div>
       ) : (
-        <div className="overflow-y-auto h-[calc(100%-4rem)] space-y-4 w-full pr-1 scrollbar-thin">
-          {watchlist.map((item, index) => {
-            const targetPercentage = getTargetPercentage(item);
-            const isTargetHigher = item.priceTarget ? item.priceTarget > item.price : false;
-            const progressPercentage = item.priceTarget 
-              ? calculateProgressPercentage(item.price, item.priceTarget)
-              : 0;
-            
-            return (
-              <div 
-                key={item.id} 
-                className={itemAnimationClass} 
-                style={{ transitionDelay: `${index * 30}ms`, animationDelay: `${index * 30}ms` }}
+        <>
+          {!hideControls && (
+            <div className="flex justify-between items-center mb-4 p-3 border-b border-gray-100 dark:border-gray-700">
+              <h2 className="font-semibold text-lg text-gray-800 dark:text-white">
+                Your Watchlist
+              </h2>
+              <button 
+                onClick={() => setIsAddModalOpen(true)}
+                className="text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300"
               >
-                <WatchlistItemCard
-                  item={item}
-                  progressPercentage={progressPercentage}
-                  targetPercentage={targetPercentage}
-                  isTargetHigher={isTargetHigher}
-                  onClick={handleItemClick}
-                />
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {watchlist.length === 0 ? (
+            <div className="flex flex-col items-center justify-center flex-grow py-8">
+              <div className="w-20 h-20 mb-4 rounded-full bg-violet-100 dark:bg-violet-900/20 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10 text-violet-500">
+                  <path d="M2.5 18.5A9 9 0 1 1 16.5 18.5M16.5 18.5L21.5 13.5M16.5 18.5L21.5 23.5" />
+                </svg>
               </div>
-            );
-          })}
-        </div>
+              <p className="text-lg mb-2 font-medium text-gray-800 dark:text-white">Watchlist is empty</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center max-w-xs">
+                Add cryptocurrencies to your watchlist to track their prices and set price targets
+              </p>
+              {!hideControls && (
+                <button 
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors transform hover:scale-105 active:scale-95"
+                >
+                  Add your first coin
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-y-auto flex-1 w-full scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+              <div>
+                {watchlist.map((item, index) => {
+                  const targetPercentage = getTargetPercentage(item);
+                  const isTargetHigher = item.priceTarget ? item.priceTarget > item.price : false;
+                  const progressPercentage = item.priceTarget 
+                    ? calculateProgressPercentage(item.price, item.priceTarget)
+                    : 0;
+                  
+                  return (
+                    <div 
+                      key={item.id} 
+                      className={itemAnimationClass} 
+                      style={{ transitionDelay: `${index * 30}ms`, animationDelay: `${index * 30}ms` }}
+                    >
+                      <WatchlistItemCard
+                        item={item}
+                        progressPercentage={progressPercentage}
+                        targetPercentage={targetPercentage}
+                        isTargetHigher={isTargetHigher}
+                        onClick={handleItemClick}
+                        isFirst={index === 0}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      
+      {isAddModalOpen && (
+        <AddToWatchlistModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onCoinAdded={handleCoinAdded}
+        />
       )}
 
-      {/* Modal for adding coins - Only render when open */}
-      {addCoinModal}
-
-      {/* Modal for viewing/editing watchlist item details - Only render when open */}
-      {isDetailModalOpen && selectedItem && (
+      {selectedItem && (
         <WatchlistItemDetailModal
           isOpen={isDetailModalOpen}
           onClose={handleDetailModalClose}

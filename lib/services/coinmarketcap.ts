@@ -28,6 +28,26 @@ export interface GlobalData {
   ethDominance: number;
   totalMarketCap: number;
   totalVolume24h: number;
+  
+  // Fear & Greed Index
+  fearGreedValue?: number;
+  fearGreedClassification?: string;
+  fearGreedTimestamp?: string;
+  
+  // On-chain activity
+  activeAddressesCount?: number;
+  activeAddressesChange24h?: number;
+  activeAddressesTimestamp?: string;
+  
+  // Whale transactions
+  largeTransactionsCount?: number;
+  largeTransactionsChange24h?: number;
+  largeTransactionsTimestamp?: string;
+  
+  // Additional market metrics
+  altcoinDominance?: number;
+  totalCryptocurrencies?: number;
+  totalExchanges?: number;
 }
 
 // Helper to handle API response and error handling

@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google'
 import { AuthProvider } from "../lib/auth-context";
 import { ThemeProvider } from "../lib/theme-context";
 import { DataCacheProvider } from "../lib/context/data-cache-context";
+import { ModalProvider } from "../lib/context/modal-context";
 import QueryProvider from "../lib/providers/query-provider";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
@@ -23,6 +24,11 @@ const DataPrefetcher = dynamic(() => import('./components/DataPrefetcher'), {
 
 // Dynamically import GlobalChat to prevent SSR issues
 const GlobalChat = dynamic(() => import('@/components/GlobalChat'), {
+  ssr: false
+});
+
+// Dynamically import GlobalModal to prevent SSR issues
+const GlobalModal = dynamic(() => import('./components/modals/GlobalModal'), {
   ssr: false
 });
 
@@ -61,29 +67,34 @@ export default function RootLayout({
           <AuthProvider>
             <ThemeProvider>
               <DataCacheProvider>
-                {/* Client components for enhancements - moved inside providers to ensure proper hydration */}
-                <AppEnhancer />
-                <GlobalStyles />
-                <AuthTokenScript />
-                <CoinDataInitializer />
-                
-                {/* Data Prefetcher and other app components */}
-                <DataPrefetcher />
-                
-                {/* App shell with background elements */}
-                <BackgroundElements />
-                
-                {/* Main layout */}
-                <div className="min-h-screen flex flex-col relative z-0 pt-20">
-                  <Navigation />
-                  <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in scrollbar-custom">
-                    {children}
-                  </main>
-                  <Footer />
-                </div>
-                
-                {/* Global Chat Component */}
-                <GlobalChat />
+                <ModalProvider>
+                  {/* Client components for enhancements - moved inside providers to ensure proper hydration */}
+                  <AppEnhancer />
+                  <GlobalStyles />
+                  <AuthTokenScript />
+                  <CoinDataInitializer />
+                  
+                  {/* Data Prefetcher and other app components */}
+                  <DataPrefetcher />
+                  
+                  {/* App shell with background elements */}
+                  <BackgroundElements />
+                  
+                  {/* Main layout */}
+                  <div className="min-h-screen flex flex-col relative z-0 pt-20">
+                    <Navigation />
+                    <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in scrollbar-custom">
+                      {children}
+                    </main>
+                    <Footer />
+                  </div>
+                  
+                  {/* Global Chat Component */}
+                  <GlobalChat />
+                  
+                  {/* Global Modal Component */}
+                  <GlobalModal />
+                </ModalProvider>
               </DataCacheProvider>
             </ThemeProvider>
           </AuthProvider>

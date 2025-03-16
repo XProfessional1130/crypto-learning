@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PortfolioItemWithPrice } from '@/types/portfolio';
-import { useTeamPortfolio } from '@/lib/hooks/useTeamPortfolio';
+import ModalContent from '../modals/ModalContent';
 
 // Function to format cryptocurrency prices adaptively based on their value
 const formatCryptoPrice = (price: number): string => {
@@ -37,7 +37,6 @@ const formatMarketCap = (marketCap: number): string => {
 };
 
 interface TeamAssetDetailModalProps {
-  isOpen: boolean;
   onClose: () => void;
   asset: PortfolioItemWithPrice | null;
   onUpdate?: (amount: number) => Promise<{success: boolean}>;
@@ -45,75 +44,50 @@ interface TeamAssetDetailModalProps {
 }
 
 export default function TeamAssetDetailModal({ 
-  isOpen, 
   onClose, 
   asset,
   onUpdate,
   onDelete
 }: TeamAssetDetailModalProps) {
-  const { updateAmount, removeCoin, refreshPortfolio } = useTeamPortfolio();
-  const [amount, setAmount] = useState<number>(asset?.amount || 0);
-  const [isEditing, setIsEditing] = useState(false);
+  const [localAsset, setLocalAsset] = useState<PortfolioItemWithPrice | null>(null);
+  const [newAmount, setNewAmount] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [localAsset, setLocalAsset] = useState<PortfolioItemWithPrice | null>(asset);
-
-  // Update amount and local asset when asset changes
+  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Update local state when asset prop changes
   useEffect(() => {
     if (asset) {
-      setAmount(asset.amount);
       setLocalAsset(asset);
-      setIsEditing(false);
+      setNewAmount(asset.amount);
     }
   }, [asset]);
   
   const handleUpdateAmount = async () => {
-    if (!asset || amount <= 0) return;
+    if (!localAsset || !onUpdate) return;
     
     setIsProcessing(true);
     try {
-      // Use the provided callback if available, otherwise use the hook
-      let result;
-      if (onUpdate) {
-        result = await onUpdate(amount);
-      } else {
-        result = await updateAmount(asset.id, amount);
-      }
+      const result = await onUpdate(newAmount);
       
       if (result.success) {
-        // Update the local asset state with the new amount and calculated value
-        if (localAsset) {
-          const updatedAsset = {
-            ...localAsset,
-            amount: amount,
-            valueUsd: amount * localAsset.priceUsd,
-            valueBtc: amount * localAsset.priceBtc
-          };
-          setLocalAsset(updatedAsset);
-        }
-        
-        // Refresh portfolio data in the background
-        refreshPortfolio();
+        // Update only the local state to avoid a full refetch
+        setLocalAsset(prev => prev ? { ...prev, amount: newAmount } : null);
         setIsEditing(false);
       }
     } catch (error) {
-      console.error('Error updating amount:', error);
+      console.error('Error updating asset:', error);
     } finally {
       setIsProcessing(false);
     }
   };
   
   const handleDeleteAsset = async () => {
-    if (!asset) return;
+    if (!onDelete) return;
     
     setIsProcessing(true);
     try {
-      // Use the provided callback if available, otherwise use the hook
-      let result;
-      if (onDelete) {
-        result = await onDelete();
-      } else {
-        result = await removeCoin(asset.id);
-      }
+      const result = await onDelete();
       
       if (result.success) {
         onClose();
@@ -125,157 +99,138 @@ export default function TeamAssetDetailModal({
     }
   };
   
-  if (!isOpen || !localAsset) return null;
+  if (!localAsset) return null;
   
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose}></div>
-      
-      <div className="relative min-h-screen flex items-center justify-center p-4">
-        <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
-          {/* Header with Asset Info and Close Button */}
-          <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mr-3 overflow-hidden">
-                <img 
-                  src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${localAsset.coinId}.png`}
-                  alt={localAsset.coinSymbol}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                      parent.innerHTML = localAsset.coinSymbol.substring(0, 3);
-                    }
-                  }}
-                />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">{localAsset.coinName} <span className="text-gray-500 text-sm">({localAsset.coinSymbol})</span></h2>
-                <div className={`text-sm ${
-                  localAsset.priceChange24h >= 0 
-                    ? 'text-green-600 dark:text-green-400' 
-                    : 'text-red-600 dark:text-red-400'
-                }`}>
-                  {formatCryptoPrice(localAsset.priceUsd)} <span>{localAsset.priceChange24h >= 0 ? '+' : ''}{localAsset.priceChange24h.toFixed(2)}% (24h)</span>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+    <ModalContent title={localAsset.coinName} onClose={onClose}>
+      <div className="space-y-6">
+        {/* Asset Header with Icon and Price */}
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
+            <img
+              src={`https://s2.coinmarketcap.com/static/img/coins/64x64/${localAsset.coinId}.png`}
+              alt={localAsset.coinSymbol}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                (target.parentElement as HTMLElement).textContent = localAsset.coinSymbol.substring(0, 3);
+              }}
+            />
           </div>
-          
-          {/* Market Info Section - Always visible, generic information */}
-          <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-700">
-            <div className="grid grid-cols-2 gap-4">
-              {localAsset.marketCap > 0 && (
-                <div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Market Cap</div>
-                  <div className="text-sm font-medium">
-                    {formatMarketCap(localAsset.marketCap)}
-                  </div>
-                </div>
-              )}
-              <div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Portfolio %</div>
-                <div className="text-sm font-medium">{localAsset.percentage.toFixed(2)}%</div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Content */}
-          <div className="p-4 space-y-4">
-            {/* Your Holdings Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Team Holdings</h3>
-                <button 
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-                >
-                  {isEditing ? 'Cancel' : 'Edit'}
-                </button>
-              </div>
-              
-              {!isEditing ? (
-                /* Display Mode */
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Amount</div>
-                    <div className="text-base font-medium">
-                      {localAsset.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Value</div>
-                    <div className="text-base font-medium">
-                      {formatCryptoPrice(localAsset.valueUsd)}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* Edit Mode */
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Amount
-                  </label>
-                  <input
-                    type="number"
-                    value={amount || ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setAmount(value ? parseFloat(value) : 0);
-                    }}
-                    min={0.000001}
-                    step={0.000001}
-                    placeholder="Enter amount"
-                    className="w-full px-3 py-2 text-sm border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white mb-2"
-                  />
-                  
-                  {amount > 0 && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                      Value: {formatCryptoPrice(amount * localAsset.priceUsd)}
-                    </div>
-                  )}
-                  
-                  <button
-                    onClick={handleUpdateAmount}
-                    disabled={amount <= 0 || isProcessing}
-                    className={`w-full py-1.5 text-sm bg-blue-500 text-white rounded-lg transition-colors ${
-                      amount <= 0 || isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'
-                    }`}
-                  >
-                    {isProcessing ? 'Updating...' : 'Update Amount'}
-                  </button>
-                </div>
-              )}
-            </div>
-            
-            {/* Delete Asset Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                Remove this asset from the team portfolio?
-              </p>
-              <button
-                onClick={handleDeleteAsset}
-                disabled={isProcessing}
-                className={`w-full py-1.5 text-sm bg-red-500 text-white rounded-lg transition-colors ${
-                  isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-600'
-                }`}
-              >
-                {isProcessing ? 'Removing...' : 'Remove Asset'}
-              </button>
+          <div>
+            <div className="text-2xl font-bold">{formatCryptoPrice(localAsset.priceUsd)}</div>
+            <div className={`text-sm ${localAsset.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {localAsset.priceChange24h >= 0 ? '↑' : '↓'} {Math.abs(localAsset.priceChange24h).toFixed(2)}% (24h)
             </div>
           </div>
         </div>
+        
+        {/* Asset Details Table */}
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg overflow-hidden border border-gray-100 dark:border-gray-700">
+          <div className="grid grid-cols-2 gap-2 p-4">
+            <div className="space-y-1">
+              <div className="text-sm text-gray-500 dark:text-gray-400">Symbol</div>
+              <div className="font-medium">{localAsset.coinSymbol}</div>
+            </div>
+            
+            <div className="space-y-1">
+              <div className="text-sm text-gray-500 dark:text-gray-400">Market Cap</div>
+              <div className="font-medium">{formatMarketCap(localAsset.marketCap)}</div>
+            </div>
+            
+            <div className="space-y-1 col-span-2">
+              <div className="text-sm text-gray-500 dark:text-gray-400">Your Holdings</div>
+              {isEditing ? (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    value={newAmount === 0 ? '' : newAmount}
+                    onChange={(e) => setNewAmount(parseFloat(e.target.value) || 0)}
+                    placeholder="Enter amount..."
+                    min="0"
+                    step="0.000001"
+                    className="w-full p-2 border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+              ) : (
+                <div className="font-medium">{localAsset.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })} {localAsset.coinSymbol}</div>
+              )}
+            </div>
+            
+            <div className="space-y-1 col-span-2">
+              <div className="text-sm text-gray-500 dark:text-gray-400">Value</div>
+              <div className="font-medium">
+                ${localAsset.valueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Action Buttons */}
+        {!showDeleteConfirm ? (
+          <div className="flex space-x-3">
+            {isEditing ? (
+              <>
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setNewAmount(localAsset.amount); // Reset to original
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateAmount}
+                  disabled={isProcessing || newAmount <= 0 || newAmount === localAsset.amount || !onUpdate}
+                  className="flex-1 px-4 py-2 bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessing ? 'Saving...' : 'Save Amount'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex-1 px-4 py-2 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
+                  disabled={!onDelete}
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex-1 px-4 py-2 bg-brand-500 text-white rounded-md hover:bg-brand-600"
+                  disabled={!onUpdate}
+                >
+                  Edit Amount
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="p-3 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-md">
+              Are you sure you want to delete this asset from the portfolio?
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAsset}
+                disabled={isProcessing || !onDelete}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </ModalContent>
   );
 } 

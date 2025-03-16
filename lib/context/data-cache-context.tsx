@@ -10,6 +10,7 @@ import {
   fetchCoinDataFromSupabase,
   fetchMultipleCoinsDataFromSupabase
 } from '@/lib/services/supabase-crypto';
+import { getMacroMarketData, MacroMarketData } from '@/lib/services/macro-market-data';
 import { CoinData } from '@/types/portfolio';
 
 // Cache constants
@@ -318,7 +319,7 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       let newGlobalData = null;
       
       // Try all data sources in parallel to speed up the refresh
-      const [btcResult, ethResult, globalResult] = await Promise.allSettled([
+      const [btcResult, ethResult, globalResult, macroResult] = await Promise.allSettled([
         // BTC Price
         (async () => {
           try {
@@ -393,50 +394,111 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
               totalVolume24h: 98000000000
             };
           }
+        })(),
+        
+        // Macro Market Data
+        (async () => {
+          try {
+            const macroData = await getMacroMarketData();
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Macro market data fetched:', macroData ? 'success' : 'no data');
+            }
+            return macroData;
+          } catch (error) {
+            console.error('Error fetching macro market data:', error);
+            return null;
+          }
         })()
       ]);
       
       // Process results
       if (btcResult.status === 'fulfilled' && btcResult.value) {
         newBtcPrice = btcResult.value;
-      }
-      
-      if (ethResult.status === 'fulfilled' && ethResult.value) {
-        newEthPrice = ethResult.value;
-      }
-      
-      if (globalResult.status === 'fulfilled' && globalResult.value) {
-        newGlobalData = globalResult.value;
-      }
-      
-      // Update the state and storage with the new values
-      if (newBtcPrice && newBtcPrice > 0) {
         setBtcPrice(newBtcPrice);
         storage.setItem('btcPrice', newBtcPrice);
       }
       
-      if (newEthPrice && newEthPrice > 0) {
+      if (ethResult.status === 'fulfilled' && ethResult.value) {
+        newEthPrice = ethResult.value;
         setEthPrice(newEthPrice);
         storage.setItem('ethPrice', newEthPrice);
       }
       
-      if (newGlobalData) {
+      if (globalResult.status === 'fulfilled' && globalResult.value) {
+        newGlobalData = globalResult.value;
+        
+        // If we also have macro market data, enrich the global data
+        if (macroResult.status === 'fulfilled' && macroResult.value) {
+          const macroData = macroResult.value as MacroMarketData;
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Enriching global data with macro market data');
+          }
+          
+          // Safely enrich global data with macro market data
+          newGlobalData = {
+            ...newGlobalData,
+            // Fear & Greed - only add if the data exists
+            ...(macroData.fear_greed_value !== undefined && { 
+              fearGreedValue: macroData.fear_greed_value 
+            }),
+            ...(macroData.fear_greed_classification && { 
+              fearGreedClassification: macroData.fear_greed_classification 
+            }),
+            ...(macroData.fear_greed_timestamp && { 
+              fearGreedTimestamp: macroData.fear_greed_timestamp 
+            }),
+            
+            // On-chain activity
+            ...(macroData.active_addresses_count !== undefined && { 
+              activeAddressesCount: macroData.active_addresses_count 
+            }),
+            ...(macroData.active_addresses_change_24h !== undefined && { 
+              activeAddressesChange24h: macroData.active_addresses_change_24h 
+            }),
+            ...(macroData.active_addresses_timestamp && { 
+              activeAddressesTimestamp: macroData.active_addresses_timestamp 
+            }),
+            
+            // Whale transactions
+            ...(macroData.large_transactions_count !== undefined && { 
+              largeTransactionsCount: macroData.large_transactions_count 
+            }),
+            ...(macroData.large_transactions_change_24h !== undefined && { 
+              largeTransactionsChange24h: macroData.large_transactions_change_24h 
+            }),
+            ...(macroData.large_transactions_timestamp && { 
+              largeTransactionsTimestamp: macroData.large_transactions_timestamp 
+            }),
+            
+            // Additional metrics
+            ...(macroData.altcoin_dominance !== undefined && { 
+              altcoinDominance: macroData.altcoin_dominance 
+            }),
+            ...(macroData.total_cryptocurrencies !== undefined && { 
+              totalCryptocurrencies: macroData.total_cryptocurrencies 
+            }),
+            ...(macroData.total_exchanges !== undefined && { 
+              totalExchanges: macroData.total_exchanges 
+            }),
+          };
+        } else if (process.env.NODE_ENV === 'development') {
+          console.log('No macro market data available to enrich global data');
+        }
+        
         setGlobalData(newGlobalData);
         storage.setItem('globalData', newGlobalData);
       }
       
-      // Update last updated timestamp
-      const now = new Date();
-      setLastUpdated(now);
+      // Update the last updated timestamp
+      setLastUpdated(new Date());
       
     } catch (error) {
-      console.error('Error refreshing data cache:', error);
+      console.error('Error refreshing data:', error);
     } finally {
-      // Always exit loading state
-      setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [btcPrice, ethPrice, globalData, setIsLoading, setIsRefreshing, setLastUpdated]);
+  }, [btcPrice, ethPrice, globalData, isRefreshing]);
   
   // Function to clear the entire cache
   const clearCache = useCallback(() => {

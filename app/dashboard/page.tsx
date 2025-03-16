@@ -1,46 +1,178 @@
 'use client';
 
-import { Suspense, memo, useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, Suspense, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { TrendingUp, TrendingDown } from 'lucide-react';
+import { useAuthRedirect } from '@/lib/hooks/useAuthRedirect';
+import { useDataCache } from '@/lib/context/data-cache-context';
 import PortfolioDashboard from '@/app/components/dashboard/PortfolioDashboard';
+import DashboardLayout from '@/app/components/dashboard/DashboardLayout';
 
-// Memoize the PortfolioDashboard component to prevent unnecessary re-renders
-const MemoizedPortfolioDashboard = memo(PortfolioDashboard);
+// Create consistent loading skeleton that matches the lc-dashboard style
+function DashboardSkeleton() {
+  return (
+    <div className="w-full max-w-7xl mx-auto space-y-6">
+      {/* Header Skeleton */}
+      <div className="mb-2">
+        <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
+        <div className="h-4 w-40 mt-2 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
+      </div>
+      
+      {/* Market Card Skeleton */}
+      <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="animate-pulse">
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
+              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Content Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Portfolio Section */}
+        <div className="lg:col-span-2">
+          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)' }}>
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50">
+              <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-8 w-28 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
+            <div className="animate-pulse space-y-4">
+              <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex justify-between items-center p-3 border-b border-gray-100 dark:border-gray-700">
+                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/5"></div>
+                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/6"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        {/* Watchlist Section */}
+        <div className="lg:col-span-1">
+          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)' }}>
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50">
+              <div className="h-8 w-36 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
+            <div className="animate-pulse space-y-4">
+              <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex justify-between items-center p-3 border-b border-gray-100 dark:border-gray-700">
+                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/5"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Dashboard page - shows the user's portfolio and watchlist
  */
 export default function DashboardPage() {
-  // Removed the hasTimedOut state and timeout as it causes an unnecessary re-render
-  // This was causing the page to refresh around 5-7 seconds after loading
-
+  const { user, authLoading, showContent } = useAuthRedirect();
+  const router = useRouter();
+  
+  // Add a fail-safe timeout to ensure we eventually exit the loading state
+  const [hasTimedOut, setHasTimedOut] = useState(false);
+  
+  // Use our shared data cache for market data
+  const { 
+    btcPrice, 
+    ethPrice, 
+    globalData, 
+    isLoading: marketDataLoading,
+    isRefreshing,
+    refreshData,
+    lastUpdated
+  } = useDataCache();
+  
+  // Create consistent animation classes based on loading state - initialize to true to avoid flicker
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  
+  // Track if content has been shown - once shown, never go back to loading
+  const [hasShownContent, setHasShownContent] = useState(false);
+  
+  // Loading and error handling
+  const isLoading = !hasShownContent && (authLoading || marketDataLoading);
+  
+  // Ensure we eventually exit the loading state if it's taking too long
+  useEffect(() => {
+    const timer = setTimeout(() => setHasTimedOut(true), 7000);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Once loaded, update the animation state
+  useEffect(() => {
+    let mounted = true;
+    if (!isLoading || hasTimedOut) {
+      // Small delay to ensure smoother transitions
+      const timer = setTimeout(() => {
+        if (mounted) {
+          setInitialLoadComplete(true);
+          setHasShownContent(true);
+        }
+      }, 200);
+      return () => {
+        mounted = false;
+        clearTimeout(timer);
+      };
+    }
+    return () => { mounted = false; };
+  }, [isLoading, hasTimedOut]);
+  
+  // Determine if we should show content or loading state
+  const shouldShowContent = showContent || hasTimedOut;
+  
+  // Animation classes based on state
+  const cardAnimationClass = initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform";
+  const contentAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
+  
+  // Get the user's first name or email username for the welcome message
+  const getUserDisplayName = () => {
+    if (!user) return 'there';
+    if (user.email) {
+      // Extract the username part from the email (before the @)
+      const emailName = user.email.split('@')[0];
+      // Capitalize the first letter
+      return emailName.charAt(0).toUpperCase() + emailName.slice(1);
+    }
+    return 'there';
+  };
+  
   return (
-    <main className="flex min-h-screen flex-col p-4 md:p-8">
-      <Suspense fallback={<DashboardSkeleton />}>
-        <MemoizedPortfolioDashboard />
-      </Suspense>
-    </main>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="w-full max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div className="h-8 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-        <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+    <DashboardLayout showTitle={false}>
+      <div className="w-full">
+        {/* Page Header with Welcome Message */}
+        <div className="mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+            Your Dashboard
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-1">
+            Welcome back, {getUserDisplayName()}!
+          </p>
+        </div>
+        
+        {/* Main Content */}
+        {isLoading && !shouldShowContent ? (
+          <DashboardSkeleton />
+        ) : (
+          <Suspense fallback={<DashboardSkeleton />}>
+            <PortfolioDashboard />
+          </Suspense>
+        )}
       </div>
-      
-      {/* Stats Cards Skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
-        <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
-      </div>
-      
-      {/* Content Skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 h-96 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
-        <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
-      </div>
-    </div>
+    </DashboardLayout>
   );
 } 

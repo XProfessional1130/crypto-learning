@@ -7,6 +7,7 @@ import { PlusCircle, Edit2, Trash } from 'lucide-react';
 import TeamAddToWatchlistModal from './TeamAddToWatchlistModal';
 import TeamWatchlistItemDetailModal from './TeamWatchlistItemDetailModal';
 import { formatCryptoPrice, formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
+import { useModal } from '@/lib/context/modal-context';
 
 interface TeamWatchlistProps {
   watchlist: WatchlistItem[];
@@ -25,10 +26,10 @@ function TeamWatchlistComponent({
   globalData,
   getTargetPercentage
 }: TeamWatchlistProps) {
+  // Retrieve all needed functions from context at the top level
   const { isAdmin, addToWatchlist, updatePriceTarget, removeFromWatchlist, refreshWatchlist, isInWatchlist } = useTeamData();
-  const [showAddToWatchlistModal, setShowAddToWatchlistModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
-  const [showItemDetailModal, setShowItemDetailModal] = useState(false);
+  const { openModal, closeModal } = useModal();
 
   // Create a sorted version of the watchlist items by market cap
   const sortedWatchlistItems = useMemo(() => {
@@ -39,27 +40,60 @@ function TeamWatchlistComponent({
     return [...watchlist].sort((a, b) => b.price - a.price);
   }, [watchlist]);
 
-  // Handle add coin to watchlist
-  const handleAddToWatchlist = async (coin: CoinData, priceTarget?: number) => {
-    try {
-      const result = await addToWatchlist(coin, priceTarget);
-      
-      // Only close modal and refresh if the operation was successful
-      if (result && result.success) {
-        setShowAddToWatchlistModal(false);
-        await refreshWatchlist(true);
-      } else {
-        console.error('Failed to add coin to watchlist:', (result as { message?: string })?.message || 'Unknown error');
-      }
-    } catch (error) {
-      console.error('Error adding coin to team watchlist:', error);
-    }
+  // Handle opening add to watchlist modal
+  const handleOpenAddToWatchlistModal = () => {
+    openModal(
+      <TeamAddToWatchlistModal
+        onClose={closeModal}
+        isInWatchlist={isInWatchlist}
+        onCoinAdded={async (coin, priceTarget) => {
+          try {
+            const result = await addToWatchlist(coin, priceTarget);
+            if (result && result.success) {
+              closeModal();
+              await refreshWatchlist(true);
+            }
+            return result;
+          } catch (error) {
+            console.error('Error adding coin to team watchlist:', error);
+            return { success: false };
+          }
+        }}
+      />
+    );
   };
 
   // Handle opening item detail modal for editing
   const handleSelectItem = (item: WatchlistItem) => {
     setSelectedItem(item);
-    setShowItemDetailModal(true);
+    
+    openModal(
+      <TeamWatchlistItemDetailModal
+        onClose={closeModal}
+        item={item}
+        getTargetPercentage={getTargetPercentage}
+        onUpdatePriceTarget={async (newTarget) => {
+          try {
+            await updatePriceTarget(item.id, newTarget);
+            closeModal();
+            await refreshWatchlist(true);
+            return;
+          } catch (error) {
+            console.error('Error updating price target:', error);
+          }
+        }}
+        onRemove={async () => {
+          try {
+            await removeFromWatchlist(item.id);
+            closeModal();
+            await refreshWatchlist(true);
+            return;
+          } catch (error) {
+            console.error('Error removing item from watchlist:', error);
+          }
+        }}
+      />
+    );
   };
 
   if (loading || isDataLoading) {
@@ -86,41 +120,21 @@ function TeamWatchlistComponent({
         <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-4 text-blue-600 dark:text-blue-400">
           <p className="mb-2 font-semibold">No assets in the team watchlist yet.</p>
           {isAdmin ? (
-            <div className="mt-4">
-              <button 
-                onClick={() => setShowAddToWatchlistModal(true)}
-                className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors flex items-center"
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Asset to Team Watchlist
-              </button>
-            </div>
+            <p className="text-sm mt-2">
+              Click the '+' button in the header to add assets to the team watchlist.
+            </p>
           ) : (
             <p className="text-sm">
               The team watchlist is managed by the admin. Currently, no assets have been added.
             </p>
           )}
         </div>
-        
-        {/* TeamAddToWatchlistModal is now rendered only once at the bottom of the component */}
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center mb-4">
-        {isAdmin && (
-          <button 
-            onClick={() => setShowAddToWatchlistModal(true)}
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors flex items-center"
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Asset
-          </button>
-        )}
-      </div>
-      
       <div className="overflow-y-auto h-[calc(100vh-32rem)] scrollbar-thin">
         {sortedWatchlistItems.map((item: WatchlistItem) => {
           const targetPercentage = getTargetPercentage(item);
@@ -128,7 +142,7 @@ function TeamWatchlistComponent({
             <div 
               key={item.id}
               onClick={isAdmin ? () => handleSelectItem(item) : undefined}
-              className={`flex justify-between items-center p-4 border-b border-gray-100 dark:border-gray-700 ${isAdmin ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750' : ''}`}
+              className={`flex justify-between items-center p-4 border-b border-gray-100 dark:border-gray-700 ${isAdmin ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/80' : ''}`}
             >
               <div className="flex items-center">
                 <div className="h-10 w-10 flex-shrink-0 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
@@ -163,31 +177,6 @@ function TeamWatchlistComponent({
                       Target: {formatCryptoPrice(item.priceTarget)}
                     </div>
                   )}
-                  {isAdmin && (
-                    <div className="ml-2 flex space-x-1" onClick={(e) => e.stopPropagation()}>
-                      <button 
-                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSelectItem(item);
-                        }}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button 
-                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (window.confirm(`Remove ${item.name} from the team watchlist?`)) {
-                            await removeFromWatchlist(item.id);
-                            refreshWatchlist(true);
-                          }
-                        }}
-                      >
-                        <Trash className="h-4 w-4" />
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -201,32 +190,6 @@ function TeamWatchlistComponent({
           Our team is closely monitoring these assets for potential investment opportunities. We perform thorough technical and fundamental analysis before adding any asset to our watchlist.
         </p>
       </div>
-
-      {/* Add To Watchlist Modal - Single instance for the entire component */}
-      <TeamAddToWatchlistModal
-        isOpen={showAddToWatchlistModal}
-        onClose={() => setShowAddToWatchlistModal(false)}
-        onCoinAdded={handleAddToWatchlist}
-      />
-
-      {/* Item Detail Modal - Only shown when admin clicks on an item */}
-      {showItemDetailModal && selectedItem && (
-        <TeamWatchlistItemDetailModal
-          item={selectedItem}
-          isOpen={showItemDetailModal}
-          onClose={() => setShowItemDetailModal(false)}
-          onUpdatePriceTarget={async (newTarget) => {
-            await updatePriceTarget(selectedItem.id, newTarget);
-            setShowItemDetailModal(false);
-            refreshWatchlist(true);
-          }}
-          onRemove={async () => {
-            await removeFromWatchlist(selectedItem.id);
-            setShowItemDetailModal(false);
-            refreshWatchlist(true);
-          }}
-        />
-      )}
     </div>
   );
 }

@@ -6,9 +6,10 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 interface DashboardLayoutProps {
   children: ReactNode;
   title?: string;
+  showTitle?: boolean;
 }
 
-export default function DashboardLayout({ children, title = "Dashboard" }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, title = "Dashboard", showTitle = true }: DashboardLayoutProps) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [showContent, setShowContent] = useState(false);
@@ -50,7 +51,7 @@ export default function DashboardLayout({ children, title = "Dashboard" }: Dashb
 
   return (
     <main className={`container mx-auto px-4 py-8 transition-opacity-transform duration-600 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
-      <h1 className="text-3xl font-bold mb-6">{title}</h1>
+      {showTitle && <h1 className="text-3xl font-bold mb-6">{title}</h1>}
       {children}
     </main>
   );

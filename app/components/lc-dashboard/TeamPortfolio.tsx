@@ -7,6 +7,7 @@ import TeamAddCoinModal from './TeamAddCoinModal';
 import TeamAssetDetailModal from './TeamAssetDetailModal';
 import { GlobalData } from '@/lib/services/coinmarketcap';
 import { formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
+import { useModal } from '@/lib/context/modal-context';
 
 // Local formatCryptoPrice function
 const formatCryptoPrice = (price: number): string => {
@@ -103,9 +104,8 @@ export default function TeamPortfolio({
   globalData
 }: TeamPortfolioProps) {
   const { isAdmin, addCoin, updateAmount, removeCoin, refreshPortfolio } = useTeamPortfolio();
-  const [showAddCoinModal, setShowAddCoinModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<PortfolioItemWithPrice | null>(null);
-  const [showAssetDetailModal, setShowAssetDetailModal] = useState(false);
+  const { openModal, closeModal } = useModal();
 
   // Create a sorted version of the portfolio items
   const sortedPortfolioItems = useMemo(() => {
@@ -115,49 +115,61 @@ export default function TeamPortfolio({
     return [...portfolio.items].sort((a, b) => b.valueUsd - a.valueUsd);
   }, [portfolio]);
 
-  // Handle add coin to portfolio
-  const handleAddCoin = async (coin: CoinData, amount: number) => {
-    try {
-      await addCoin(coin, amount);
-      setShowAddCoinModal(false);
-      refreshPortfolio(true);
-    } catch (error) {
-      console.error('Error adding coin to team portfolio:', error);
-    }
-  };
-
   // Handle opening asset detail modal for editing
   const handleSelectAsset = (asset: PortfolioItemWithPrice) => {
     setSelectedAsset(asset);
-    setShowAssetDetailModal(true);
-  };
-
-  // Custom handlers for TeamPortfolio asset operations
-  const handleUpdateAmount = async (assetId: string, newAmount: number) => {
-    try {
-      await updateAmount(assetId, newAmount);
-      setShowAssetDetailModal(false);
-      refreshPortfolio(true);
-      return { success: true };
-    } catch (error) {
-      console.error('Error updating asset amount:', error);
-      return { success: false };
-    }
-  };
-
-  // The delete handler wrapped to match the expected interface (no arguments)
-  const handleDelete = async () => {
-    if (!selectedAsset) return { success: false };
     
-    try {
-      await removeCoin(selectedAsset.id);
-      setShowAssetDetailModal(false);
-      refreshPortfolio(true);
-      return { success: true };
-    } catch (error) {
-      console.error('Error removing asset:', error);
-      return { success: false };
-    }
+    openModal(
+      <TeamAssetDetailModal
+        onClose={closeModal}
+        asset={asset}
+        onUpdate={async (amount) => {
+          try {
+            const result = await updateAmount(asset.id, amount);
+            if (result.success) {
+              await refreshPortfolio(true);
+            }
+            return result;
+          } catch (error) {
+            console.error('Error updating asset amount:', error);
+            return { success: false };
+          }
+        }}
+        onDelete={async () => {
+          try {
+            const result = await removeCoin(asset.id);
+            if (result.success) {
+              closeModal();
+              await refreshPortfolio(true);
+            }
+            return result;
+          } catch (error) {
+            console.error('Error removing asset:', error);
+            return { success: false };
+          }
+        }}
+      />
+    );
+  };
+
+  // Handle opening add coin modal
+  const handleOpenAddCoinModal = () => {
+    openModal(
+      <TeamAddCoinModal
+        onClose={closeModal}
+        onCoinAdded={async (coin, amount) => {
+          try {
+            const result = await addCoin(coin, amount);
+            if (result.success) {
+              closeModal();
+              await refreshPortfolio(true);
+            }
+          } catch (error) {
+            console.error('Error adding coin to team portfolio:', error);
+          }
+        }}
+      />
+    );
   };
 
   if (loading || isDataLoading) {
@@ -189,15 +201,9 @@ export default function TeamPortfolio({
       <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-4 text-blue-600 dark:text-blue-400">
         <p className="mb-2 font-semibold">No assets in the team portfolio yet.</p>
         {isAdmin ? (
-          <div className="mt-4">
-            <button 
-              onClick={() => setShowAddCoinModal(true)}
-              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors flex items-center"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Asset to Team Portfolio
-            </button>
-          </div>
+          <p className="text-sm mt-2">
+            Click the '+' button in the header to add assets to the team portfolio.
+          </p>
         ) : (
           <p className="text-sm">
             The team portfolio is managed by the admin. Currently, no assets have been added.
@@ -209,19 +215,6 @@ export default function TeamPortfolio({
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-white">Team Portfolio</h2>
-        {isAdmin && (
-          <button 
-            onClick={() => setShowAddCoinModal(true)}
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors flex items-center"
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Asset
-          </button>
-        )}
-      </div>
-      
       <div className="overflow-y-auto h-[calc(100vh-32rem)] scrollbar-thin">
         {sortedPortfolioItems.map((item) => (
           <PortfolioItem 
@@ -240,26 +233,6 @@ export default function TeamPortfolio({
           This portfolio represents the collective recommendations of our expert analysts. Assets are carefully selected based on thorough research, technical analysis, and fundamental value propositions.
         </p>
       </div>
-
-      {/* Add Coin Modal */}
-      {showAddCoinModal && (
-        <TeamAddCoinModal
-          isOpen={showAddCoinModal}
-          onClose={() => setShowAddCoinModal(false)}
-          onCoinAdded={handleAddCoin}
-        />
-      )}
-      
-      {/* Asset Detail Modal */}
-      {showAssetDetailModal && selectedAsset && (
-        <TeamAssetDetailModal
-          isOpen={showAssetDetailModal}
-          onClose={() => setShowAssetDetailModal(false)}
-          asset={selectedAsset}
-          onUpdate={(amount) => handleUpdateAmount(selectedAsset.id, amount)}
-          onDelete={handleDelete}
-        />
-      )}
     </div>
   );
 } 

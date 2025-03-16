@@ -125,7 +125,7 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
               </div>
             )}
 
-            {loading && !error ? (
+            {loading ? (
               <ModalSkeleton 
                 headerHeight={30}
                 contentItems={8}
@@ -164,66 +164,43 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
                     
                     {searchResults.length > 0 && (
                       <div className="mt-4 max-h-[300px] overflow-y-auto">
-                        {searchResults.map((coin) => {
-                          const alreadyInWatchlist = isInWatchlist(coin.id);
-                          return (
-                            <button
-                              key={coin.id}
-                              onClick={() => handleSelectCoin(coin)}
-                              className={`w-full p-3 flex items-center rounded-lg transition-colors border-b border-gray-200 dark:border-gray-700 ${
-                                alreadyInWatchlist 
-                                  ? 'opacity-60 bg-gray-50 dark:bg-gray-700 cursor-not-allowed' 
-                                  : 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'
-                              }`}
-                              disabled={alreadyInWatchlist}
-                            >
-                              <div className="flex items-center flex-1">
-                                <div className="relative">
-                                  <img 
-                                    src={coin.logoUrl || `https://s2.coinmarketcap.com/static/img/coins/64x64/${coin.id}.png`} 
-                                    alt={coin.symbol} 
-                                    className="w-8 h-8 mr-3 rounded-full bg-gray-100"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.src = 'https://via.placeholder.com/32';
-                                      target.style.display = 'none';
-                                      target.parentElement?.classList.add('bg-gray-200', 'dark:bg-gray-700', 'w-8', 'h-8', 'rounded-full', 'flex', 'items-center', 'justify-center', 'text-xs', 'font-bold');
-                                      target.parentElement!.innerHTML = `<span>${coin.symbol.substring(0, 2)}</span>`;
-                                    }}
-                                  />
-                                  
-                                  {coin.cmcRank && (
-                                    <div className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-[8px] font-bold border border-gray-200 dark:border-gray-700 overflow-hidden text-blue-500">
-                                      #{coin.cmcRank}
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                <div className="text-left">
-                                  <div className="font-medium flex items-center">
-                                    {coin.symbol}
-                                    {alreadyInWatchlist && (
-                                      <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">
-                                        In Watchlist
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
-                                    <span className="truncate max-w-[150px]">{coin.name}</span>
-                                  </div>
-                                </div>
+                        {searchResults.map((coin) => (
+                          <button
+                            key={coin.id}
+                            onClick={() => handleSelectCoin(coin)}
+                            className="w-full p-3 flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors border-b border-gray-100 dark:border-gray-800"
+                          >
+                            <div className="flex items-center flex-1">
+                              <div className="relative">
+                                <img 
+                                  src={coin.logoUrl || `https://s2.coinmarketcap.com/static/img/coins/64x64/${coin.id}.png`} 
+                                  alt={coin.symbol} 
+                                  className="w-8 h-8 mr-3 rounded-full"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = 'https://via.placeholder.com/32';
+                                  }}
+                                />
                               </div>
-                              <div className="text-right">
-                                <div>
-                                  {formatCryptoPrice(coin.priceUsd)}
-                                </div>
-                                <div className={`text-xs ${coin.priceChange24h >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                  {formatPercentage(coin.priceChange24h)}
-                                </div>
+                              
+                              <div className="text-left">
+                                <div className="font-medium">{coin.symbol}</div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">{coin.name}</div>
                               </div>
-                            </button>
-                          );
-                        })}
+                            </div>
+                            <div className="text-right">
+                              <div>
+                                ${coin.priceUsd.toLocaleString(undefined, { 
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 6 
+                                })}
+                              </div>
+                              <div className={`text-xs ${coin.priceChange24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {coin.priceChange24h >= 0 ? '+' : ''}{coin.priceChange24h.toFixed(2)}%
+                              </div>
+                            </div>
+                          </button>
+                        ))}
                       </div>
                     )}
                     
@@ -241,7 +218,7 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
                     
                     {isSearching && (
                       <div className="mt-4 p-4 text-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mb-2"></div>
                         <p>Searching...</p>
                       </div>
                     )}
@@ -258,11 +235,14 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
                         }}
                       />
                       <div>
-                        <div className="font-medium">{selectedCoin.symbol}</div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">{selectedCoin.name}</div>
+                        <div className="font-bold">{selectedCoin.symbol}</div>
+                        <div className="text-gray-500 dark:text-gray-400">{selectedCoin.name}</div>
                       </div>
                       <div className="ml-auto font-medium">
-                        {formatCryptoPrice(selectedCoin.priceUsd)}
+                        ${selectedCoin.priceUsd.toLocaleString(undefined, { 
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 6 
+                        })}
                       </div>
                     </div>
                     
@@ -282,52 +262,52 @@ export default function AddToWatchlistModal({ isOpen, onClose, onCoinAdded }: Ad
                     </div>
                     
                     {priceTarget > 0 && (
-                      <div className="mb-6 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                        <div className="text-sm font-medium mb-2">Target Analysis</div>
-                        
-                        {priceTarget !== selectedCoin.priceUsd && (
-                          <div className="text-sm">
-                            You're setting a price target that's 
-                            <span className={`font-bold ${
-                              priceTarget > selectedCoin.priceUsd 
-                                ? 'text-green-600 dark:text-green-400' 
-                                : 'text-red-600 dark:text-red-400'
-                            }`}>
-                              {' '}
-                              {priceTarget > selectedCoin.priceUsd ? 'above' : 'below'}{' '}
-                            </span>
-                            the current price by{' '}
-                            <span className="font-bold">
-                              {formatPercentage(Math.abs(((priceTarget - selectedCoin.priceUsd) / selectedCoin.priceUsd) * 100))}
-                            </span>
-                          </div>
-                        )}
+                      <div className="mt-2 font-medium">
+                        Target: ${priceTarget.toLocaleString(undefined, { 
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 6
+                        })}
                       </div>
                     )}
-                    
-                    <div className="flex justify-between">
-                      <button 
-                        onClick={resetForm}
-                        className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
-                      >
-                        Back
-                      </button>
-                      
-                      <button 
-                        onClick={handleAddCoin}
-                        disabled={priceTarget <= 0 || isAdding}
-                        className={`px-4 py-2 bg-teal-600 text-white rounded-lg ${
-                          priceTarget <= 0 || isAdding 
-                            ? 'opacity-50 cursor-not-allowed' 
-                            : 'hover:bg-teal-700'
-                        }`}
-                      >
-                        {isAdding ? 'Adding...' : 'Add to Watchlist'}
-                      </button>
-                    </div>
                   </>
                 )}
               </>
+            )}
+          </div>
+          
+          <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+            {selectedCoin ? (
+              <>
+                <button
+                  onClick={() => setSelectedCoin(null)}
+                  className="px-4 py-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleAddCoin}
+                  disabled={priceTarget <= 0 || isAdding}
+                  className={`px-4 py-2 bg-blue-500 text-white rounded-lg transition-colors ${
+                    priceTarget <= 0 || isAdding ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'
+                  }`}
+                >
+                  {isAdding ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Adding...
+                    </div>
+                  ) : (
+                    'Add to Watchlist'
+                  )}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
             )}
           </div>
         </div>
