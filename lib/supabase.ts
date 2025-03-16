@@ -15,7 +15,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     detectSessionInUrl: true,
     persistSession: true,
-    autoRefreshToken: true
+    autoRefreshToken: true,
+    flowType: 'pkce',
+    // Ensure redirects go to the correct environment
+    url: siteUrl,
+    cookieOptions: {
+      domain: new URL(siteUrl).hostname === 'localhost' ? 'localhost' : undefined
+    }
   }
 });
 
@@ -23,9 +29,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 if (process.env.NODE_ENV === 'development') {
   if (!supabaseUrl) console.error('Missing NEXT_PUBLIC_SUPABASE_URL');
   if (!supabaseAnonKey) console.error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  if (!siteUrl) console.error('Missing NEXT_PUBLIC_SITE_URL');
+  console.log(`Supabase client configured with site URL: ${siteUrl}`);
 }
 
 // For server-side operations that require higher privileges
 export const createServiceClient = () => {
-  return createClient(supabaseUrl, supabaseServiceKey);
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      flowType: 'pkce',
+      url: siteUrl
+    }
+  });
 }; 

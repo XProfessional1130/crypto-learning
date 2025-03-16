@@ -173,6 +173,17 @@ export default function DashboardPage() {
           </Suspense>
         )}
       </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-3">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold mb-4">Welcome to Learning Crypto!</h2>
+            <p className="mb-4">
+              This is your dashboard where you can manage your account and access your learning resources.
+            </p>
+          </div>
+        </div>
+      </div>
     </DashboardLayout>
   );
 } 
