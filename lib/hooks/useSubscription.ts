@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 interface Subscription {
@@ -26,6 +26,8 @@ interface UseSubscriptionReturn {
   subscription: Subscription | null;
   isLoading: boolean;
   error: Error | null;
+  setSubscription: React.Dispatch<React.SetStateAction<Subscription | null>>;
+  refreshSubscription: () => Promise<void>;
   cancelSubscription: () => Promise<{ success: boolean; message: string }>;
   reactivateSubscription: () => Promise<{ success: boolean; message: string }>;
   openCustomerPortal: () => Promise<{ success: boolean; url?: string; error?: string }>;
@@ -43,6 +45,67 @@ export default function useSubscription(userId?: string): UseSubscriptionReturn 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // Function to fetch subscription data
+  const fetchSubscription = useCallback(async () => {
+    if (!userId) {
+      return;
+    }
+
+    setError(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) throw error;
+      
+      // Debug log to inspect what data is being returned from Supabase
+      console.log('Subscription data from Supabase:', JSON.stringify(data, null, 2));
+      
+      setSubscription(data);
+    } catch (err) {
+      console.error('Error fetching subscription:', err);
+      setError(err instanceof Error ? err : new Error('An unknown error occurred'));
+    }
+  }, [userId]);
+
+  // Function to refresh subscription data
+  const refreshSubscription = useCallback(async () => {
+    setIsLoading(true);
+    
+    // If we have a subscription, try to sync it with Stripe first
+    if (userId && subscription?.stripe_subscription_id) {
+      try {
+        const response = await fetch('/api/stripe/sync-subscription', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            subscriptionId: subscription.stripe_subscription_id,
+            userId,
+          }),
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Subscription synced with Stripe:', result);
+        }
+      } catch (err) {
+        console.error('Error syncing subscription with Stripe:', err);
+      }
+    }
+    
+    // Then fetch the latest data from the database
+    await fetchSubscription();
+    setIsLoading(false);
+  }, [fetchSubscription, userId, subscription?.stripe_subscription_id]);
+
   // Fetch subscription data when component mounts or userId changes
   useEffect(() => {
     if (!userId) {
@@ -50,31 +113,18 @@ export default function useSubscription(userId?: string): UseSubscriptionReturn 
       return;
     }
 
-    async function fetchSubscription() {
-      setIsLoading(true);
-      setError(null);
+    refreshSubscription();
 
-      try {
-        const { data, error } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+    // Set up a polling interval to check for subscription changes
+    // This helps catch changes made outside the app (like in Stripe dashboard)
+    const intervalId = setInterval(() => {
+      fetchSubscription();
+    }, 60000); // Check every minute
 
-        if (error) throw error;
-        setSubscription(data);
-      } catch (err) {
-        console.error('Error fetching subscription:', err);
-        setError(err instanceof Error ? err : new Error('An unknown error occurred'));
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchSubscription();
-  }, [userId]);
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [userId, refreshSubscription, fetchSubscription]);
 
   // Helper function to get the subscription ID, handling both snake_case and camelCase
   const getSubscriptionId = (sub: Subscription) => {
@@ -287,6 +337,8 @@ export default function useSubscription(userId?: string): UseSubscriptionReturn 
     subscription,
     isLoading,
     error,
+    setSubscription,
+    refreshSubscription,
     cancelSubscription,
     reactivateSubscription,
     openCustomerPortal,

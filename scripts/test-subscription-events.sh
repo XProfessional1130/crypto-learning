@@ -28,8 +28,10 @@ print_options() {
     echo -e "${YELLOW}1${NC}. Test Checkout Session Completed"
     echo -e "${YELLOW}2${NC}. Test Subscription Renewal (Invoice Payment Succeeded)"
     echo -e "${YELLOW}3${NC}. Test Subscription Updated (e.g., Plan Change)"
-    echo -e "${YELLOW}4${NC}. Test Subscription Canceled"
+    echo -e "${YELLOW}4${NC}. Test Subscription Canceled Immediately"
     echo -e "${YELLOW}5${NC}. Test Payment Failed"
+    echo -e "${YELLOW}6${NC}. Test Cancel At Period End (Stripe Dashboard Cancellation)"
+    echo -e "${YELLOW}7${NC}. Test Sync Subscription Status"
     echo -e "${YELLOW}q${NC}. Quit"
     echo -e "\nEnter your choice: "
 }
@@ -105,6 +107,35 @@ while true; do
               --subscription=$SUBSCRIPTION_ID
               
             echo -e "${YELLOW}Check how your system handles failed payments!${NC}"
+            ;;
+            
+        6)
+            echo -e "\n${GREEN}Testing Cancel At Period End (Stripe Dashboard Cancellation)${NC}"
+            echo "This simulates a user canceling their subscription from the Stripe dashboard"
+            
+            stripe trigger customer.subscription.updated \
+              --id=$SUBSCRIPTION_ID \
+              --cancel-at-period-end=true
+              
+            echo -e "${YELLOW}Subscription should be marked as 'canceling at period end' in database!${NC}"
+            ;;
+            
+        7)
+            echo -e "\n${GREEN}Testing Sync Subscription Status${NC}"
+            echo "This manually tests the sync subscription status endpoint"
+            
+            # Get the application URL
+            read -p "Enter your application URL (e.g., http://localhost:3000): " APP_URL
+            APP_URL=${APP_URL:-"http://localhost:3000"}
+            
+            read -p "Enter a user ID: " USER_ID
+            USER_ID=${USER_ID:-"user_test"}
+            
+            curl -X POST "${APP_URL}/api/stripe/sync-subscription" \
+              -H "Content-Type: application/json" \
+              -d "{\"subscriptionId\":\"${SUBSCRIPTION_ID}\",\"userId\":\"${USER_ID}\"}"
+              
+            echo -e "\n${YELLOW}Check application logs for sync result!${NC}"
             ;;
             
         q|Q)

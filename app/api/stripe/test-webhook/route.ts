@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     // Get session ID from URL if provided
     const url = new URL(req.url);
     const sessionId = url.searchParams.get('session_id');
+    const simulateCancel = url.searchParams.get('simulate_cancel') === 'true';
     
     if (!sessionId) {
       return NextResponse.json({ error: 'Please provide a session_id parameter' }, { status: 400 });
@@ -46,11 +47,21 @@ export async function GET(req: NextRequest) {
       ? session.subscription 
       : session.subscription.id;
     
+    // If simulating cancellation, update the subscription in Stripe
+    if (simulateCancel) {
+      console.log('🔄 Simulating cancellation from Stripe dashboard...');
+      await stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: true,
+      });
+      console.log('✅ Subscription marked to cancel at period end');
+    }
+    
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     
     console.log('✅ Retrieved subscription:', {
       id: subscription.id,
       status: subscription.status,
+      cancel_at_period_end: subscription.cancel_at_period_end,
       current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
     });
     

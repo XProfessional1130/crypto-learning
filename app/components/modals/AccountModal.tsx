@@ -28,7 +28,9 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
     cancelSubscription,
     reactivateSubscription,
     openCustomerPortal,
-    changeBillingPlan
+    changeBillingPlan,
+    setSubscription,
+    refreshSubscription
   } = useSubscription(user?.id);
 
   // Close modal when escape key is pressed
@@ -91,6 +93,11 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
   // Helper to check if subscription is canceling
   const isSubscriptionCanceling = () => {
     return getSubscriptionValue('cancelAtPeriodEnd') || getSubscriptionValue('cancel_at_period_end');
+  };
+
+  // Helper to check if subscription is fully canceled (already ended)
+  const isSubscriptionFullyCanceled = () => {
+    return (getSubscriptionValue('status') === 'canceled');
   };
 
   // Handle cancel subscription
@@ -173,11 +180,122 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
     setTargetPlan(null);
   };
 
+  // Handle subscribing again after cancellation
+  const handleSubscribeAgain = async (planId: 'monthly' | 'yearly' = 'monthly') => {
+    if (!user?.email) return;
+    
+    setActionInProgress(true);
+    setActionMessage(null);
+    
+    try {
+      // Create checkout session with user email pre-filled
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          planId,
+          email: user.email,
+          userId: user.id,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create checkout session');
+      }
+      
+      // Redirect to checkout URL
+      if (result.url) {
+        window.location.href = result.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (err) {
+      console.error('Error creating checkout session:', err);
+      setActionInProgress(false);
+      setActionMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to create checkout session'
+      });
+    }
+  };
+
   // Get formatted renewal date
   const getRenewalDate = () => {
     const periodEnd = getSubscriptionValue('currentPeriodEnd') || getSubscriptionValue('current_period_end');
     if (!periodEnd) return 'Unknown';
     return formatDate(periodEnd as string);
+  };
+  
+  // Update subscription dates from Stripe
+  const handleUpdateDates = async () => {
+    if (!user?.id || !subscription) return;
+    
+    const subscriptionId = getSubscriptionValue('stripeSubscriptionId') || getSubscriptionValue('stripe_subscription_id');
+    if (!subscriptionId) return;
+    
+    setActionInProgress(true);
+    setActionMessage(null);
+    
+    try {
+      const response = await fetch('/api/stripe/manage-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'update_dates',
+          subscriptionId,
+          userId: user.id,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update subscription dates');
+      }
+      
+      // Update subscription with new dates
+      setSubscription(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          current_period_start: result.currentPeriodStart,
+          currentPeriodStart: result.currentPeriodStart,
+          current_period_end: result.currentPeriodEnd,
+          currentPeriodEnd: result.currentPeriodEnd
+        };
+      });
+      
+      setActionMessage({
+        type: 'success',
+        text: 'Subscription information updated successfully'
+      });
+    } catch (err) {
+      console.error('Error updating subscription dates:', err);
+      setActionMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to update subscription information'
+      });
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  // Add a handler for refreshing subscription
+  const handleRefreshSubscription = () => {
+    setActionInProgress(true);
+    refreshSubscription().then(() => {
+      setActionInProgress(false);
+      setActionMessage({
+        type: 'success',
+        text: 'Subscription information refreshed'
+      });
+    });
   };
 
   if (!isOpen) return null;
@@ -321,7 +439,25 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
                   </div>
                 ) : (
                   <div>
-                    <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">Subscription</h4>
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="text-md font-medium text-gray-700 dark:text-gray-300">Subscription</h4>
+                      <button
+                        onClick={handleRefreshSubscription}
+                        disabled={actionInProgress || isLoadingSubscription}
+                        className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 transition-colors flex items-center"
+                      >
+                        <svg
+                          className={`h-4 w-4 mr-1 ${actionInProgress ? 'animate-spin' : ''}`}
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
+                        </svg>
+                        {actionInProgress ? 'Refreshing...' : 'Refresh'}
+                      </button>
+                    </div>
                     <div className="rounded-xl overflow-hidden bg-white dark:bg-gray-800 shadow-sm border border-gray-200/70 dark:border-gray-700/30">
                       {/* Plan Details Card */}
                       <div className="px-5 py-4 border-b border-gray-200/70 dark:border-gray-700/30">
@@ -343,16 +479,29 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
                       <div className="px-5 py-4 border-b border-gray-200/70 dark:border-gray-700/30">
                         <div className="flex justify-between items-center">
                           <span className="text-gray-500 dark:text-gray-400 text-sm">Status</span>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            getSubscriptionValue('status') === 'active' 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                              : getSubscriptionValue('status') === 'past_due' || getSubscriptionValue('status') === 'unpaid'
-                                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                          }`}>
-                            {(getSubscriptionValue('status') as string)?.charAt(0).toUpperCase() + (getSubscriptionValue('status') as string)?.slice(1)}
-                            {isSubscriptionCanceling() && ' (Canceling)'}
-                          </span>
+                          <div className="flex flex-col items-end">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              getSubscriptionValue('status') === 'active' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
+                                : getSubscriptionValue('status') === 'past_due' || getSubscriptionValue('status') === 'unpaid'
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                                  : getSubscriptionValue('status') === 'canceled'
+                                    ? 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
+                                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                            }`}>
+                              {(getSubscriptionValue('status') as string)?.charAt(0).toUpperCase() + (getSubscriptionValue('status') as string)?.slice(1)}
+                            </span>
+                            {isSubscriptionCanceling() && !isSubscriptionFullyCanceled() && (
+                              <span className="text-xs mt-1 text-red-500 dark:text-red-400 font-medium">
+                                Canceled - ends {getRenewalDate()}
+                              </span>
+                            )}
+                            {isSubscriptionFullyCanceled() && (
+                              <span className="text-xs mt-1 text-gray-500 dark:text-gray-400 font-medium">
+                                Your subscription has ended
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
@@ -361,13 +510,27 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
                         <div className="flex justify-between items-center">
                           <span className="text-gray-500 dark:text-gray-400 text-sm">Renews On</span>
                           <span className="text-gray-700 dark:text-gray-300 text-sm font-medium">
-                            {isSubscriptionCanceling() ? 'Will not renew' : getRenewalDate()}
+                            {isSubscriptionFullyCanceled() ? (
+                              'No renewal - subscription ended'
+                            ) : isSubscriptionCanceling() ? (
+                              'Will not renew'
+                            ) : (
+                              getRenewalDate() === 'Unknown' ? (
+                                <button 
+                                  onClick={handleUpdateDates} 
+                                  className="text-brand-600 dark:text-brand-400 hover:underline hover:text-brand-800 dark:hover:text-brand-300 font-medium transition-colors"
+                                  disabled={actionInProgress}
+                                >
+                                  {actionInProgress ? 'Updating...' : 'Update dates'}
+                                </button>
+                              ) : getRenewalDate()
+                            )}
                           </span>
                         </div>
                       </div>
 
                       {/* Plan switching toggle */}
-                      {!isSubscriptionCanceling() && (
+                      {!isSubscriptionCanceling() && !isSubscriptionFullyCanceled() && (
                         <div className="px-5 py-4">
                           <div className="mb-2">
                             <span className="text-gray-500 dark:text-gray-400 text-sm">Billing Cycle</span>
@@ -403,7 +566,51 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
 
                     {/* Subscription Actions */}
                     <div className="mt-4 space-y-3">
-                      {isSubscriptionCanceling() ? (
+                      {isSubscriptionFullyCanceled() ? (
+                        <>
+                          <div className="mb-2">
+                            <p className="text-gray-600 dark:text-gray-300 text-sm mb-2">
+                              Your subscription has ended. Choose a plan to subscribe again:
+                            </p>
+                            <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg mb-2">
+                              <button
+                                className={`flex-1 py-2 px-4 text-sm rounded-md transition-colors ${
+                                  targetPlan === 'monthly' || !targetPlan
+                                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                }`}
+                                onClick={() => setTargetPlan('monthly')}
+                                disabled={actionInProgress}
+                              >
+                                Monthly
+                              </button>
+                              <button
+                                className={`flex-1 py-2 px-4 text-sm rounded-md transition-colors ${
+                                  targetPlan === 'yearly'
+                                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                }`}
+                                onClick={() => setTargetPlan('yearly')}
+                                disabled={actionInProgress}
+                              >
+                                Annual
+                                <span className="ml-1 text-xs font-medium text-green-600 dark:text-green-400">Save 20%</span>
+                              </button>
+                            </div>
+                          </div>
+                          <Button
+                            variant="primary"
+                            onClick={() => handleSubscribeAgain(targetPlan || 'monthly')}
+                            disabled={actionInProgress}
+                            className="w-full py-2.5"
+                          >
+                            <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M12 5v14M5 12h14"></path>
+                            </svg>
+                            {actionInProgress ? 'Processing...' : 'Subscribe Again'}
+                          </Button>
+                        </>
+                      ) : isSubscriptionCanceling() ? (
                         <Button
                           variant="outline"
                           onClick={handleReactivateSubscription}
@@ -509,7 +716,7 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
                     <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-amber-800 dark:text-amber-300 text-sm mt-4">
                       <div className="flex">
                         <svg className="h-5 w-5 text-amber-500 dark:text-amber-400 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v4a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
                         <span>This will take effect immediately and your card will be charged for the prorated difference.</span>
                       </div>

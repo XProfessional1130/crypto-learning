@@ -196,6 +196,10 @@ export async function POST(req: NextRequest) {
     case 'customer.subscription.updated': {
       const subscription = event.data.object as Stripe.Subscription;
       
+      console.log(`📝 Processing subscription update for ${subscription.id}`);
+      console.log(`   Status: ${subscription.status}`);
+      console.log(`   Cancel at period end: ${subscription.cancel_at_period_end}`);
+      
       // Update subscription in database
       const { error } = await supabaseAdmin
         .from('subscriptions')
@@ -211,6 +215,8 @@ export async function POST(req: NextRequest) {
         console.error('❌ Error updating subscription:', error);
         return NextResponse.json({ error: 'Database error' }, { status: 500 });
       }
+      
+      console.log('✅ Subscription updated successfully');
       break;
     }
 

@@ -104,6 +104,47 @@ export async function POST(req: NextRequest) {
         });
       }
       
+      case 'update_dates': {
+        // Fetch the subscription from Stripe to get the latest data
+        console.log(`Fetching subscription ${subscriptionId} from Stripe to update dates...`);
+        const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+        
+        // Format dates for storage
+        const currentPeriodStart = new Date(stripeSubscription.current_period_start * 1000).toISOString();
+        const currentPeriodEnd = new Date(stripeSubscription.current_period_end * 1000).toISOString();
+        
+        console.log(`Updating subscription dates:
+          - Period Start: ${currentPeriodStart}
+          - Period End: ${currentPeriodEnd}`);
+        
+        // Update subscription date fields in database
+        const { error } = await supabaseAdmin
+          .from('subscriptions')
+          .update({
+            current_period_start: currentPeriodStart,
+            current_period_end: currentPeriodEnd,
+            // Also update these related fields to ensure consistency
+            status: stripeSubscription.status,
+            cancel_at_period_end: stripeSubscription.cancel_at_period_end
+          })
+          .eq('stripe_subscription_id', subscriptionId);
+          
+        if (error) {
+          console.error('Error updating subscription dates:', error);
+          return NextResponse.json({
+            success: false,
+            message: `Failed to update subscription dates: ${error.message}`
+          }, { status: 500 });
+        }
+        
+        return NextResponse.json({
+          success: true,
+          message: 'Subscription dates updated successfully',
+          currentPeriodStart,
+          currentPeriodEnd
+        });
+      }
+      
       case 'immediate_cancel': {
         // Immediately cancel subscription
         await stripe.subscriptions.cancel(subscriptionId);
@@ -147,15 +188,14 @@ export async function POST(req: NextRequest) {
       
       default:
         return NextResponse.json(
-          { error: 'Invalid action' },
+          { error: `Unsupported action: ${action}` },
           { status: 400 }
         );
     }
   } catch (error) {
-    console.error('Error managing subscription:', error);
-    return NextResponse.json(
-      { error: 'Something went wrong' },
-      { status: 500 }
-    );
+    console.error('Subscription management error:', error);
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }, { status: 500 });
   }
 } 

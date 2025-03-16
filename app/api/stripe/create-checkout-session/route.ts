@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   try {
     // Get request body
     const body = await req.json();
-    const { planId, userId } = body;
+    const { planId, userId, email } = body;
 
     if (!planId) {
       return NextResponse.json(
@@ -61,32 +61,35 @@ export async function POST(req: NextRequest) {
 
     // Check if the user is logged in
     let customerId: string | undefined;
-    let userEmail: string | undefined;
+    let userEmail: string | undefined = email; // Use provided email if available
     let loggedInUserId: string | undefined;
 
     // If userId is provided, the user is logged in
     if (userId) {
       loggedInUserId = userId;
       
-      // Get user data from Supabase
-      const { data: userData, error: userError } = await supabaseAdmin
-        .from('profiles')
-        .select('email')
-        .eq('id', userId)
-        .single();
+      // Only get user data from Supabase if we don't have an email already
+      if (!userEmail) {
+        // Get user data from Supabase
+        const { data: userData, error: userError } = await supabaseAdmin
+          .from('profiles')
+          .select('email')
+          .eq('id', userId)
+          .single();
 
-      if (userData) {
-        userEmail = userData.email;
-        
-        // Check if user already has a Stripe customer ID
-        const { data: existingSubscription } = await supabaseAdmin
-          .from('subscriptions')
-          .select('stripe_customer_id')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-        customerId = existingSubscription?.stripe_customer_id;
+        if (userData) {
+          userEmail = userData.email;
+        }
       }
+      
+      // Check if user already has a Stripe customer ID
+      const { data: existingSubscription } = await supabaseAdmin
+        .from('subscriptions')
+        .select('stripe_customer_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      customerId = existingSubscription?.stripe_customer_id;
     }
 
     // Get properly formatted site URL with scheme
