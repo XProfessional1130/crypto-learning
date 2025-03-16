@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextRequest, NextResponse } from 'next/server';
 
 type CoinDataResponse = {
   success: boolean;
@@ -13,23 +13,17 @@ const MAX_REQUESTS_PER_WINDOW = 20; // 20 requests per minute
 const ipRequestCounts = new Map<string, { count: number; timestamp: number }>();
 
 // Helper function to get client IP address
-const getClientIp = (req: NextApiRequest): string => {
-  const forwarded = req.headers['x-forwarded-for'];
+const getClientIp = (req: NextRequest): string => {
+  const forwarded = req.headers.get('x-forwarded-for');
   const ip = forwarded 
-    ? (typeof forwarded === 'string' ? forwarded : forwarded[0])
-    : req.socket.remoteAddress || 'unknown';
-  return typeof ip === 'string' ? ip : 'unknown';
+    ? forwarded.split(',')[0]
+    : 'unknown';
+  return ip;
 };
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<CoinDataResponse>
+export async function GET(
+  req: NextRequest
 ) {
-  // Only allow GET requests
-  if (req.method !== 'GET') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
-
   // Basic rate limiting
   const clientIp = getClientIp(req);
   const now = Date.now();
@@ -43,10 +37,10 @@ export default async function handler(
   else if (clientRateLimit) {
     // Check if rate limit exceeded
     if (clientRateLimit.count >= MAX_REQUESTS_PER_WINDOW) {
-      return res.status(429).json({ 
+      return NextResponse.json({ 
         success: false, 
         error: 'Rate limit exceeded. Please try again later.' 
-      });
+      }, { status: 429 });
     }
     
     clientRateLimit.count += 1;
@@ -56,21 +50,23 @@ export default async function handler(
     ipRequestCounts.set(clientIp, { count: 1, timestamp: now });
   }
 
-  const { id } = req.query;
+  // Get the ID from URL search params
+  const url = new URL(req.url);
+  const id = url.searchParams.get('id');
   
   if (!id) {
-    return res.status(400).json({ success: false, error: 'ID parameter is required' });
+    return NextResponse.json({ success: false, error: 'ID parameter is required' }, { status: 400 });
   }
   
   // Convert id to string in case it's an array
-  const coinId = Array.isArray(id) ? id[0] : id;
+  const coinId = id;
   
   try {
     // Get API key from environment variable - NO NEXT_PUBLIC prefix
     const apiKey = process.env.CMC_API_KEY;
     
     if (!apiKey) {
-      return res.status(500).json({ success: false, error: 'API key not configured' });
+      return NextResponse.json({ success: false, error: 'API key not configured' }, { status: 500 });
     }
     
     // Make request to CoinMarketCap
@@ -88,7 +84,7 @@ export default async function handler(
     const data = await response.json();
     
     if (!data.data || !data.data[coinId]) {
-      return res.status(404).json({ success: false, error: 'Coin not found' });
+      return NextResponse.json({ success: false, error: 'Coin not found' }, { status: 404 });
     }
     
     const coin = data.data[coinId];
@@ -109,9 +105,9 @@ export default async function handler(
       slug: coin.slug
     };
     
-    return res.status(200).json({ success: true, data: coinData });
+    return NextResponse.json({ success: true, data: coinData }, { status: 200 });
   } catch (error) {
     console.error('Error fetching coin data:', error);
-    return res.status(500).json({ success: false, error: 'Failed to fetch coin data' });
+    return NextResponse.json({ success: false, error: 'Failed to fetch coin data' }, { status: 500 });
   }
 } 

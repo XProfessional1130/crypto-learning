@@ -1,6 +1,6 @@
 import type { AppProps } from 'next/app';
 import { useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 import { AuthProvider } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import '@/styles/globals.css';

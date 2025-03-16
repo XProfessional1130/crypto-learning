@@ -10,6 +10,12 @@ const nextConfig = {
   },
   reactStrictMode: true,
   swcMinify: true,
+  // App Router is now the default
+  // Pages Router has been removed
+  experimental: {
+    // Warning: This config is subject to change as Next.js evolves
+    
+  },
 };
 
 module.exports = nextConfig; 

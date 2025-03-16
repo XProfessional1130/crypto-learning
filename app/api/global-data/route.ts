@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextRequest, NextResponse } from 'next/server';
 
 type GlobalDataResponse = {
   success: boolean;
@@ -18,23 +18,17 @@ const MAX_REQUESTS_PER_WINDOW = 10; // 10 requests per minute
 const ipRequestCounts = new Map<string, { count: number; timestamp: number }>();
 
 // Helper function to get client IP address
-const getClientIp = (req: NextApiRequest): string => {
-  const forwarded = req.headers['x-forwarded-for'];
+const getClientIp = (req: NextRequest): string => {
+  const forwarded = req.headers.get('x-forwarded-for');
   const ip = forwarded 
-    ? (typeof forwarded === 'string' ? forwarded : forwarded[0])
-    : req.socket.remoteAddress || 'unknown';
-  return typeof ip === 'string' ? ip : 'unknown';
+    ? forwarded.split(',')[0]
+    : 'unknown';
+  return ip;
 };
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<GlobalDataResponse>
+export async function GET(
+  req: NextRequest
 ) {
-  // Only allow GET requests
-  if (req.method !== 'GET') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
-
   // Basic rate limiting
   const clientIp = getClientIp(req);
   const now = Date.now();
@@ -48,10 +42,10 @@ export default async function handler(
   else if (clientRateLimit) {
     // Check if rate limit exceeded
     if (clientRateLimit.count >= MAX_REQUESTS_PER_WINDOW) {
-      return res.status(429).json({ 
+      return NextResponse.json({ 
         success: false, 
         error: 'Rate limit exceeded. Please try again later.' 
-      });
+      }, { status: 429 });
     }
     
     clientRateLimit.count += 1;
@@ -67,7 +61,7 @@ export default async function handler(
     
     if (!apiKey) {
       console.error('CoinMarketCap API key not configured');
-      return res.status(500).json({ success: false, error: 'API key not configured' });
+      return NextResponse.json({ success: false, error: 'API key not configured' }, { status: 500 });
     }
     
     // Make request to CoinMarketCap Global Metrics endpoint
@@ -89,7 +83,7 @@ export default async function handler(
     
     if (!data.data) {
       console.error('Invalid response from CoinMarketCap:', data);
-      return res.status(500).json({ success: false, error: 'Invalid response from CoinMarketCap' });
+      return NextResponse.json({ success: false, error: 'Invalid response from CoinMarketCap' }, { status: 500 });
     }
     
     // Log the received data for debugging
@@ -109,9 +103,9 @@ export default async function handler(
     };
     
     console.log('Sending global market data to client:', globalData);
-    return res.status(200).json({ success: true, data: globalData });
+    return NextResponse.json({ success: true, data: globalData }, { status: 200 });
   } catch (error) {
     console.error('Error fetching global data:', error);
-    return res.status(500).json({ success: false, error: 'Failed to fetch global market data' });
+    return NextResponse.json({ success: false, error: 'Failed to fetch global market data' }, { status: 500 });
   }
 } 

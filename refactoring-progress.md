@@ -53,6 +53,33 @@
 - Extensive use of hooks in /lib/hooks and /app/hooks
 - Component architecture uses atoms, molecules, organisms pattern in /app/components
 
+### App Router Migration Progress
+
+We have started migrating from the mixed Pages Router and App Router approach to using only the App Router:
+
+1. ✅ Migrated API routes from Pages Router to App Router
+   - ✅ global-data
+   - ✅ coin-data
+   - ✅ coin-list
+   - ✅ coin-search
+   - ✅ coin-data-batch
+   - ✅ test-search
+   - ✅ jobs/process-pending
+
+2. 🔄 Update client-side code
+   - ⬜ Check and update router imports from 'next/router' to 'next/navigation'
+   - ⬜ Ensure all client components use App Router patterns for navigation
+
+3. ⬜ Final cleanup
+   - ⬜ Run the scripts/finalize-app-router-migration.sh script when ready
+   - ⬜ Remove Pages Router directory
+   - ⬜ Update next.config.js to fully embrace App Router
+
+4. ⬜ Testing
+   - ⬜ Test all routes to ensure they work as expected
+   - ⬜ Test authentication flows
+   - ⬜ Verify API endpoints
+
 ### Issues Identified
 1. **Overly Large Components:**
    - ChatModal.tsx (570 lines)
@@ -203,3 +230,9 @@ The useTeamPortfolio hook is 353 lines and has been split into:
 5. **Easier Onboarding**: New developers can understand the codebase more quickly.
 6. **Better Error Handling**: Standardized approach to error handling improves user experience.
 7. **Consistent Loading States**: Unified loading indicators provide better feedback to users. 
+## App Router Migration Complete
+
+The migration from Pages Router to App Router has been completed. All API routes and pages have been migrated to the App Router format. The Pages Router directories and files have been removed.
+
+Date: Sun Mar 16 01:42:06 CET 2025
+

@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextRequest, NextResponse } from 'next/server';
 
 type CoinDataBatchResponse = {
   success: boolean;
@@ -7,29 +7,22 @@ type CoinDataBatchResponse = {
 }
 
 // Simple in-memory store for rate limiting
-// In production, use Redis or similar for distributed rate limiting
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute window
-const MAX_REQUESTS_PER_WINDOW = 5; // Only 5 batch requests per minute (which can include up to 100 coins each)
+const MAX_REQUESTS_PER_WINDOW = 10; // 10 requests per minute
 const ipRequestCounts = new Map<string, { count: number; timestamp: number }>();
 
 // Helper function to get client IP address
-const getClientIp = (req: NextApiRequest): string => {
-  const forwarded = req.headers['x-forwarded-for'];
+const getClientIp = (req: NextRequest): string => {
+  const forwarded = req.headers.get('x-forwarded-for');
   const ip = forwarded 
-    ? (typeof forwarded === 'string' ? forwarded : forwarded[0])
-    : req.socket.remoteAddress || 'unknown';
-  return typeof ip === 'string' ? ip : 'unknown';
+    ? forwarded.split(',')[0]
+    : 'unknown';
+  return ip;
 };
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<CoinDataBatchResponse>
+export async function GET(
+  req: NextRequest
 ) {
-  // Only allow GET requests
-  if (req.method !== 'GET') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
-
   // Basic rate limiting
   const clientIp = getClientIp(req);
   const now = Date.now();
@@ -43,10 +36,10 @@ export default async function handler(
   else if (clientRateLimit) {
     // Check if rate limit exceeded
     if (clientRateLimit.count >= MAX_REQUESTS_PER_WINDOW) {
-      return res.status(429).json({ 
+      return NextResponse.json({ 
         success: false, 
         error: 'Rate limit exceeded. Please try again later.' 
-      });
+      }, { status: 429 });
     }
     
     clientRateLimit.count += 1;
@@ -56,24 +49,25 @@ export default async function handler(
     ipRequestCounts.set(clientIp, { count: 1, timestamp: now });
   }
 
-  const { ids } = req.query;
+  const url = new URL(req.url);
+  const ids = url.searchParams.get('ids');
   
   if (!ids) {
-    return res.status(400).json({ success: false, error: 'IDs parameter is required' });
+    return NextResponse.json({ success: false, error: 'IDs parameter is required' }, { status: 400 });
   }
   
-  // Convert to array in case it's a string
-  const coinIds = Array.isArray(ids) ? ids[0].split(',') : ids.split(',');
+  // Parse the comma-separated IDs
+  const coinIds = ids.split(',');
   
   if (coinIds.length === 0) {
-    return res.status(400).json({ success: false, error: 'At least one ID must be provided' });
+    return NextResponse.json({ success: false, error: 'No valid IDs provided' }, { status: 400 });
   }
   
   if (coinIds.length > 100) {
-    return res.status(400).json({ 
+    return NextResponse.json({ 
       success: false, 
-      error: 'Maximum of 100 IDs can be requested at once' 
-    });
+      error: 'Too many IDs requested. Maximum is 100 coins per batch.' 
+    }, { status: 400 });
   }
   
   try {
@@ -81,12 +75,11 @@ export default async function handler(
     const apiKey = process.env.CMC_API_KEY;
     
     if (!apiKey) {
-      return res.status(500).json({ success: false, error: 'API key not configured' });
+      return NextResponse.json({ success: false, error: 'API key not configured' }, { status: 500 });
     }
     
     // Make request to CoinMarketCap
-    const idString = coinIds.join(',');
-    const response = await fetch(`https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=${idString}`, {
+    const response = await fetch(`https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?id=${ids}`, {
       headers: {
         'X-CMC_PRO_API_KEY': apiKey,
         'Accept': 'application/json'
@@ -100,22 +93,22 @@ export default async function handler(
     const data = await response.json();
     
     if (!data.data) {
-      return res.status(500).json({ success: false, error: 'Invalid response from CoinMarketCap' });
+      return NextResponse.json({ success: false, error: 'Invalid response from CoinMarketCap' }, { status: 500 });
     }
     
-    // Process the data into a more usable format
-    const coinsData: Record<string, any> = {};
+    // Transform the data for each coin to a simpler format
+    const coinData: Record<string, any> = {};
     
-    for (const coinId of Object.keys(data.data)) {
-      const coin = data.data[coinId];
+    Object.entries(data.data).forEach(([id, coinInfo]: [string, any]) => {
+      const coin = coinInfo;
       const usdQuote = coin.quote.USD;
       
-      coinsData[coinId] = {
+      coinData[id] = {
         id: coin.id.toString(),
         symbol: coin.symbol,
         name: coin.name,
         priceUsd: usdQuote.price,
-        priceBtc: 0, // We'll calculate this if needed client-side
+        priceBtc: 0, // This would need another API call to calculate
         priceChange24h: usdQuote.percent_change_24h || 0,
         marketCap: usdQuote.market_cap || 0,
         logoUrl: `https://s2.coinmarketcap.com/static/img/coins/64x64/${coin.id}.png`,
@@ -124,11 +117,11 @@ export default async function handler(
         cmcRank: coin.cmc_rank,
         slug: coin.slug
       };
-    }
+    });
     
-    return res.status(200).json({ success: true, data: coinsData });
+    return NextResponse.json({ success: true, data: coinData }, { status: 200 });
   } catch (error) {
     console.error('Error fetching batch coin data:', error);
-    return res.status(500).json({ success: false, error: 'Failed to fetch coin data' });
+    return NextResponse.json({ success: false, error: 'Failed to fetch coin data' }, { status: 500 });
   }
 } 
