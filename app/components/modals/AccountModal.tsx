@@ -89,6 +89,14 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
     if (!planId) return null;
     return planId.toString() === 'monthly' ? 'monthly' : 'yearly';
   };
+  
+  // Helper to check if subscription is on a custom plan
+  const isCustomPlan = () => {
+    const planId = getSubscriptionValue('planId') || getSubscriptionValue('plan_id');
+    if (!planId) return false;
+    const plan = planId.toString();
+    return plan !== 'monthly' && plan !== 'yearly';
+  };
 
   // Helper to check if subscription is canceling
   const isSubscriptionCanceling = () => {
@@ -501,6 +509,11 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
                                 Your subscription has ended
                               </span>
                             )}
+                            {isCustomPlan() && getSubscriptionValue('status') === 'active' && (
+                              <span className="text-xs mt-1 text-blue-500 dark:text-blue-400 font-medium">
+                                Custom plan
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -529,8 +542,8 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
                         </div>
                       </div>
 
-                      {/* Plan switching toggle */}
-                      {!isSubscriptionCanceling() && !isSubscriptionFullyCanceled() && (
+                      {/* Plan switching toggle - hide for custom plans */}
+                      {!isSubscriptionCanceling() && !isSubscriptionFullyCanceled() && !isCustomPlan() && (
                         <div className="px-5 py-4">
                           <div className="mb-2">
                             <span className="text-gray-500 dark:text-gray-400 text-sm">Billing Cycle</span>
@@ -559,6 +572,22 @@ export default function AccountModal({ user, onSignOut, isOpen, onClose }: Accou
                               Annual
                               <span className="ml-1 text-xs font-medium text-green-600 dark:text-green-400">Save 20%</span>
                             </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Custom plan note - only show for custom plans */}
+                      {!isSubscriptionCanceling() && !isSubscriptionFullyCanceled() && isCustomPlan() && (
+                        <div className="px-5 py-4">
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-blue-800 dark:text-blue-300 text-sm">
+                            <div className="flex items-start">
+                              <svg className="h-5 w-5 text-blue-500 dark:text-blue-400 mr-2 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1 9a1 1 0 01-1-1v-4a1 1 0 112 0v4a1 1 0 01-1 1z" clipRule="evenodd" />
+                              </svg>
+                              <div>
+                                You're on a custom subscription plan. To modify your plan, please contact customer support.
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
