@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Skeleton } from '../../components/ui/skeleton';
-import { Clock, Newspaper, RefreshCw, Filter } from 'lucide-react';
+import { Clock, Newspaper, RefreshCw, Filter, Sparkles, TrendingUp } from 'lucide-react';
 import { memoize } from '@/lib/utils/memoize';
 import { logger } from '@/lib/utils/logger';
 
@@ -24,9 +24,12 @@ const NewsItemCard = memoize(({ item }: { item: NewsItem }) => {
       href={item.link}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex gap-3 border border-gray-200 dark:border-gray-700 rounded-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+      className="flex gap-3 border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:bg-gray-50/70 dark:hover:bg-gray-700/70 transition-all duration-300 group relative overflow-hidden backdrop-blur-sm"
     >
-      <div className="w-16 h-16 rounded overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0 relative">
+      {/* Hover effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/0 to-blue-500/0 dark:from-blue-600/0 dark:via-blue-600/0 dark:to-blue-600/0 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+      
+      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0 relative shadow-sm transform group-hover:scale-105 transition-transform duration-300">
         {item.imageUrl ? (
           // Using standard img tag for simpler implementation with remote URLs
           <img 
@@ -44,9 +47,13 @@ const NewsItemCard = memoize(({ item }: { item: NewsItem }) => {
             <Newspaper className="h-6 w-6 text-gray-400 dark:text-gray-500" />
           </div>
         )}
+        
+        {/* Overlay glow effect on hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       </div>
+      
       <div className="flex-grow min-w-0">
-        <h3 className="text-sm font-medium mb-1 line-clamp-2 leading-tight">{item.title}</h3>
+        <h3 className="text-sm font-medium mb-1 line-clamp-2 leading-tight text-gray-800 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">{item.title}</h3>
         {item.contentSnippet && (
           <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 line-clamp-1">{item.contentSnippet}</p>
         )}
@@ -54,7 +61,7 @@ const NewsItemCard = memoize(({ item }: { item: NewsItem }) => {
           {item.categories?.map((category, i) => (
             <span 
               key={i} 
-              className="inline-block text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
+              className="inline-block text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 rounded-full group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors duration-300"
             >
               {category}
             </span>
@@ -66,13 +73,41 @@ const NewsItemCard = memoize(({ item }: { item: NewsItem }) => {
             {item.date}
           </span>
           <span className="mx-1 text-gray-300 dark:text-gray-600">•</span>
-          <span className="truncate max-w-[60px]">{item.source}</span>
+          <span className="truncate max-w-[80px]">{item.source}</span>
         </div>
       </div>
     </a>
   );
 });
 NewsItemCard.displayName = 'NewsItemCard';
+
+// Create a memoized category pill component
+const CategoryPill = memoize(({ 
+  category, 
+  isSelected, 
+  onClick 
+}: {
+  category: string;
+  isSelected: boolean;
+  onClick: () => void;
+}) => {
+  return (
+    <button
+      onClick={onClick}
+      className={`text-xs px-2.5 py-1 rounded-full border transition-all duration-300 transform ${
+        isSelected
+          ? 'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/50 dark:border-blue-700 dark:text-blue-100 shadow-sm scale-105'
+          : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800/60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700/60 hover:scale-105'
+      }`}
+    >
+      {category}
+      {isSelected && (
+        <span className="ml-1 inline-flex h-1.5 w-1.5 rounded-full bg-blue-500 dark:bg-blue-400"></span>
+      )}
+    </button>
+  );
+});
+CategoryPill.displayName = 'CategoryPill';
 
 function CryptoNewsComponent() {
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
@@ -83,6 +118,7 @@ function CryptoNewsComponent() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
 
   // Use useCallback to memoize the fetchNews function
   const fetchNews = useCallback(async () => {
@@ -99,6 +135,7 @@ function CryptoNewsComponent() {
       setAllNewsItems(data.newsItems);
       setNewsItems(data.newsItems);
       setCategories(['All', ...data.categories]);
+      setHasInitialLoad(true);
     } catch (err) {
       logger.error('Error fetching crypto news', { error: err });
       setError('Failed to load crypto news. Please try again later.');
@@ -138,38 +175,21 @@ function CryptoNewsComponent() {
     setShowFilters(prev => !prev);
   }, []);
 
-  // Memoize the category buttons to prevent unnecessary re-renders
-  const categoryButtons = useMemo(() => {
-    return categories.map((category) => (
-      <button
-        key={category}
-        onClick={() => setSelectedCategory(category)}
-        className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
-          selectedCategory === category
-            ? 'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-100'
-            : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'
-        }`}
-      >
-        {category}
-      </button>
-    ));
-  }, [categories, selectedCategory]);
-
   // Render error state
   if (error) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+      <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-4 transition-all duration-300">
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-base font-semibold flex items-center">
-            <Newspaper className="h-4 w-4 mr-1" />
+          <h2 className="text-base font-semibold flex items-center text-gray-800 dark:text-white">
+            <Newspaper className="h-4 w-4 mr-1.5 text-blue-500 dark:text-blue-400" />
             Crypto News
           </h2>
           <button 
             onClick={handleRefresh} 
-            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 focus:outline-none"
+            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 focus:outline-none transform hover:scale-110 transition-transform"
             aria-label="Refresh news"
           >
-            <RefreshCw className="h-3 w-3" />
+            <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </div>
         <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3">
@@ -179,44 +199,59 @@ function CryptoNewsComponent() {
     );
   }
 
+  // Define animation classes based on loading state
+  const newsHeaderClass = hasInitialLoad ? "animate-scaleIn" : "";
+  const newsItemAnimationClass = hasInitialLoad ? "animate-fadeIn" : "opacity-0";
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="text-base font-semibold flex items-center">
-          <Newspaper className="h-4 w-4 mr-1" />
-          <span>Crypto News</span>
-          {loading && <div className="h-3 w-3 rounded-full border-2 border-t-transparent border-gray-500 animate-spin ml-2" />}
+    <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300 relative overflow-hidden">
+      <div className={`flex justify-between items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50 relative z-10 ${newsHeaderClass}`}>
+        <h2 className="text-base font-bold flex items-center text-gray-800 dark:text-white tracking-tight">
+          <div className="w-2 h-8 bg-blue-500 rounded-full mr-2 animate-pulse"></div>
+          <span>Market Insights</span>
+          <span className="ml-1.5 flex items-center text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full">
+            <TrendingUp className="h-3 w-3 mr-0.5" />
+            <span>Live</span>
+            {loading && <div className="h-1.5 w-1.5 rounded-full bg-blue-500 dark:bg-blue-400 animate-pulse ml-1" />}
+          </span>
         </h2>
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 items-center">
           <button 
             onClick={toggleFilters}
-            className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none"
+            className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
             aria-label="Filter news"
           >
-            <Filter className={`h-3 w-3 ${showFilters ? 'text-blue-500 dark:text-blue-400' : ''}`} />
+            <Filter className={`h-3.5 w-3.5 ${showFilters ? 'text-blue-500 dark:text-blue-400' : ''}`} />
           </button>
           <button 
             onClick={handleRefresh} 
             disabled={loading || refreshing}
-            className={`text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 focus:outline-none transition-transform ${refreshing ? 'animate-spin' : 'hover:scale-110'}`}
+            className={`text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 focus:outline-none transition-all p-1.5 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20 ${refreshing ? 'animate-spin' : ''}`}
             aria-label="Refresh news"
           >
-            <RefreshCw className="h-3 w-3" />
+            <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
       
       {showFilters && (
-        <div className="mb-3 flex flex-wrap gap-1 py-1">
-          {categoryButtons}
+        <div className="mb-4 flex flex-wrap gap-1.5 py-1 overflow-x-auto scrollbar-thin relative z-10">
+          {categories.map((category, index) => (
+            <CategoryPill 
+              key={category}
+              category={category}
+              isSelected={selectedCategory === category}
+              onClick={() => setSelectedCategory(category)}
+            />
+          ))}
         </div>
       )}
       
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-3 relative z-10">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="flex gap-3 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
-              <div className="w-16 h-16 rounded overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
+            <div key={i} className="flex gap-3 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+              <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
                 <Skeleton className="h-full w-full" />
               </div>
               <div className="flex-grow min-w-0">
@@ -231,25 +266,41 @@ function CryptoNewsComponent() {
           ))}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 relative z-10">
           {newsItems.length === 0 ? (
-            <div className="text-center p-3 text-gray-500 dark:text-gray-400 text-sm">
+            <div className="text-center p-4 text-gray-500 dark:text-gray-400 text-sm bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700/50">
               <p>
                 {selectedCategory === 'All' 
                   ? 'No news articles available.' 
                   : `No news articles about ${selectedCategory} available.`}
               </p>
+              <button 
+                onClick={handleRefresh}
+                className="mt-2 text-blue-600 dark:text-blue-400 text-xs hover:underline"
+              >
+                Refresh
+              </button>
             </div>
           ) : (
             newsItems.map((item, index) => (
-              <NewsItemCard key={index} item={item} />
+              <div 
+                key={index} 
+                className={newsItemAnimationClass}
+                style={{ animationDelay: `${(index * 150)}ms` }}
+              >
+                <NewsItemCard item={item} />
+              </div>
             ))
           )}
         </div>
       )}
+      
+      {/* Decorative Elements */}
+      <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-blue-500/5 dark:bg-blue-500/10 blur-xl"></div>
+      <div className="absolute bottom-0 left-1/3 w-64 h-24 bg-gradient-to-tr from-blue-500/0 via-blue-500/5 to-purple-500/5 dark:from-blue-500/0 dark:via-blue-500/10 dark:to-purple-500/10 blur-xl"></div>
     </div>
   );
 }
 
-// Export the memoized component
+// Export a memoized version of the component to prevent unnecessary re-renders
 export default memoize(CryptoNewsComponent); 
