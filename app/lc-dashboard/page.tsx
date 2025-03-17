@@ -144,7 +144,21 @@ const ConsolidatedMarketCard = ({
   
   // Use real Fear & Greed data from globalData when available
   const fearGreedValue = globalData?.fearGreedValue ?? 50;
-  const fearGreedClassification = globalData?.fearGreedClassification ?? "Neutral";
+  
+  // Derive classification from value if needed
+  let fearGreedClassification = globalData?.fearGreedClassification;
+  
+  // Override classification based on value to ensure consistency with displayed ranges
+  if (fearGreedValue <= 24) {
+    fearGreedClassification = "Extreme Fear";
+  } else if (fearGreedValue <= 49) {
+    fearGreedClassification = "Fear";
+  } else if (fearGreedValue === 50) {
+    fearGreedClassification = "Neutral";
+  } else if (fearGreedValue > 50) {
+    fearGreedClassification = "Greed";
+  }
+  
   const fearGreedColor = getFearGreedColor(fearGreedClassification);
   const fearGreedTextColor = getFearGreedTextColor(fearGreedClassification);
   
@@ -173,8 +187,8 @@ const ConsolidatedMarketCard = ({
   };
   
   // Generate data for each metric
-  const marketCapSparkline = generateSparklineData(globalData?.totalMarketCapChange24h || undefined);
-  const volumeSparkline = generateSparklineData(globalData?.totalVolume24hChange || undefined);
+  const marketCapSparkline = generateSparklineData(undefined);
+  const volumeSparkline = generateSparklineData(undefined);
   const addressesSparkline = generateSparklineData(globalData?.activeAddressesChange24h);
   const whaleSparkline = generateSparklineData(globalData?.largeTransactionsChange24h);
   
