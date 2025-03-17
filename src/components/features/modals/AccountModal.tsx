@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
-import Button from '../ui/Button';
+import Button from '@/components/ui/Button';
 import useSubscription from '@/hooks/auth/useSubscription';
 import { Dialog } from '@headlessui/react';
 import { AnimatePresence, motion } from 'framer-motion';

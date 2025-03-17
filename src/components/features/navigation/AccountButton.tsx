@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import Button from '../ui/Button';
-import AccountModal from '../modals/AccountModal';
+import Button from '@/components/ui/Button';
+import AccountModal from '@/components/features/modals/AccountModal';
 import { motion } from 'framer-motion';
 
 interface AccountButtonProps {

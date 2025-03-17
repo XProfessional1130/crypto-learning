@@ -1,6 +1,6 @@
 'use client';
 
-import NavigationContainer from './navigation/NavigationContainer';
+import NavigationContainer from '@/components/features/navigation/NavigationContainer';
 
 /**
  * Navigation - Main navigation component

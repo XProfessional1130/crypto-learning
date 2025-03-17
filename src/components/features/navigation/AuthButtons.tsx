@@ -2,7 +2,7 @@
 
 import { User } from '@supabase/supabase-js';
 import Link from 'next/link';
-import Button from '../ui/Button';
+import Button from '@/components/ui/Button';
 import AccountButton from './AccountButton';
 import { motion } from 'framer-motion';
 
