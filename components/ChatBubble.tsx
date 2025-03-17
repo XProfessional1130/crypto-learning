@@ -18,6 +18,7 @@ export default function ChatBubble({ onClick, unreadMessages = 0, showPulse = fa
   const [showFirstTimeHint, setShowFirstTimeHint] = useState(false);
   const touchStartXRef = useRef(0);
   const indicatorRef = useRef<HTMLDivElement>(null);
+  const edgeIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Function to temporarily hide the edge indicator
   const hideEdgeIndicatorTemporarily = () => {
@@ -77,13 +78,8 @@ export default function ChatBubble({ onClick, unreadMessages = 0, showPulse = fa
       container.style.opacity = '1';
     }, 10);
     
-    // Check if tooltip has been shown before in this session
-    const hasSeenTooltip = sessionStorage.getItem('hasSeenSwipeTooltip');
-    
-    // Calculate adaptive tooltip position based on screen width
+    // Calculate screen width for positioning
     const screenWidth = window.innerWidth;
-    const tooltipWidthEstimate = 110; // Approximate width of tooltip in pixels
-    const safeDistance = Math.min(screenWidth * 0.15, 50); // Adaptive distance from edge, max 50px
     
     // Create the elegant, subtle tab element with styling
     container.innerHTML = `
@@ -133,42 +129,6 @@ export default function ChatBubble({ onClick, unreadMessages = 0, showPulse = fa
         </svg>
       </div>
       
-      <!-- Initial tooltip that appears briefly then fades away -->
-      <div style="
-        position: absolute;
-        right: auto;
-        left: -${safeDistance}px;
-        top: 50%;
-        transform: translateY(-50%) translateX(-100%);
-        padding: 4px 8px;
-        background-color: rgba(30, 41, 59, 0.85);
-        border-radius: 4px;
-        font-size: 12px;
-        font-family: system-ui, -apple-system, sans-serif;
-        color: white;
-        white-space: nowrap;
-        opacity: 0;
-        animation: ${!hasSeenTooltip ? 'tooltipFade 5s ease-in-out forwards' : 'none'};
-        backdrop-filter: blur(4px);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        border: 1px solid rgba(77, 181, 176, 0.3);
-        pointer-events: none;
-        max-width: calc(${screenWidth}px - 30px);
-      ">
-        <div style="
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-weight: 500;
-        ">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4DB5B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 9l-6 6"/>
-            <path d="M9 9h5v5"/>
-          </svg>
-          Swipe to chat
-        </div>
-      </div>
-      
       <style>
         @keyframes subtleGlow {
           0%, 100% { opacity: 0; transform: translateY(-100%); }
@@ -179,12 +139,6 @@ export default function ChatBubble({ onClick, unreadMessages = 0, showPulse = fa
           0%, 100% { opacity: 0; transform: translateY(-50%) translateX(5px); }
           15%, 40% { opacity: 1; transform: translateY(-50%) translateX(0); }
           55% { opacity: 0; transform: translateY(-50%) translateX(-5px); }
-        }
-        
-        @keyframes tooltipFade {
-          0% { opacity: 0; transform: translateY(-50%) translateX(-90%) scale(0.95); }
-          10%, 70% { opacity: 1; transform: translateY(-50%) translateX(-100%) scale(1); }
-          100% { opacity: 0; transform: translateY(-50%) translateX(-100%) scale(1); }
         }
         
         @keyframes breathe {
@@ -205,12 +159,6 @@ export default function ChatBubble({ onClick, unreadMessages = 0, showPulse = fa
           animation: none !important;
           transform: translateY(-50%) translateX(0) !important;
           filter: drop-shadow(0 0 2px rgba(77, 181, 176, 0.7));
-        }
-        
-        #chat-indicator-injected:hover > div:nth-child(3) {
-          opacity: 1 !important;
-          animation: none !important;
-          transform: translateY(-50%) translateX(-100%) !important;
         }
       </style>
     `;
@@ -251,13 +199,6 @@ export default function ChatBubble({ onClick, unreadMessages = 0, showPulse = fa
       
       // Store animation interval for cleanup
       container.dataset.pulseInterval = String(pulseInterval);
-      
-      // Mark the tooltip as seen after it's shown for this session
-      if (!hasSeenTooltip) {
-        setTimeout(() => {
-          sessionStorage.setItem('hasSeenSwipeTooltip', 'true');
-        }, 5000);
-      }
     }
     
     // Cleanup function
@@ -344,6 +285,22 @@ export default function ChatBubble({ onClick, unreadMessages = 0, showPulse = fa
       document.removeEventListener('touchend', handleTouchEnd);
     };
   }, [isMobile, onClick]);
+
+  // Reset the edge indicator state
+  useEffect(() => {
+    setShowEdgeIndicator(true);
+    
+    // Clear any stored intervals
+    if (edgeIndicatorTimeoutRef.current) {
+      clearTimeout(edgeIndicatorTimeoutRef.current);
+    }
+    
+    // Reset touch tracking
+    touchStartXRef.current = 0;
+    
+    // Reset all session storage
+    sessionStorage.removeItem('hasSeenChatIndicator');
+  }, []);
 
   return (
     <>
