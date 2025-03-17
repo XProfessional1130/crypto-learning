@@ -1,0 +1,9 @@
+--- src/components/ui/skeleton.tsx	2025-03-17 17:13:41
++++ src/app/components/ui/skeleton.tsx	2025-03-17 17:13:41
+@@ -1,4 +1,4 @@
+-import { cn } from "@/lib/utils/classnames";
++import { cn } from "@/app/lib/utils";
+ 
+ interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {}
+ 
+\ No newline at end of file

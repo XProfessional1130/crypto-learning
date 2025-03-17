@@ -1,0 +1,16 @@
+--- src/components/features/dashboard/AddCoinModal.tsx	2025-03-17 17:13:41
++++ src/app/components/dashboard/AddCoinModal.tsx	2025-03-17 17:13:41
+@@ -1,9 +1,9 @@
+ import { useState } from 'react';
+ import { CoinData } from '@/types/portfolio';
+-import { usePortfolio } from '@/hooks/dashboard/usePortfolio';
++import { usePortfolio } from '@/hooks/usePortfolio';
+ import { searchCoins } from '@/lib/api/coinmarketcap';
+-import { ModalSkeleton } from '@/components/ui/ModalSkeleton';
+-import ErrorDisplay from '@/components/ui/ErrorDisplay';
++import { ModalSkeleton } from '../ui/ModalSkeleton';
++import ErrorDisplay from '@/components/ErrorDisplay';
+ import { logger } from '@/lib/utils/logger';
+ 
+ interface AddCoinModalProps {
+\ No newline at end of file

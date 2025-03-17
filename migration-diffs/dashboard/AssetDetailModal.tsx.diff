@@ -1,0 +1,15 @@
+--- src/components/features/dashboard/AssetDetailModal.tsx	2025-03-17 17:13:41
++++ src/app/components/dashboard/AssetDetailModal.tsx	2025-03-17 17:13:41
+@@ -1,8 +1,8 @@
+ import { useState, useEffect } from 'react';
+ import { PortfolioItemWithPrice } from '@/types/portfolio';
+-import { usePortfolio } from '@/hooks/dashboard/usePortfolio';
+-import { ModalSkeleton } from '@/components/ui/ModalSkeleton';
+-import ErrorDisplay from '@/components/ui/ErrorDisplay';
++import { usePortfolio } from '@/hooks/usePortfolio';
++import { ModalSkeleton } from '../ui/ModalSkeleton';
++import ErrorDisplay from '@/components/ErrorDisplay';
+ import { logger } from '@/lib/utils/logger';
+ 
+ // Function to format cryptocurrency prices adaptively based on their value
+\ No newline at end of file

@@ -1,0 +1,12 @@
+--- src/components/features/dashboard/CryptoNews.tsx	2025-03-17 17:13:41
++++ src/app/components/dashboard/CryptoNews.tsx	2025-03-17 17:13:41
+@@ -1,7 +1,7 @@
+ 'use client';
+ 
+ import { useState, useEffect, useCallback, useMemo } from 'react';
+-import { Skeleton } from '@/components/ui/skeleton';
++import { Skeleton } from '../../components/ui/skeleton';
+ import { Clock, Newspaper, RefreshCw, Filter, Sparkles, TrendingUp } from 'lucide-react';
+ import { memoize } from '@/lib/utils/memoize';
+ import { logger } from '@/lib/utils/logger';
+\ No newline at end of file

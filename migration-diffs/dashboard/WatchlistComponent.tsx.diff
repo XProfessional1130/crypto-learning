@@ -1,0 +1,17 @@
+--- src/components/features/dashboard/WatchlistComponent.tsx	2025-03-17 17:13:41
++++ src/app/components/dashboard/WatchlistComponent.tsx	2025-03-17 17:13:41
+@@ -1,11 +1,11 @@
+ import React, { useState, useEffect, useCallback, memo } from 'react';
+-import { useWatchlist, WatchlistItem } from '@/hooks/dashboard/useWatchlist';
++import { useWatchlist, WatchlistItem } from '@/hooks/useWatchlist';
+ import { CoinData } from '@/types/portfolio';
+ import WatchlistItemDetailModal from './WatchlistItemDetailModal';
+ import AddToWatchlistModal from './AddToWatchlistModal';
+ import { calculateProgressPercentage, formatCryptoPrice, formatLargeNumber, formatPercentage } from '@/lib/utils/formatters';
+ import Image from 'next/image';
+-import { Skeleton } from '@/components/ui/skeleton';
++import { Skeleton } from '../ui/skeleton';
+ import { useDataCache } from '@/lib/providers/data-cache-provider';
+ 
+ // Simple utility to combine class names
+\ No newline at end of file

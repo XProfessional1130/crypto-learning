@@ -1,0 +1,17 @@
+--- src/components/features/dashboard/AddToWatchlistModal.tsx	2025-03-17 17:13:41
++++ src/app/components/dashboard/AddToWatchlistModal.tsx	2025-03-17 17:13:41
+@@ -1,10 +1,10 @@
+ import { useState } from 'react';
+ import { CoinData } from '@/types/portfolio';
+-import { useWatchlist } from '@/hooks/dashboard/useWatchlist';
++import { useWatchlist } from '@/hooks/useWatchlist';
+ import { searchCoins } from '@/lib/api/coinmarketcap';
+ import { formatCryptoPrice, formatPercentage } from '@/lib/utils/format';
+-import { ModalSkeleton, FormInputSkeleton, AssetItemSkeleton } from '@/components/ui/ModalSkeleton';
+-import ErrorDisplay from '@/components/ui/ErrorDisplay';
++import { ModalSkeleton, FormInputSkeleton, AssetItemSkeleton } from '../ui/ModalSkeleton';
++import ErrorDisplay from '@/components/ErrorDisplay';
+ 
+ interface AddToWatchlistModalProps {
+   isOpen: boolean;
+\ No newline at end of file

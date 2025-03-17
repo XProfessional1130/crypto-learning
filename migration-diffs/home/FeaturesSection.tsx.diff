@@ -1,0 +1,15 @@
+--- src/components/features/home/FeaturesSection.tsx	2025-03-17 17:13:41
++++ src/app/components/home/FeaturesSection.tsx	2025-03-17 17:13:41
+@@ -1,9 +1,9 @@
+ 'use client';
+ 
+ import { useState } from 'react';
+-import Section from '@/components/ui/Section';
++import Section from '../ui/Section';
+ import FeatureCard from './FeatureCard';
+-import { useIntersectionObserver } from '@/hooks/ui/useIntersectionObserver';
++import { useIntersectionObserver } from '@/app/hooks/useIntersectionObserver';
+ 
+ // Define the features as constants to avoid recreation on each render
+ const features = [
+\ No newline at end of file

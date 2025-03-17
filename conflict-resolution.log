@@ -1,0 +1,37 @@
+Conflict Resolution Log - Mon Mar 17 18:16:24 CET 2025
+Starting conflict resolution...
+Resolving conflict for skeleton.tsx
+Kept src/components/ui/skeleton.tsx and removed src/app/components/ui/skeleton.tsx
+Resolving conflict for ResourceSkeleton.tsx
+Kept src/components/molecules/ResourceSkeleton.tsx and removed src/app/components/molecules/ResourceSkeleton.tsx
+Resolving conflict for AddCoinModal.tsx
+Kept src/components/features/dashboard/AddCoinModal.tsx and removed src/app/components/dashboard/AddCoinModal.tsx
+Resolving conflict for AddToWatchlistModal.tsx
+Kept src/components/features/dashboard/AddToWatchlistModal.tsx and removed src/app/components/dashboard/AddToWatchlistModal.tsx
+Resolving conflict for AssetDetailModal.tsx
+Kept src/components/features/dashboard/AssetDetailModal.tsx and removed src/app/components/dashboard/AssetDetailModal.tsx
+Resolving conflict for CryptoNews.tsx
+Kept src/components/features/dashboard/CryptoNews.tsx and removed src/app/components/dashboard/CryptoNews.tsx
+Resolving conflict for PortfolioDashboard.tsx
+Kept src/components/features/dashboard/PortfolioDashboard.tsx and removed src/app/components/dashboard/PortfolioDashboard.tsx
+Resolving conflict for WatchlistComponent.tsx
+Kept src/components/features/dashboard/WatchlistComponent.tsx and removed src/app/components/dashboard/WatchlistComponent.tsx
+Resolving conflict for WatchlistItemDetailModal.tsx
+Kept src/components/features/dashboard/WatchlistItemDetailModal.tsx and removed src/app/components/dashboard/WatchlistItemDetailModal.tsx
+Resolving conflict for CTASection.tsx
+Kept src/components/features/home/CTASection.tsx and removed src/app/components/home/CTASection.tsx
+Resolving conflict for FeaturesSection.tsx
+Kept src/components/features/home/FeaturesSection.tsx and removed src/app/components/home/FeaturesSection.tsx
+Resolving conflict for HeroSection.tsx
+Kept src/components/features/home/HeroSection.tsx and removed src/app/components/home/HeroSection.tsx
+Resolving conflict for PricingCard.tsx
+Kept src/components/features/home/PricingCard.tsx and removed src/app/components/home/PricingCard.tsx
+Resolving conflict for PricingSection.tsx
+Kept src/components/features/home/PricingSection.tsx and removed src/app/components/home/PricingSection.tsx
+Resolving conflict for TestimonialsSection.tsx
+Kept src/components/features/home/TestimonialsSection.tsx and removed src/app/components/home/TestimonialsSection.tsx
+Resolving conflict for MembershipPlanModal.tsx
+Kept src/components/features/membership/MembershipPlanModal.tsx and removed src/app/components/membership/MembershipPlanModal.tsx
+Resolving conflict for MembershipSignup.tsx
+Kept src/components/features/membership/MembershipSignup.tsx and removed src/app/components/membership/MembershipSignup.tsx
+Conflict resolution completed.

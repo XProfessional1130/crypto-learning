@@ -1,0 +1,13 @@
+--- src/components/features/dashboard/PortfolioDashboard.tsx	2025-03-17 17:13:41
++++ src/app/components/dashboard/PortfolioDashboard.tsx	2025-03-17 17:13:41
+@@ -1,7 +1,7 @@
+ import { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
+-import { usePortfolio } from '@/hooks/dashboard/usePortfolio';
++import { usePortfolio } from '@/hooks/usePortfolio';
+ import { useAuth } from '@/lib/providers/auth-provider';
+-import { useWatchlist } from '@/hooks/dashboard/useWatchlist';
++import { useWatchlist } from '@/hooks/useWatchlist';
+ import WatchlistComponent from './WatchlistComponent';
+ import CryptoNews from './CryptoNews';
+ import { useDataCache } from '@/lib/providers/data-cache-provider';
+\ No newline at end of file

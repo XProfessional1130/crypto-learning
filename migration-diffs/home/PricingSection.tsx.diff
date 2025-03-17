@@ -1,0 +1,12 @@
+--- src/components/features/home/PricingSection.tsx	2025-03-17 17:13:41
++++ src/app/components/home/PricingSection.tsx	2025-03-17 17:13:41
+@@ -1,7 +1,7 @@
+ 'use client';
+ 
+ import { useState, useEffect, useRef } from 'react';
+-import Section from '@/components/ui/Section';
++import Section from '../ui/Section';
+ import PricingCard from './PricingCard';
+ 
+ // Define pricing plans as constants to avoid recreation on each render
+\ No newline at end of file
