@@ -6,20 +6,18 @@ import { ThemeProvider } from "@/lib/providers/theme-provider";
 import { DataCacheProvider } from "@/lib/providers/data-cache-provider";
 import { ModalProvider } from "@/lib/providers/modal-provider";
 import QueryProvider from "@/lib/providers/query-provider";
-import Navigation from "./components/Navigation";
-import Footer from "./components/Footer";
-import AppEnhancer from "./components/AppEnhancer";
-import GlobalStyles from "./components/GlobalStyles";
-import AuthTokenScript from "./components/AuthTokenScript";
-import BackgroundElements from "./components/BackgroundElements";
+import { 
+  Navigation, 
+  Footer, 
+  AppEnhancer, 
+  GlobalStyles, 
+  AuthTokenScript, 
+  BackgroundElements,
+  DataPrefetcher
+} from "./components";
 import dynamic from 'next/dynamic';
 
 const inter = Inter({ subsets: ['latin'] })
-
-// Dynamically import the DataPrefetcher to prevent server-side rendering issues
-const DataPrefetcher = dynamic(() => import('./components/DataPrefetcher'), { 
-  ssr: false 
-});
 
 // Dynamically import GlobalChat to prevent SSR issues
 const GlobalChat = dynamic(() => import('@/components/features/chat/GlobalChat'), {
@@ -27,7 +25,7 @@ const GlobalChat = dynamic(() => import('@/components/features/chat/GlobalChat')
 });
 
 // Dynamically import GlobalModal to prevent SSR issues
-const GlobalModal = dynamic(() => import('./components/modals/GlobalModal'), {
+const GlobalModal = dynamic(() => import('@/components/features/modals/GlobalModal'), {
   ssr: false
 });
 
