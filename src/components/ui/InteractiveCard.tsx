@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useState } from 'react';
-import ServerCard from './ServerCard';
+import Card from './Card';
 
 interface InteractiveCardProps {
   children: ReactNode;
@@ -15,7 +15,7 @@ interface InteractiveCardProps {
 /**
  * Interactive client component version of Card
  * 
- * This component uses the ServerCard internally but adds
+ * This component uses the Card server component internally but adds
  * interactive hover effects and click handlers.
  */
 export default function InteractiveCard({
@@ -54,21 +54,20 @@ export default function InteractiveCard({
   // Cursor pointer if onClick provided
   const cursorClasses = onClick ? 'cursor-pointer' : '';
   
-  // We need to wrap the ServerCard in a div to handle events since
-  // the ServerCard is a server component and can't handle client events
   return (
     <div 
+      className={`${transitionClasses} ${cursorClasses}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={onClick}
     >
-      <ServerCard
-        className={`${className} ${hoverClasses} ${transitionClasses} ${cursorClasses}`}
+      <Card
+        className={`${className} ${hoverClasses}`}
         variant={variant}
         padding={padding}
       >
         {children}
-      </ServerCard>
+      </Card>
     </div>
   );
 } 

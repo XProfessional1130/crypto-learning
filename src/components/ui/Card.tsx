@@ -1,5 +1,3 @@
-'use client';
-
 import { ReactNode } from 'react';
 
 interface CardProps {
@@ -20,10 +18,10 @@ export default function Card({
   
   // Variant styles
   const variantStyles = {
-    default: 'bg-white',
-    outlined: 'bg-white border border-gray-200',
-    elevated: 'bg-white shadow-lg',
-    accent: 'bg-white border-l-4 border-brand-primary shadow-sm',
+    default: 'bg-white dark:bg-slate-800',
+    outlined: 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700',
+    elevated: 'bg-white dark:bg-slate-800 shadow-lg',
+    accent: 'bg-white dark:bg-slate-800 border-l-4 border-brand-primary shadow-sm',
   };
   
   // Padding styles
