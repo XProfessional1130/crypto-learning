@@ -8,7 +8,6 @@ import { ModalProvider } from "@/lib/providers/modal-provider";
 import QueryProvider from "@/lib/providers/query-provider";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
-import CoinDataInitializer from "./components/CoinDataInitializer";
 import AppEnhancer from "./components/AppEnhancer";
 import GlobalStyles from "./components/GlobalStyles";
 import AuthTokenScript from "./components/AuthTokenScript";
@@ -72,7 +71,6 @@ export default function RootLayout({
                   <AppEnhancer />
                   <GlobalStyles />
                   <AuthTokenScript />
-                  <CoinDataInitializer />
                   
                   {/* Data Prefetcher and other app components */}
                   <DataPrefetcher />

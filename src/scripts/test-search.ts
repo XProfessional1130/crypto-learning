@@ -1,10 +1,10 @@
 /**
  * Test script for coin search functionality
  * 
- * Run this script with: npx ts-node lib/test-search.ts
+ * Run this script with: npx ts-node src/scripts/test-search.ts
  */
 
-import { searchCoins, getCoinData } from './services/dexscreener';
+import { searchCoins, getCoinData } from '@/lib/api/coinmarketcap';
 
 async function testSearch() {
   console.log('=== Testing Coin Search Functionality ===');

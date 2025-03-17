@@ -5,7 +5,7 @@
  * npx ts-node scripts/update-macro-market-data.ts
  */
 
-import { JobScheduler, JobType } from '../lib/services/job-scheduler';
+import { JobScheduler, JobType } from '../src/lib/api/job-scheduler';
 
 async function main() {
   try {

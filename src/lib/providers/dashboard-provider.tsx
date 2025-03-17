@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, ReactNode, useMemo } from 'react';
-import { useDashboardData } from '@/app/hooks/useDashboardData';
-import { GlobalData } from '@/lib/services/coinmarketcap';
+import { useDashboardData } from '@/hooks/dashboard/useDashboardData';
+import { GlobalData } from '@/lib/api/coinmarketcap';
 
 // Define the context shape
 interface DashboardContextType {

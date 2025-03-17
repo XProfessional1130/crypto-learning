@@ -248,11 +248,23 @@ After the initial migration, we performed additional cleanup and fixes:
    - Removed `app-old/` directory (old Pages Router structure)
    - Removed `src-old/` directory (outdated source files)
    - Removed `src-new/` directory (contained only a README.md)
-   - Removed root-level `components/` directory (components now in `src/components/` or `src/app/components/`)
 
-3. ✅ Verified build process
-   - Successfully built the application with no errors
-   - All routes properly configured for App Router
+## Additional Cleanup (March 2025)
+
+1. ✅ Removed deprecated components and services
+   - Removed `CoinDataInitializer.tsx` components (deprecated)
+   - Removed `dexscreener.ts` service (deprecated, replaced by CoinMarketCap)
+   - Removed `useMarketData.ts` hooks (deprecated, replaced by DataCache)
+
+2. ✅ Consolidated directory structure
+   - Moved `lib/` directory functionality to `src/lib/`
+   - Updated imports in scripts to use `src/lib/` instead of `lib/`
+   - Moved test scripts to `src/scripts/`
+
+3. ✅ Improved code organization
+   - Ensured all imports use the `@/` alias for src directory
+   - Fixed broken imports after restructuring
+   - Maintained backward compatibility where needed
 
 Date: Sun Mar 17 03:50:00 CET 2025
 

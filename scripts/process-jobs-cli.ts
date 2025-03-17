@@ -8,8 +8,8 @@
  * npx ts-node scripts/process-jobs-cli.ts
  */
 
-import { JobScheduler, JobType, JobStatus } from '../lib/services/job-scheduler';
-import { createServiceClient } from '../lib/supabase';
+import { JobScheduler, JobType, JobStatus } from '../src/lib/api/job-scheduler';
+import { createServiceClient } from '../src/lib/api/supabase';
 
 async function main() {
   try {

@@ -1,4 +1,4 @@
-import { JobScheduler, JobType } from '../lib/services/job-scheduler';
+import { JobScheduler, JobType } from '../src/lib/api/job-scheduler';
 
 /**
  * Schedule initial crypto market data update job
