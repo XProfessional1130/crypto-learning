@@ -34,6 +34,19 @@ export default function GlobalChat() {
     }
   }, [isModalOpen]);
   
+  // Handle closing the chat modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    
+    // Trigger the edge indicator to reappear with fade-in effect
+    // Use setTimeout to ensure this happens after modal transition completes
+    setTimeout(() => {
+      if (typeof window !== 'undefined' && (window as any).showChatEdgeIndicator) {
+        (window as any).showChatEdgeIndicator();
+      }
+    }, 500); // Wait for modal transition to complete
+  };
+  
   // If user is not logged in or still loading, don't show chat
   if (loading || !user) {
     return null;
@@ -49,7 +62,7 @@ export default function GlobalChat() {
       
       <ChatModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        onClose={handleCloseModal} 
       />
     </>
   );

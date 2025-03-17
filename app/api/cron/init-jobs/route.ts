@@ -37,7 +37,8 @@ export async function GET(request: Request) {
       { type: JobType.CACHE_CLEANUP, minutes: 60 },
       { type: JobType.UPDATE_TOP_COINS, minutes: 30 },
       { type: JobType.UPDATE_GLOBAL_DATA, minutes: 60 },
-      { type: JobType.UPDATE_NEWS, minutes: 15 }
+      { type: JobType.UPDATE_NEWS, minutes: 15 },
+      { type: JobType.UPDATE_MACRO_MARKET_DATA, minutes: 60 }
     ];
     
     // Schedule jobs if not already scheduled
