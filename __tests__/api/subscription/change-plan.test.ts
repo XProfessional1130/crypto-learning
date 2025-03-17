@@ -1,13 +1,14 @@
+import { NextRequest } from 'next/server';
 import { createMocks } from 'node-mocks-http';
 import { createClient } from '@supabase/supabase-js';
-import { stripe } from '@/lib/stripe';
+import { stripe } from '@/lib/api/stripe';
 
 // Mock the imports
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn()
 }));
 
-jest.mock('@/lib/stripe', () => ({
+jest.mock('@/lib/api/stripe', () => ({
   stripe: {
     subscriptions: {
       retrieve: jest.fn(),

@@ -1,7 +1,7 @@
 // Mock modules before imports
 jest.mock('@supabase/supabase-js');
-jest.mock('@/lib/hooks/useSubscription', () => {
-  const originalModule = jest.requireActual('@/lib/hooks/useSubscription');
+jest.mock('@/hooks/auth/useSubscription', () => {
+  const originalModule = jest.requireActual('@/hooks/auth/useSubscription');
   return {
     __esModule: true,
     default: originalModule.default
@@ -9,7 +9,7 @@ jest.mock('@/lib/hooks/useSubscription', () => {
 });
 
 import { renderHook, act } from '@testing-library/react';
-import useSubscription from '@/lib/hooks/useSubscription';
+import useSubscription from '@/hooks/auth/useSubscription';
 import { createClient } from '@supabase/supabase-js';
 import React from 'react';
 
@@ -39,7 +39,7 @@ const mockSupabaseClient = {
 (createClient as jest.Mock).mockReturnValue(mockSupabaseClient);
 
 // Mock the hook directly
-jest.mock('@/lib/hooks/useSubscription', () => {
+jest.mock('@/hooks/auth/useSubscription', () => {
   const mockSubscription = {
     id: 'sub_test123',
     stripe_subscription_id: 'sub_stripe123',

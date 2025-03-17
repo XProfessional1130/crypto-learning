@@ -67,12 +67,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             message.role === 'user' ? 'text-brand-primary-dark' : isDarkMode ? 'text-white' : 'text-gray-900'
           }`}>
             {isBeingTyped ? (
-              // When typing is in progress, determine whether to show dots or content
-              message.content && message.content.trim().length > 5 ? (
-                // Only show content when there's a reasonable amount of text
-                <div dangerouslySetInnerHTML={{ __html: formatMessageContent(message.content, true) }} />
-              ) : (
-                // Otherwise show the bouncing dots (during initial connection or first few chars)
+              <>
+                {/* Always show the content when available */}
+                {message.content && message.content.trim() && (
+                  <div dangerouslySetInnerHTML={{ __html: formatMessageContent(message.content, true) }} />
+                )}
+                
+                {/* Always append the bouncing dots when typing */}
                 <span className="inline-block">
                   <div className={styles.bouncingDots}>
                     <div className={`${styles.dot} ${styles.dot1}`}></div>
@@ -80,7 +81,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     <div className={`${styles.dot} ${styles.dot3}`}></div>
                   </div>
                 </span>
-              )
+              </>
             ) : (
               // When not typing, just show the message content
               <div dangerouslySetInnerHTML={{ __html: formatMessageContent(message.content || '', false) }} />

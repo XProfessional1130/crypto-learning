@@ -2,11 +2,11 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AccountModal from '@/app/components/modals/AccountModal';
-import useSubscription from '@/lib/hooks/useSubscription';
+import useSubscription from '@/hooks/auth/useSubscription';
 import { User } from '@supabase/supabase-js';
 
 // Mock the useSubscription hook
-jest.mock('@/lib/hooks/useSubscription', () => ({
+jest.mock('@/hooks/auth/useSubscription', () => ({
   __esModule: true,
   default: jest.fn()
 }));

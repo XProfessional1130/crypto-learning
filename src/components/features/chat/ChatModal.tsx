@@ -486,7 +486,7 @@ export default function ChatModal({ isOpen, onClose }: ChatModalProps) {
 
                 {/* Skip typing button - perfectly positioned between messages and input */}
                 <AnimatePresence>
-                  {isTyping && messages.length > 0 && messages[messages.length - 1]?.content?.length > 30 && !isNewChat && (
+                  {isTyping && messages.length > 0 && !isNewChat && (
                     <motion.div
                       ref={skipButtonRef}
                       initial={{ opacity: 0, y: 5 }}
