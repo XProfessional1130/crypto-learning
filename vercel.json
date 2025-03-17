@@ -15,7 +15,5 @@
     "app/api/chat/route.ts": {
       "maxDuration": 60
     }
-  },
-  "buildCommand": "npm ci --legacy-peer-deps && npm install tailwindcss postcss autoprefixer typescript @types/react --no-save && npm run build",
-  "installCommand": "npm ci --legacy-peer-deps"
+  }
 } 
