@@ -12,7 +12,7 @@
     "test:coverage": "jest --coverage",
     "test:search": "node scripts/test-search.mjs",
     "test:subscription": "sh scripts/test-subscription-events.sh",
-    "vercel-build": "npm install --legacy-peer-deps && next build"
+    "vercel-build": "npm install --legacy-peer-deps && npm install tailwindcss postcss autoprefixer && next build"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
