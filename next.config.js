@@ -16,6 +16,7 @@ const nextConfig = {
     // Warning: This config is subject to change as Next.js evolves
     
   },
+  // Using src directory is handled by tsconfig.json and package.json settings
 };
 
 module.exports = nextConfig; 

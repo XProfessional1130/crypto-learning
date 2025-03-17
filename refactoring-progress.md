@@ -236,3 +236,23 @@ The migration from Pages Router to App Router has been completed. All API routes
 
 Date: Sun Mar 16 01:42:06 CET 2025
 
+## App Router Migration Cleanup
+
+After the initial migration, we performed additional cleanup and fixes:
+
+1. ✅ Fixed dynamic server usage errors in API routes
+   - Updated all API routes to use `req.nextUrl.searchParams` instead of `new URL(req.url)`
+   - Added `export const dynamic = 'force-dynamic'` to all API routes that need dynamic rendering
+
+2. ✅ Removed redundant directories
+   - Removed `app-old/` directory (old Pages Router structure)
+   - Removed `src-old/` directory (outdated source files)
+   - Removed `src-new/` directory (contained only a README.md)
+   - Removed root-level `components/` directory (components now in `src/components/` or `src/app/components/`)
+
+3. ✅ Verified build process
+   - Successfully built the application with no errors
+   - All routes properly configured for App Router
+
+Date: Sun Mar 17 03:50:00 CET 2025
+
