@@ -17,9 +17,17 @@ This project follows a modern, organized file structure for a Next.js applicatio
 │   │   ├── features/          # Feature-specific components
 │   │   │   ├── auth/          # Auth components
 │   │   │   ├── chat/          # Chat components
-│   │   │   └── dashboard/     # Dashboard components
+│   │   │   ├── dashboard/     # Dashboard components
+│   │   │   ├── home/          # Home page components
+│   │   │   ├── membership/    # Membership components
+│   │   │   ├── modals/        # Modal components
+│   │   │   ├── navigation/    # Navigation components
+│   │   │   └── team-dashboard/# Team dashboard components
 │   │   ├── layouts/           # Layout components
+│   │   ├── molecules/         # Molecular components (composite UI elements)
 │   │   └── ui/                # UI primitives
+│   │       ├── atoms/         # Atomic UI components (smallest units)
+│   │       └── organisms/     # Organism components (complex UI assemblies)
 │   ├── hooks/                 # React hooks
 │   │   ├── auth/              # Auth-related hooks
 │   │   ├── dashboard/         # Dashboard-related hooks
@@ -43,6 +51,10 @@ This project follows a modern, organized file structure for a Next.js applicatio
    - UI components are in `components/ui`
    - Layout components are in `components/layouts`
    - Feature-specific components are in `components/features/{feature-name}`
+   - We follow a modified atomic design pattern with:
+     - Atoms: Smallest UI elements (buttons, inputs)
+     - Molecules: Composite UI elements
+     - Organisms: Complex UI assemblies
 
 2. **Hooks**:
    - Hooks are organized by feature area
