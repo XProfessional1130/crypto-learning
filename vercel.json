@@ -16,5 +16,6 @@
       "maxDuration": 60
     }
   },
-  "buildCommand": "npm run vercel-build"
+  "buildCommand": "npm ci --legacy-peer-deps && npm install tailwindcss postcss autoprefixer --no-save && npm run build",
+  "installCommand": "npm ci --legacy-peer-deps"
 } 
