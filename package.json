@@ -12,7 +12,8 @@
     "test:coverage": "jest --coverage",
     "test:search": "node scripts/test-search.mjs",
     "test:subscription": "sh scripts/test-subscription-events.sh",
-    "create-first-admin": "ts-node src/scripts/create-first-admin.ts"
+    "create-first-admin": "ts-node src/scripts/create-first-admin.ts",
+    "setup": "node scripts/clean-setup.js"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",

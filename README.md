@@ -12,28 +12,6 @@ LearningCrypto is an AI-driven crypto education platform that combines personali
 - **Exclusive Discounts**: Access special deals and referral links for crypto services and products.
 - **Referral Program**: Earn rewards by referring friends to the platform.
 
-## Documentation
-
-### Getting Started
-- [Getting Started Guide](docs/getting-started.md) - Complete setup instructions for new developers
-
-### Core Documentation
-- [Database Schema](docs/database-schema.md) - Comprehensive database schema documentation
-- [Admin Authentication](docs/admin-authentication.md) - Admin role implementation and security
-- [Stripe Setup Guide](README-STRIPE-SETUP.md) - Subscription payment integration with Stripe
-- [Team Portfolio Setup](README-SETUP.md) - Setting up and troubleshooting team portfolios
-
-### Development Documentation
-- [Server Components Implementation](docs/server-components-implementation-log.md) - Server components migration details
-- [Server Component Utilization Plan](docs/server-component-utilization-plan.md) - Planning for server components
-- [Server Components Measurement](docs/server-components-measurement.md) - Performance measurement
-- [Ghost Migration](docs/ghost-migration.md) - Content migration from Ghost CMS
-- [AI Chat Setup](docs/AI-CHAT-SETUP.md) - Setting up the AI chat functionality
-- [Scheduler Setup](docs/SCHEDULER-SETUP.md) - Background job scheduling system
-- [API Optimization](docs/API-OPTIMIZATION.md) - API performance optimization strategies
-- [Implementation Steps](docs/IMPLEMENTATION-STEPS.md) - Step-by-step implementation guide
-- [CoinMarketCap Integration](docs/COINMARKETCAP.md) - CoinMarketCap API integration
-
 ## Tech Stack
 
 - **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS
@@ -76,42 +54,160 @@ LearningCrypto is an AI-driven crypto education platform that combines personali
 3. Set up environment variables:
    Create a `.env.local` file in the root directory with the following variables:
    ```
-   NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   STRIPE_SECRET_KEY=your-stripe-secret-key
-   SQUARE_ACCESS_TOKEN=your-square-access-token
-   RADOM_API_KEY=your-radom-api-key
-   FIRST_PROMOTER_API_KEY=your-firstpromoter-api-key
-   OPENAI_API_KEY=your-openai-api-key
-   ARKHAM_API_KEY=your-arkham-api-key
+   # Admin API for secure operations
+   ADMIN_API_KEY=your_secure_admin_api_key
+
+   # Cron job secret for scheduled tasks
+   CRON_SECRET=your_secure_cron_secret
+
+   # Supabase configuration
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+   # Stripe configuration
+   STRIPE_SECRET_KEY=your_stripe_secret_key
+   STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+   NEXT_PUBLIC_STRIPE_PRICE_ID_MONTHLY=your_stripe_monthly_price_id
+   NEXT_PUBLIC_STRIPE_PRICE_ID_YEARLY=your_stripe_yearly_price_id
+
+   # Radom API for crypto payments
+   RADOM_API_KEY=your_radom_api_key
+
+   # FirstPromoter for referral tracking
+   FIRST_PROMOTER_API_KEY=your_firstpromoter_api_key
+
+   # OpenAI for AI chat
+   OPENAI_API_KEY=your_openai_api_key
+
+   # Arkham for onchain analytics
+   ARKHAM_API_KEY=your_arkham_api_key
+
+   # Application URL for redirects
    NEXT_PUBLIC_URL=http://localhost:3000
    ```
 
-4. Run the development server:
+4. Run the automated setup script:
+   ```bash
+   npm run setup
+   ```
+   This script will:
+   - Verify all required environment variables
+   - Apply database migrations and fixes
+   - Set up proper authentication and subscription relationships
+   - Clean up unnecessary files
+   - Build the project to verify everything works
+
+5. Run the development server:
    ```bash
    npm run dev
    # or
    yarn dev
    ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+6. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
 
-### Supabase Setup
+### Database Setup
 
-1. Create a new Supabase project.
-2. Set up the following tables:
-   - users
-   - subscriptions
-   - portfolios
-   - watchlists
-   - articles
-   - discounts
-   - market_updates
-   - referrals
-   - chat_messages
+#### Option A: Using the SQL Editor
 
-3. Enable Email Auth in Supabase Authentication settings.
+1. Log in to your Supabase dashboard
+2. Go to the SQL Editor
+3. Run the following migrations in order:
+   - First run the base tables creation script
+   - Then run any additional migration scripts
+
+#### Option B: Using the Supabase CLI
+
+1. Install the Supabase CLI if you haven't already:
+   ```bash
+   npm install -g supabase
+   ```
+
+2. Link your project:
+   ```bash
+   supabase link --project-ref your-project-ref
+   ```
+
+3. Run the migrations:
+   ```bash
+   supabase db push
+   ```
+
+### Creating Your First Admin User
+
+After setting up the database, create your first admin user:
+
+```bash
+npm run create-first-admin your.email@example.com
+```
+
+## Feature Setup Guides
+
+### Stripe Subscription Setup
+
+Follow these steps to set up Stripe subscriptions:
+
+1. **Create Products in Stripe**
+   - Log in to your Stripe dashboard
+   - Go to Products → Create product
+   - Create two products:
+     - Monthly Subscription ($29.99/month)
+     - Annual Subscription ($299.99/year)
+   - Note the Price IDs and add them to your environment variables
+
+2. **Set Up Stripe Webhooks**
+   - In the Stripe dashboard, go to Developers → Webhooks
+   - Add an endpoint: `https://your-domain.com/api/stripe/webhook`
+   - Listen for these events:
+     - `checkout.session.completed`
+     - `customer.subscription.updated`
+     - `customer.subscription.deleted`
+     - `invoice.payment_succeeded`
+   - Save the endpoint and add the signing secret to your environment variables
+
+3. **Testing Stripe Locally**
+   - Install the [Stripe CLI](https://stripe.com/docs/stripe-cli)
+   - Login to Stripe: `stripe login`
+   - Forward events: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
+   - Use test cards:
+     - Successful payment: `4242 4242 4242 4242`
+     - Failed payment: `4000 0000 0000 0002`
+
+### Team Portfolio Setup
+
+The team portfolio feature displays portfolio data from a designated admin user:
+
+1. **Database Setup**
+   - Option 1: Run the `supabase/db-setup.sql` script in the SQL Editor
+   - Option 2: Use existing migrations with `npx supabase migration up`
+
+2. **Configuration**
+   - Set the `NEXT_PUBLIC_TEAM_ADMIN_EMAIL` environment variable to the admin's email
+   - The admin manages their portfolio through the regular interface
+   - The LC dashboard displays this portfolio as the "Team Portfolio" for all users
+
+3. **Troubleshooting**
+   - If you see warnings about "Multiple GoTrueClient instances," ensure all code imports from `lib/services/supabase-client.ts`
+   - For API rate limiting issues, implement caching for API endpoints
+
+### AI Chat Setup
+
+To set up the AI chat functionality:
+
+1. Configure your OpenAI API key in the environment variables
+2. Follow the instructions in `docs/AI-CHAT-SETUP.md` for setting up:
+   - Chat system with Tobo and Heido personalities
+   - Background knowledge base
+   - User message handling
+
+### Scheduled Jobs Setup
+
+For background jobs and scheduled tasks:
+
+1. Configure the `CRON_SECRET` environment variable
+2. Set up the scheduler as detailed in `docs/SCHEDULER-SETUP.md`
+3. Test your scheduled jobs locally before deployment
 
 ## Project Structure
 
@@ -131,6 +227,8 @@ lc-platform/
 │   ├── /lib                  # Utility functions (Supabase client, auth)
 │   └── /types                # TypeScript type definitions
 ├── /public                   # Static assets
+├── /docs                     # Documentation
+├── /supabase                 # Supabase migrations and configuration
 ├── package.json
 ├── tailwind.config.js
 └── tsconfig.json
@@ -140,8 +238,6 @@ lc-platform/
 
 ### Deploying to Vercel
 
-The application is configured for deployment on Vercel. Follow these steps for a successful deployment:
-
 1. **Prepare Your Repository**
    ```bash
    # Ensure all changes are committed
@@ -150,33 +246,20 @@ The application is configured for deployment on Vercel. Follow these steps for a
    git push
    ```
 
-2. **Install Vercel CLI (Optional)**
-   ```bash
-   npm install -g vercel
-   # or locally in the project
-   npm install --save-dev vercel
-   ```
-
-3. **Configure Environment Variables**
+2. **Configure Environment Variables**
    
-   Create a `.env.production` file with your production values:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-   NEXT_PUBLIC_SITE_URL=https://your-domain.vercel.app
-   ```
+   Create a `.env.production` file with your production values and add these to your Vercel project settings.
 
-4. **Deploy Using Vercel Dashboard**
+3. **Deploy Using Vercel Dashboard**
    - Connect your GitHub repository to Vercel
    - Import your project
-   - Configure the following settings:
+   - Configure settings:
      - Framework Preset: Next.js
      - Root Directory: `./`
      - Build Command: `next build`
      - Output Directory: `.next`
-   - Add your environment variables in the Vercel project settings
 
-5. **Deploy Using Vercel CLI**
+4. **Deploy Using Vercel CLI**
    ```bash
    # Login to Vercel
    npx vercel login
@@ -185,64 +268,16 @@ The application is configured for deployment on Vercel. Follow these steps for a
    npx vercel --prod
    ```
 
-### Git Workflow
-
-This project follows a structured Git workflow to ensure stable deployments and effective collaboration:
-
-1. **Main Branch (Production)**
-   - The `main` branch contains production-ready code
-   - Changes to `main` are deployed automatically to the production environment
-   - Direct commits to `main` are not allowed
-
-2. **Development Branch**
-   - The `development` branch is used for ongoing development
-   - All features, fixes, and enhancements should be developed on this branch
-   - The `development` branch is deployed to a preview environment
-
-3. **Feature Branches**
-   - For significant features, create branches from `development`
-   - Use naming conventions: `feature/feature-name`, `fix/bug-name`
-   - Merge feature branches back to `development` when complete
-
-4. **Standard Workflow**
-   ```bash
-   # Start with development branch
-   git checkout development
-   git pull origin development
-   
-   # Create feature branch (for significant features)
-   git checkout -b feature/your-feature
-   
-   # Make changes and commit
-   git add .
-   git commit -m "Descriptive message"
-   
-   # Push changes
-   git push origin feature/your-feature
-   
-   # Create PR to merge into development
-   
-   # After testing on development, merge to main for production
-   git checkout main
-   git merge development
-   git push origin main
-   ```
-
-For detailed guidelines, refer to the [Development Workflow Guide](docs/context-rules/development-workflow.md).
-
-### Setting Up Authentication
-
-To ensure the authentication flow works correctly in production:
+### Setting Up Authentication for Production
 
 1. **Configure Supabase Authentication**
-   - Go to your Supabase dashboard
-   - Navigate to Authentication → URL Configuration
-   - Set Site URL to your Vercel deployment URL (e.g., `https://your-domain.vercel.app`)
+   - Go to your Supabase dashboard → Authentication → URL Configuration
+   - Set Site URL to your Vercel deployment URL
    - Save the changes
 
 2. **Update Auth Configuration**
    
-   Ensure your Supabase client configuration includes PKCE flow (`src/lib/supabase.ts`):
+   Ensure your Supabase client includes PKCE flow:
    ```typescript
    export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
      auth: {
@@ -254,109 +289,110 @@ To ensure the authentication flow works correctly in production:
    });
    ```
 
-3. **Implement Auth Callback**
-   
-   Make sure your auth callback page (`src/app/auth/callback/page.tsx`) handles PKCE flow:
-   ```typescript
-   export default function AuthCallback() {
-     // ... existing imports ...
+3. **Verify Deployment**
+   - Test the authentication flow
+   - Check for common issues:
+     - Magic link shows localhost URL
+     - Auth callback errors
+     - Deployment failures
 
-     useEffect(() => {
-       const handleAuthCallback = async () => {
-         try {
-           const { data, error: sessionError } = await supabase.auth.getSession();
-           
-           if (sessionError) {
-             setError(sessionError.message);
-           } else if (data?.session) {
-             router.push('/dashboard');
-           } else {
-             // Handle PKCE flow
-             const params = new URLSearchParams(window.location.search);
-             if (params.has('code')) {
-               const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(
-                 params.get('code') || ''
-               );
-               
-               if (exchangeError) {
-                 setError(exchangeError.message);
-               } else {
-                 router.push('/dashboard');
-               }
-             } else {
-               setError('No authentication code found');
-             }
-           }
-         } catch (err: any) {
-           setError(err.message);
-         } finally {
-           setLoading(false);
-         }
-       };
+### Git Workflow
 
-       handleAuthCallback();
-     }, [router]);
+This project follows a structured Git workflow:
 
-     // ... rest of the component
-   }
-   ```
+1. **Main Branch (Production)**
+   - Production-ready code
+   - Automatic deployment to production
+   - No direct commits allowed
 
-### Verifying Deployment
+2. **Development Branch**
+   - Ongoing development
+   - Deployed to preview environment
 
-1. **Test Authentication Flow**
-   - Visit your deployed site
-   - Click "Sign In"
-   - Enter your email
-   - Check that the magic link email contains your production URL
-   - Click the magic link
-   - Verify successful redirect to dashboard
+3. **Feature Branches**
+   - Created from development branch
+   - Naming convention: `feature/feature-name`, `fix/bug-name`
+   - Merged back to development when complete
 
-2. **Common Issues and Solutions**
-
-   - **Magic Link Shows Localhost**
-     - Check Supabase Site URL configuration
-     - Verify `NEXT_PUBLIC_SITE_URL` environment variable
-     - Ensure PKCE flow is enabled in Supabase client
-
-   - **Auth Callback Errors**
-     - Check browser console for error messages
-     - Verify all environment variables are set in Vercel
-     - Ensure callback route (`/auth/callback`) is accessible
-
-   - **Deployment Fails**
-     - Run `vercel build` locally to debug issues
-     - Check Vercel deployment logs
-     - Verify all dependencies are properly installed
-
-### Continuous Deployment
-
-1. **Set Up GitHub Integration**
-   - Enable automatic deployments in Vercel dashboard
-   - Configure branch deployments (e.g., main → production)
-
-2. **Environment Management**
+4. **Standard Workflow**
    ```bash
-   # Add production environment variables
-   npx vercel env add NEXT_PUBLIC_SITE_URL production
-   npx vercel env add NEXT_PUBLIC_SUPABASE_URL production
-   npx vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
+   # Start with development branch
+   git checkout development
+   git pull origin development
+   
+   # Create feature branch
+   git checkout -b feature/your-feature
+   
+   # Make changes and commit
+   git add .
+   git commit -m "Descriptive message"
+   
+   # Push changes
+   git push origin feature/your-feature
+   
+   # Create PR to merge into development
+   
+   # After testing, merge to main for production
+   git checkout main
+   git merge development
+   git push origin main
    ```
 
-3. **Preview Deployments**
-   - Every pull request gets a unique preview URL
-   - Test changes before merging to production
-   - Access previews via Vercel dashboard or GitHub checks
+## Common Issues and Solutions
 
-## Project Documentation
+### Supabase Connection Issues
+- Verify environment variables
+- Check that your IP is not blocked
+- Ensure your Supabase project is active
 
-Comprehensive documentation for the project is maintained in the `docs/context-rules` directory:
+### Multiple Supabase Client Warnings
+- Use the singleton pattern in `lib/services/supabase-client.ts`
+- Update any duplicate client instantiations
 
-- [Development Workflow](docs/context-rules/development-workflow.md) - Guidelines for the development process and Git workflow
-- [Project Context](docs/context-rules/project-context.md) - Essential information about the project architecture and design
-- [Common Issues](docs/context-rules/common-issues.md) - Solutions to frequently encountered problems
-- [Code Quality Standards](docs/context-rules/code-quality.md) - Coding standards and technical debt management
+### API Rate Limiting
+- Implement caching for API calls
+- Use the background job system for heavy operations
+- Reduce the frequency of API calls
 
-These documents should be referenced regularly to maintain consistency across the project and ensure all development follows established best practices.
+### Authentication Problems
+- Check Supabase Site URL configuration
+- Verify `NEXT_PUBLIC_SITE_URL` environment variable
+- Ensure PKCE flow is enabled in Supabase client
+
+## Coding Standards
+
+Our codebase follows specific coding standards:
+
+1. **Simplicity First**: We prefer simple, readable solutions over complex ones
+2. **Code Reuse**: Avoid duplicating functionality that exists elsewhere
+3. **Environment Awareness**: Code should account for different environments (dev, test, prod)
+4. **File Size Limits**: Keep files under 200-300 lines; refactor larger files
+5. **No Mock Data in Production**: Only use mock data for testing
+6. **Clean Architecture**: Maintain clear separation of concerns
+
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- [Getting Started Guide](docs/getting-started.md)
+- [Database Schema](docs/database-schema.md)
+- [Admin Authentication](docs/admin-authentication.md)
+- [AI Chat Setup](docs/AI-CHAT-SETUP.md)
+- [Scheduler Setup](docs/SCHEDULER-SETUP.md)
+- [API Optimization](docs/API-OPTIMIZATION.md)
+- [CoinMarketCap Integration](docs/COINMARKETCAP.md)
+- [Server Components Implementation](docs/server-components-implementation-log.md)
+- [Development Workflow](docs/context-rules/development-workflow.md)
+
+## Testing
+
+Run tests with:
+
+```bash
+npm run test
+# or
+npm run test:watch
+```
 
 ## License
 
