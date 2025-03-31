@@ -1,22 +1,31 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/api/supabase';
 
 /**
  * AuthTokenScript
  * 
- * Client component to handle auth token detection in URL hash
- * Using useEffect to run client-side code safely
+ * Client component to handle auth token detection and session management
  */
 export default function AuthTokenScript() {
+  const router = useRouter();
+
   useEffect(() => {
-    // Check for URL hash with auth tokens
-    const hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
-      console.log('Found access_token in URL hash (layout)');
-    }
-  }, []);
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        router.push('/dashboard');
+      } else if (event === 'SIGNED_OUT') {
+        router.push('/');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router]);
   
-  // This component doesn't render anything
   return null;
 } 

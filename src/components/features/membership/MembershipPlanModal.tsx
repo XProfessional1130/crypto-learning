@@ -6,7 +6,8 @@ import Card from '@/components/ui/Card';
 import { MembershipPlan } from './types';
 import { CloseIcon, CreditCardIcon, CryptoIcon } from './icons';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/api/supabase'; // Import the shared Supabase client
+import { useAuth } from '@/lib/providers/auth-provider'; // Import the auth hook
 
 interface MembershipPlanModalProps {
   plan: MembershipPlan;
@@ -20,13 +21,9 @@ export default function MembershipPlanModal({ plan, onClose }: MembershipPlanMod
   const [isProcessing, setIsProcessing] = useState(false);
   const [animateIn, setAnimateIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authState, setAuthState] = useState<'checking' | 'authenticated' | 'unauthenticated'>('checking');
   const router = useRouter();
-  
-  // Initialize Supabase client
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  );
+  const { user } = useAuth(); // Get user from auth context
   
   // Animation effect on mount
   useEffect(() => {
@@ -35,6 +32,28 @@ export default function MembershipPlanModal({ plan, onClose }: MembershipPlanMod
     }, 10);
     return () => clearTimeout(timer);
   }, []);
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // First check our auth context
+        if (user) {
+          setAuthState('authenticated');
+          return;
+        }
+
+        // Fallback to checking session directly
+        const { data } = await supabase.auth.getSession();
+        setAuthState(data.session ? 'authenticated' : 'unauthenticated');
+      } catch (err) {
+        console.error('Error checking auth state:', err);
+        setAuthState('unauthenticated');
+      }
+    };
+
+    checkAuth();
+  }, [user]);
   
   // Handle payment method selection and immediate checkout
   const handlePaymentMethodSelect = async (method: PaymentMethod) => {
@@ -57,7 +76,9 @@ export default function MembershipPlanModal({ plan, onClose }: MembershipPlanMod
           },
           body: JSON.stringify({
             planId: plan.id,
-            // Don't send userId - we'll handle this server-side
+            // Send userId if authenticated
+            userId: user?.id || undefined,
+            userEmail: user?.email || undefined,
           }),
         });
         
@@ -90,6 +111,12 @@ export default function MembershipPlanModal({ plan, onClose }: MembershipPlanMod
       onClose();
     }, 300);
   };
+
+  // Handle sign in redirect
+  const handleSignIn = () => {
+    router.push(`/auth/signin?redirect=${encodeURIComponent('/membership')}`);
+    handleCloseWithAnimation();
+  };
   
   return (
     <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
@@ -104,7 +131,9 @@ export default function MembershipPlanModal({ plan, onClose }: MembershipPlanMod
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               {isProcessing 
                 ? 'Processing Payment...' 
-                : `Complete Your ${plan.name} Purchase`
+                : authState === 'unauthenticated'
+                  ? 'Authentication Required'
+                  : `Complete Your ${plan.name} Purchase`
               }
             </h2>
             <button
@@ -134,6 +163,22 @@ export default function MembershipPlanModal({ plan, onClose }: MembershipPlanMod
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm">
                   Please wait while we redirect you to the payment page. This will only take a moment.
                 </p>
+              </div>
+            ) : authState === 'checking' ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="w-12 h-12 mb-4 rounded-full border-4 border-gray-200 dark:border-gray-700 border-t-brand-primary dark:border-t-brand-400 animate-spin"></div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                  Checking authentication status...
+                </p>
+              </div>
+            ) : authState === 'unauthenticated' ? (
+              <div className="text-center py-6">
+                <p className="mb-4 text-gray-600 dark:text-gray-300">
+                  Please sign in or create an account to complete your purchase.
+                </p>
+                <Button onClick={handleSignIn} className="px-6">
+                  Sign In / Create Account
+                </Button>
               </div>
             ) : (
               <>

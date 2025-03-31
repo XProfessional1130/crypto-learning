@@ -8,30 +8,18 @@ const FeaturesSection = dynamic(() => import('@/components/features/home/Feature
 const TestimonialsSection = dynamic(() => import('@/components/features/home/TestimonialsSection'), { ssr: false });
 const PricingSection = dynamic(() => import('@/components/features/home/PricingSection'), { ssr: false });
 const CTASection = dynamic(() => import('@/components/features/home/CTASection'), { ssr: false });
-// Import auth handler conditionally to avoid unnecessary loading
-const AuthCodeHandler = dynamic(() => import('@/components/features/auth/AuthCodeHandler'), { 
-  ssr: false,
-  loading: () => null
-});
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
-  const [shouldCheckAuth, setShouldCheckAuth] = useState(false);
+  const router = useRouter();
   
   useEffect(() => {
     setIsClient(true);
-    
-    // Only load auth handler if URL has auth parameters
-    const hasAuthParams = window.location.search.includes('code') || 
-                         window.location.hash.includes('access_token');
-    setShouldCheckAuth(hasAuthParams);
   }, []);
   
   return (
     <div className="w-full relative overflow-x-hidden overflow-y-hidden glow-overflow">
-      {/* Only render auth handler when needed */}
-      {shouldCheckAuth && <AuthCodeHandler />}
-      
       {/* Unified background glow that spans the entire page */}
       <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
         {/* Optimized background elements with reduced blur for better performance */}

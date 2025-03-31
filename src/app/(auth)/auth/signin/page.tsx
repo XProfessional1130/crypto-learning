@@ -5,6 +5,9 @@ import { useAuth } from '@/lib/providers/auth-provider';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/api/supabase';
+import { signInWithEmail } from '@/lib/api/supabase-client';
 
 // Define types for our particles
 interface Particle {
@@ -24,6 +27,7 @@ export default function SignIn() {
   const [inputFocused, setInputFocused] = useState(false);
   const [formShown, setFormShown] = useState(false);
   const [particles, setParticles] = useState<Particle[]>([]);
+  const router = useRouter();
 
   // Create floating particles effect
   useEffect(() => {
@@ -40,6 +44,47 @@ export default function SignIn() {
     
     // Animate form entrance after particles
     const timer = setTimeout(() => setFormShown(true), 400);
+    
+    // Check for URL parameters
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      
+      // Check for error parameter
+      const error = url.searchParams.get('error');
+      const errorMessage = url.searchParams.get('message');
+      
+      if (error) {
+        console.log('Error from URL:', error, errorMessage);
+        
+        if (errorMessage) {
+          // Show the specific error message from the URL
+          setMessage(`Error: ${decodeURIComponent(errorMessage)}`);
+        } else if (error === 'expired') {
+          setMessage('Error: Magic link has expired. Please try again.');
+        } else if (error === 'invalid') {
+          setMessage('Error: Invalid authentication. Please try again.');
+        } else if (error === 'failed') {
+          setMessage('Error: Authentication failed. Please try again.');
+        } else if (error === 'auth') {
+          setMessage('Error: Authentication failed. Please try again.');
+        } else if (error === 'auth_failed') {
+          setMessage('Error: Authentication failed. Please try again.');
+        } else if (error === 'unexpected') {
+          setMessage('Error: An unexpected error occurred. Please try again.');
+        } else {
+          setMessage('Error: Please try signing in again.');
+        }
+      }
+      
+      // Store redirect URL if present
+      const redirect = url.searchParams.get('redirect');
+      if (redirect) {
+        console.log('Redirect URL found:', redirect);
+        // Store in localStorage to use after sign-in
+        localStorage.setItem('authRedirectUrl', redirect);
+      }
+    }
+    
     return () => clearTimeout(timer);
   }, []);
 
@@ -48,18 +93,25 @@ export default function SignIn() {
     setLoading(true);
     setMessage('');
 
+    // Basic email validation
+    if (!email.trim() || !email.includes('@') || !email.includes('.')) {
+      setMessage('Error: Please enter a valid email address');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const { error } = await signIn(email);
+      // Use our improved sign-in helper
+      const result = await signInWithEmail(email.trim());
       
-      if (error) {
-        console.error("Sign-in error:", error);
-        setMessage(`Error: ${error.message}`);
+      if (result.success) {
+        setMessage(`${result.message} ✨`);
+        setEmail('');
       } else {
-        setMessage('Magic link sent! Check your email ✨');
+        setMessage(`Error: ${result.message}`);
       }
     } catch (error: any) {
-      console.error("Sign-in error:", error);
-      setMessage(`Error: ${error.message}`);
+      setMessage('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -144,6 +196,43 @@ export default function SignIn() {
               </div>
             </div>
           </motion.div>
+
+          {/* Direct magic link fix - shown only when an email has been sent */}
+          {message && message.includes('Magic link sent!') && (
+            <motion.div
+              className="mb-6 p-4 bg-brand-50 dark:bg-brand-900/20 rounded-lg border border-brand-200 dark:border-brand-800"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <h3 className="text-lg font-semibold text-brand-700 dark:text-brand-300 mb-2">Trouble with the magic link?</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                If you've received the email but the magic link isn't working, you can try these options:
+              </p>
+              <div className="space-y-2">
+                <button 
+                  onClick={async () => {
+                    // Try checking for a session directly
+                    const { data } = await supabase.auth.getSession();
+                    if (data?.session) {
+                      router.push('/dashboard');
+                    } else {
+                      setMessage('No active session found. Please try a different option.');
+                    }
+                  }}
+                  className="w-full py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-md transition-colors"
+                >
+                  Check Session Status
+                </button>
+                <button 
+                  onClick={() => router.push('/dashboard')}
+                  className="w-full py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-md transition-colors"
+                >
+                  Go to Dashboard Directly
+                </button>
+              </div>
+            </motion.div>
+          )}
 
           {/* Sign-in form with staggered animation */}
           <motion.div

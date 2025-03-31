@@ -6,100 +6,109 @@ import { supabase } from '@/lib/api/supabase';
 
 export default function AuthCallback() {
   const router = useRouter();
+  const [message, setMessage] = useState<string>('Verifying your login...');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
-    const handleCallback = async () => {
-      try {
-        // First check for hash fragment with access_token
-        const hash = window.location.hash;
-        if (hash && hash.includes('access_token')) {
-          console.log('Found access_token in hash, checking session...');
-          
-          // Let Supabase handle the hash
-          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-          
-          if (sessionError) {
-            console.error('Session error:', sessionError);
-            setError(sessionError.message);
-            setLoading(false);
-            return;
-          }
-          
-          if (session) {
-            console.log('Session established from hash!');
-            router.push('/dashboard');
-            return;
-          }
-        }
-        
-        // If no hash or no session from hash, try code parameter
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
-        
-        if (!code) {
-          // If we have a hash but couldn't get a session, try one more time with getSession
-          if (hash) {
-            const { data } = await supabase.auth.getSession();
-            if (data.session) {
-              router.push('/dashboard');
-              return;
-            }
-          }
-          
-          setError('No authentication code or token found');
-          setLoading(false);
-          return;
-        }
-        
-        // Exchange the code for a session
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        
-        if (exchangeError) {
-          console.error('Code exchange error:', exchangeError);
-          setError(exchangeError.message);
-          setLoading(false);
-          return;
-        }
-        
-        console.log('Authentication successful');
+    // Handle auth state change
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, !!session);
+      
+      if (event === 'SIGNED_IN' && session) {
+        // Successfully signed in
+        setMessage('Successfully logged in! Redirecting...');
         router.push('/dashboard');
-      } catch (err: any) {
-        console.error('Auth callback error:', err);
-        setError(err.message);
-        setLoading(false);
+      }
+    });
+
+    // First check if we already have a session
+    const checkExistingSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error checking session:', error);
+          setError('Error checking session: ' + error.message);
+          return;
+        }
+        
+        if (data?.session) {
+          console.log('Session found, redirecting...');
+          setMessage('Session found! Redirecting...');
+          router.push('/dashboard');
+          return;
+        }
+        
+        // No session yet, wait for the auth state change
+        setMessage('Waiting for authentication...');
+        
+        // After 3 seconds without a session, show options
+        setTimeout(() => {
+          setMessage('Authentication taking longer than expected.');
+          setError('If you\'ve already clicked the magic link, try the buttons below.');
+        }, 3000);
+      } catch (e) {
+        console.error('Error in auth callback:', e);
+        setError('Unexpected error during authentication.');
       }
     };
 
-    handleCallback();
+    checkExistingSession();
+
+    return () => {
+      // Clean up subscription when component unmounts
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-lg shadow-md text-center">
-        <h1 className="text-2xl font-bold">Authenticating...</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="p-8 max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg text-center">
+        <h2 className="text-2xl font-semibold text-gray-800 dark:text-white mb-2">Authentication</h2>
         
-        {loading ? (
-          <div className="mt-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Completing your sign in...</p>
-          </div>
-        ) : error ? (
-          <div className="mt-4">
-            <p className="text-red-600">Error: {error}</p>
-            <button
-              onClick={() => router.push('/auth/signin')}
-              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Back to Sign In
-            </button>
-          </div>
-        ) : (
-          <div className="mt-4">
-            <p className="text-green-600">Success! Redirecting you to the dashboard...</p>
+        <p className="text-gray-600 dark:text-gray-300 mb-4">{message}</p>
+        
+        {!error && (
+          <div className="flex justify-center mb-6">
+            <div className="animate-spin h-6 w-6 border-2 border-blue-500 rounded-full border-t-transparent"></div>
           </div>
         )}
+        
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-lg">
+            <p>{error}</p>
+          </div>
+        )}
+        
+        <div className="space-y-3">
+          <button 
+            onClick={async () => {
+              const { data } = await supabase.auth.getSession();
+              if (data?.session) {
+                router.push('/dashboard');
+              } else {
+                setError('No active session found. Please try signing in again.');
+              }
+            }}
+            className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
+          >
+            Try Again
+          </button>
+          
+          <button 
+            onClick={() => router.push('/dashboard')}
+            className="w-full py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded transition-colors"
+          >
+            Go to Dashboard
+          </button>
+          
+          <button 
+            onClick={() => router.push('/auth/signin')}
+            className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+          >
+            Back to Sign In
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import supabase from '@/lib/api/supabase-client';
 
 interface Subscription {
   id: string;
@@ -33,12 +33,6 @@ interface UseSubscriptionReturn {
   openCustomerPortal: () => Promise<{ success: boolean; url?: string; error?: string }>;
   changeBillingPlan: (newPlanId: 'monthly' | 'yearly') => Promise<{ success: boolean; message: string; planId?: string; error?: string }>;
 }
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
 
 export default function useSubscription(userId?: string): UseSubscriptionReturn {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
