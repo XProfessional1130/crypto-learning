@@ -1,13 +1,20 @@
 'use client';
 
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo } from 'react';
+import { useIntersectionObserver } from '@/hooks/ui/useIntersectionObserver';
 import Section from '@/components/ui/Section';
 import Button from '@/components/ui/Button';
 import Image from 'next/image';
 
 export default function HeroSection() {
-  const [isVisible, setIsVisible] = useState(false);
-  const heroRef = useRef<HTMLDivElement>(null);
+  // Use the optimized intersection observer hook with mobile-specific settings
+  const [isVisible, heroRef] = useIntersectionObserver<HTMLDivElement>({
+    threshold: 0.1,
+    triggerOnce: true,
+    rootMargin: '0px 0px 0px 0px',
+    // Earlier loading on mobile
+    mobileRootMargin: '0px 0px 10% 0px'
+  });
   
   // Mock data for animated chart - memoized to prevent recalculation
   const chartData = useMemo(() => {
@@ -21,37 +28,29 @@ export default function HeroSection() {
     });
   }, []);
   
-  useEffect(() => {    
-    // Use requestAnimationFrame for better performance, especially on mobile
-    const rafId = requestAnimationFrame(() => {
-      setIsVisible(true);
-    });
-    
-    return () => cancelAnimationFrame(rafId);
-  }, []);
-
+  // Detect mobile for conditional rendering
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  
   return (
     <Section 
       background="none"
       spacing="none"
-      className="relative nav-section-fix"
+      className="relative py-4 sm:py-6"
     >
-      {/* Background elements removed to use main homepage background */}
-      
       <div 
         ref={heroRef} 
-        className={`grid grid-cols-1 gap-16 md:grid-cols-2 md:gap-20 relative z-10 transition-all duration-700 transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'} mt-8 pt-4`}
+        className={`grid grid-cols-1 gap-8 md:gap-16 md:grid-cols-2 relative z-10 transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}
         style={{ willChange: isVisible ? 'auto' : 'opacity, transform' }}
       >
-        {/* Left content with optimized animations for mobile */}
-        <div className="flex flex-col justify-center mt-0">
+        {/* Left content with reduced animations for mobile */}
+        <div className="flex flex-col justify-center mt-2 sm:mt-0">
           <div className="inline-flex items-center px-3 py-1.5 mb-2 rounded-full text-xs font-medium tracking-wider bg-brand-100/30 dark:bg-brand-800/30 text-brand-700 dark:text-brand-300 border border-brand-200/50 dark:border-brand-700/50 backdrop-blur-sm shadow-sm max-w-fit">
             <span className="w-2 h-2 rounded-full bg-brand-500 dark:bg-brand-400 mr-2"></span>
             NEXT GENERATION CRYPTO LEARNING
           </div>
           
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl animate-fade-in relative">
-            <span className="text-gradient-vibrant text-shadow-glow relative inline-block text-rendering-optimizeLegibility after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[6px] after:bg-gradient-to-r after:from-brand-primary/70 after:to-brand-light/30 after:rounded-full after:transform after:translate-y-2 after:blur-sm">
+          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight lg:text-6xl animate-fade-in relative">
+            <span className="text-gradient-vibrant relative inline-block">
               Master Crypto
             </span>
             <br/>
@@ -60,7 +59,7 @@ export default function HeroSection() {
             <span className="text-light-text-primary dark:text-dark-text-primary relative inline-block">
               Education
               <svg 
-                className="absolute -right-12 -bottom-1 w-10 h-10 text-brand-300 dark:text-brand-400 opacity-70" 
+                className="absolute -right-12 -bottom-1 w-8 h-8 sm:w-10 sm:h-10 text-brand-300 dark:text-brand-400 opacity-70" 
                 viewBox="0 0 24 24" 
                 fill="none" 
                 xmlns="http://www.w3.org/2000/svg"
@@ -72,18 +71,18 @@ export default function HeroSection() {
             </span>
           </h1>
           
-          <p className="mt-8 text-xl leading-relaxed text-light-text-secondary dark:text-dark-text-secondary backdrop-blur-sm p-3 -ml-3 border-l-2 border-brand-200 dark:border-brand-700">
+          <p className="mt-6 sm:mt-8 text-lg sm:text-xl leading-relaxed text-light-text-secondary dark:text-dark-text-secondary backdrop-blur-sm p-3 -ml-3 border-l-2 border-brand-200 dark:border-brand-700">
             LearningCrypto combines AI technology with expert insights 
             to provide personalized crypto education, portfolio tracking, 
             and real-time market analytics.
           </p>
           
-          <div className="mt-10 flex flex-col space-y-4 sm:flex-row sm:space-x-6 sm:space-y-0">
+          <div className="mt-8 sm:mt-10 flex flex-col space-y-4 sm:flex-row sm:space-x-6 sm:space-y-0">
             <Button 
               href="/auth/signin" 
               variant="glass" 
               size="lg"
-              className="neo-glass backdrop-blur-lg bg-brand-primary/90 dark:bg-brand-primary/90 border border-white/20 hover:bg-brand-primary hover:border-white/30 font-medium shadow-md"
+              className="neo-glass backdrop-blur-lg bg-brand-primary/90 dark:bg-brand-primary/90 border border-white/20 hover:bg-brand-primary hover:border-white/30 font-medium shadow-md min-h-[44px] sm:min-h-[48px]"
             >
               <span className="relative z-10 text-brand-primary dark:text-white font-semibold">Get Started</span>
             </Button>
@@ -91,14 +90,14 @@ export default function HeroSection() {
               href="/about" 
               variant="outline" 
               size="lg"
-              className="backdrop-blur-md border-2"
+              className="backdrop-blur-md border-2 min-h-[44px] sm:min-h-[48px]"
             >
               Learn More
             </Button>
           </div>
           
           {/* Trust indicators */}
-          <div className="mt-12 flex items-center space-x-5">
+          <div className="mt-8 sm:mt-12 flex items-center space-x-4 sm:space-x-5">
             <div className="text-sm text-light-text-secondary dark:text-dark-text-secondary">Trusted by:</div>
             <div className="flex -space-x-2">
               {[1, 2, 3, 4].map((i) => (
@@ -111,31 +110,29 @@ export default function HeroSection() {
           </div>
         </div>
 
-        {/* Right side with optimized rendering for mobile */}
+        {/* Right side with performance optimizations */}
         <div className="flex items-center justify-center">
           <div 
-            className="relative w-full max-w-lg mx-auto transition-all duration-700 transform perspective-tilt" 
+            className="relative w-full max-w-lg mx-auto transition-all duration-500 transform-gpu" 
             style={{ 
+              height: '400px',
+              maxHeight: 'min(400px, 80vw)',
               willChange: isVisible ? 'auto' : 'transform',
-              transform: 'translateZ(0)',
-              backfaceVisibility: 'hidden'
+              transform: 'translateZ(0)'
             }}
           >
-            {/* Main dashboard card with optimized glassmorphism for mobile */}
+            {/* Main dashboard card with simplified glassmorphism for mobile */}
             <div 
-              className="relative rounded-2xl overflow-hidden neo-glass neo-glass-before sm:aspect-[4/3] h-[80vw] max-h-[400px] w-full" 
+              className="relative rounded-2xl overflow-hidden h-full w-full neo-glass-simple" 
               style={{ 
-                willChange: 'transform',
-                transform: 'translateZ(0)',
-                backfaceVisibility: 'hidden'
+                transform: 'translateZ(0)'
               }}
             >
-              {/* Card background with optimized glass effect for mobile */}
-              <div className="absolute inset-0 backdrop-blur-xl bg-white/20 dark:bg-dark-bg-primary/25"></div>
+              {/* Card background with reduced effects for mobile */}
+              <div className="absolute inset-0 backdrop-blur-md bg-white/20 dark:bg-dark-bg-primary/25"></div>
               
               {/* Light reflections - static for better mobile performance */}
               <div className="absolute top-0 right-0 w-[80%] h-[30%] bg-gradient-to-br from-white/20 dark:from-white/10 to-transparent rounded-bl-full"></div>
-              <div className="absolute bottom-0 left-0 w-[40%] h-[20%] bg-gradient-to-tr from-white/10 dark:from-white/5 to-transparent rounded-tr-full"></div>
               
               {/* Dashboard content */}
               <div className="absolute inset-0 p-4 sm:p-8 flex flex-col">
@@ -152,7 +149,7 @@ export default function HeroSection() {
                 </div>
                 <div className="w-full h-1 bg-gradient-to-r from-brand-primary to-brand-light opacity-70 rounded-full"></div>
                 
-                {/* Chart area with optimized animations for mobile */}
+                {/* Chart area with simplified animations */}
                 <div className="flex-1 rounded-lg bg-white/10 dark:bg-dark-bg-accent/20 border border-white/10 dark:border-dark-bg-accent/30 mt-4 sm:mt-6 p-3 sm:p-4 flex flex-col">
                   <div className="flex justify-between items-center mb-4">
                     <div className="font-medium text-sm text-light-text-primary dark:text-dark-text-primary">BTC/USD</div>
@@ -164,45 +161,52 @@ export default function HeroSection() {
                     </div>
                   </div>
                   
-                  {/* Optimized chart rendering for mobile */}
+                  {/* Optimized chart rendering - fewer animations on mobile */}
                   <div className="w-full h-24 sm:h-36 relative">
                     <div className="absolute bottom-0 inset-x-0 h-[1px] bg-white/20 dark:bg-white/10"></div>
                     <div className="h-full w-full flex items-end relative">
-                      {chartData.map((value, i) => (
-                        <div 
-                          key={i} 
-                          className="flex-1 mx-0.5 transform transition-all duration-300 ease-out"
-                          style={{ 
-                            height: `${value}%`,
-                            background: 'linear-gradient(to top, rgba(77, 181, 176, 0.8), rgba(77, 181, 176, 0.1))',
-                            borderTopLeftRadius: '3px',
-                            borderTopRightRadius: '3px',
-                            opacity: isVisible ? 1 : 0,
-                            transform: isVisible ? 'scaleY(1)' : 'scaleY(0)',
-                            transitionDelay: `${i * 25}ms`, // Reduced delay for better mobile performance
-                            willChange: 'transform, opacity',
-                            backfaceVisibility: 'hidden'
-                          }}
-                        ></div>
-                      ))}
+                      {chartData.map((value, i) => {
+                        // Reduce animation complexity on mobile
+                        const delay = isMobile ? Math.min(i * 15, 300) : i * 25;
+                        
+                        return (
+                          <div 
+                            key={i} 
+                            className="flex-1 mx-0.5 transform-gpu transition-all"
+                            style={{ 
+                              height: `${value}%`,
+                              background: 'linear-gradient(to top, rgba(77, 181, 176, 0.8), rgba(77, 181, 176, 0.1))',
+                              borderTopLeftRadius: '3px',
+                              borderTopRightRadius: '3px',
+                              opacity: isVisible ? 1 : 0,
+                              transform: isVisible ? 'scaleY(1)' : 'scaleY(0)',
+                              transitionDelay: `${delay}ms`,
+                              transitionDuration: '300ms',
+                              transitionProperty: 'opacity, transform'
+                            }}
+                          ></div>
+                        );
+                      })}
                       
-                      {/* Chart line overlay - optimized for mobile */}
-                      <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-                        <polyline
-                          points={chartData.map((value, i) => `${(i / (chartData.length - 1)) * 100},${100 - value}`).join(' ')}
-                          fill="none"
-                          stroke="rgba(77, 181, 176, 0.8)"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="transition-all duration-700 ease-out"
-                          style={{ 
-                            opacity: isVisible ? 1 : 0,
-                            strokeDasharray: 1000,
-                            strokeDashoffset: isVisible ? 0 : 1000
-                          }}
-                        />
-                      </svg>
+                      {/* Chart line overlay - simplified for mobile */}
+                      {!isMobile && (
+                        <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                          <polyline
+                            points={chartData.map((value, i) => `${(i / (chartData.length - 1)) * 100},${100 - value}`).join(' ')}
+                            fill="none"
+                            stroke="rgba(77, 181, 176, 0.8)"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="transition-all duration-500 ease-out"
+                            style={{ 
+                              opacity: isVisible ? 1 : 0,
+                              strokeDasharray: 1000,
+                              strokeDashoffset: isVisible ? 0 : 1000
+                            }}
+                          />
+                        </svg>
+                      )}
                     </div>
                   </div>
                   

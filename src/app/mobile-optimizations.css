@@ -8,20 +8,81 @@
 
 /* Optimize animations for mobile */
 @media (max-width: 768px) {
-  /* Reduce animation complexity on mobile */
+  /* Reduce blur effects on mobile which are CPU intensive */
+  .blur-3xl {
+    --tw-blur: blur(24px) !important;
+  }
+  
+  .blur-2xl {
+    --tw-blur: blur(20px) !important;
+  }
+  
+  .blur-xl {
+    --tw-blur: blur(16px) !important;
+  }
+
+  .backdrop-blur-xl {
+    --tw-backdrop-blur: blur(16px) !important;
+  }
+  
+  .backdrop-blur-lg {
+    --tw-backdrop-blur: blur(8px) !important;
+  }
+  
+  /* Simplify glassmorphism effects for better performance */
+  .neo-glass-simple {
+    @apply backdrop-blur-md bg-white/20 dark:bg-dark-bg-primary/25 border border-white/20 dark:border-white/10 shadow-md;
+  }
+  
+  /* Optimize animations */
   .animate-pulse-slow {
-    animation-duration: 8s !important; /* Slower animations use less CPU */
+    animation-duration: 5s !important;
+  }
+  
+  /* Reduce shadow complexity */
+  .shadow-glass {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  /* Disable heavy animations on low-end devices */
+  @media (prefers-reduced-motion) {
+    .animate-pulse-slow,
+    .animate-float,
+    .animate-levitate,
+    .animate-pulse-glow {
+      animation: none !important;
+    }
+    
+    .perspective-tilt:hover {
+      transform: none !important;
+    }
+  }
+  
+  /* Ensure touch targets are large enough */
+  button, 
+  .btn,
+  a.nav-link,
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Simplify text rendering for better performance */
+  .text-gradient-vibrant {
+    background-image: linear-gradient(to right, var(--tw-gradient-stops)) !important;
+  }
+  
+  /* Fix content visibility for off-screen elements */
+  .below-fold-section {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 500px;
   }
   
   /* Disable some animations on mobile for better performance */
   .mobile-disable-animation {
     animation: none !important;
     transition: none !important;
-  }
-  
-  /* Optimize backdrop blur for mobile */
-  .backdrop-blur-xl {
-    backdrop-filter: blur(10px) !important; /* Less intensive blur */
   }
   
   /* Optimize gradient animations */

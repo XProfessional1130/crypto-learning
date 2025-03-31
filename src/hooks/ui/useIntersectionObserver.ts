@@ -4,11 +4,14 @@ interface IntersectionObserverOptions {
   threshold?: number;
   rootMargin?: string;
   triggerOnce?: boolean;
+  mobileRootMargin?: string;
+  mobileThreshold?: number;
 }
 
 /**
  * Optimized hook for intersection observer
  * Uses a shared observer instance for better performance
+ * Now with device-specific optimizations
  */
 export function useIntersectionObserver<T extends HTMLElement = HTMLDivElement>(
   options: IntersectionObserverOptions = {}
@@ -16,7 +19,9 @@ export function useIntersectionObserver<T extends HTMLElement = HTMLDivElement>(
   const { 
     threshold = 0.1, 
     rootMargin = '0px', 
-    triggerOnce = true 
+    triggerOnce = true,
+    mobileRootMargin = '0px 0px -10% 0px',
+    mobileThreshold = 0.05
   } = options;
   
   const [isIntersecting, setIsIntersecting] = useState(false);
@@ -35,12 +40,20 @@ export function useIntersectionObserver<T extends HTMLElement = HTMLDivElement>(
       observerRef.current.disconnect();
     }
     
-    // Create new observer with optimized options
+    // Device detection for optimized settings
+    const isMobile = window.innerWidth < 768;
+    const finalRootMargin = isMobile ? mobileRootMargin : rootMargin;
+    const finalThreshold = isMobile ? mobileThreshold : threshold;
+    
+    // Create new observer with optimized options for device type
     observerRef.current = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting) {
-          setIsIntersecting(true);
+          // Use requestAnimationFrame for better performance on mobile
+          requestAnimationFrame(() => {
+            setIsIntersecting(true);
+          });
           
           // Disconnect observer if triggerOnce is true
           if (triggerOnce && observerRef.current) {
@@ -51,7 +64,7 @@ export function useIntersectionObserver<T extends HTMLElement = HTMLDivElement>(
           setIsIntersecting(false);
         }
       },
-      { threshold, rootMargin }
+      { threshold: finalThreshold, rootMargin: finalRootMargin }
     );
     
     // Start observing
@@ -64,7 +77,7 @@ export function useIntersectionObserver<T extends HTMLElement = HTMLDivElement>(
         observerRef.current = null;
       }
     };
-  }, [threshold, rootMargin, triggerOnce, isIntersecting]);
+  }, [threshold, rootMargin, triggerOnce, isIntersecting, mobileRootMargin, mobileThreshold]);
   
   return [isIntersecting, elementRef];
 } 

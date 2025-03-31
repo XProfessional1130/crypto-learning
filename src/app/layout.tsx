@@ -1,5 +1,5 @@
 import "./globals.css";
-import type { Metadata, Viewport } from "next";
+import { Metadata, Viewport } from "next";
 import { Inter } from 'next/font/google'
 import { AuthProvider } from "@/lib/providers/auth-provider";
 import { ThemeProvider } from "@/lib/providers/theme-provider";
@@ -17,7 +17,12 @@ import {
 } from "./components";
 import dynamic from 'next/dynamic';
 
-const inter = Inter({ subsets: ['latin'] })
+// Use variable font for better performance
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap', // Ensure text remains visible during font loading
+  variable: '--font-inter',
+});
 
 // Dynamically import GlobalChat to prevent SSR issues
 const GlobalChat = dynamic(() => import('@/components/features/chat/GlobalChat'), {
@@ -31,24 +36,29 @@ const GlobalModal = dynamic(() => import('@/components/features/modals/GlobalMod
 
 // Split metadata according to Next.js requirements
 export const metadata: Metadata = {
-  title: "LearningCrypto Platform",
-  description: "Learn crypto the smart way",
+  title: 'LearningCrypto - AI-Powered Crypto Education',
+  description: 'Master cryptocurrency with personalized AI education, portfolio tracking, and market analytics.',
   icons: {
     icon: '/logos/icon.png',
     apple: '/logos/icon.png',
     shortcut: '/logos/icon.png'
+  },
+  openGraph: {
+    title: 'LearningCrypto - AI-Powered Crypto Education',
+    description: 'Master cryptocurrency with personalized AI education, portfolio tracking, and market analytics.',
+    type: 'website',
   }
 };
 
 // Move viewport and themeColor to separate export
 export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 5,
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
     { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
-  ]
+  ],
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover'
 };
 
 export default function RootLayout({
@@ -57,7 +67,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="smooth-scroll overflow-x-hidden optimize-scroll">
+    <html lang="en" className={inter.variable}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://supabase.co" crossOrigin="anonymous" />
+        <meta name="theme-color" content="#39817c" />
+      </head>
       <body className={`${inter.className} h-full antialiased overflow-x-hidden overscroll-none`}>
         {/* Initialize providers first - they handle their own client/server logic */}
         <QueryProvider>
