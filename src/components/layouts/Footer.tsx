@@ -1,7 +1,17 @@
+'use client';
+
 import Link from 'next/link';
 import Container from '@/components/ui/Container';
+import { usePathname } from 'next/navigation';
 
 export default function Footer() {
+  const pathname = usePathname();
+  
+  // Don't render footer on admin pages
+  if (pathname?.startsWith('/admin-platform')) {
+    return null;
+  }
+
   const currentYear = new Date().getFullYear();
   
   return (

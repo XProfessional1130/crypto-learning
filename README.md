@@ -12,6 +12,28 @@ LearningCrypto is an AI-driven crypto education platform that combines personali
 - **Exclusive Discounts**: Access special deals and referral links for crypto services and products.
 - **Referral Program**: Earn rewards by referring friends to the platform.
 
+## Documentation
+
+### Getting Started
+- [Getting Started Guide](docs/getting-started.md) - Complete setup instructions for new developers
+
+### Core Documentation
+- [Database Schema](docs/database-schema.md) - Comprehensive database schema documentation
+- [Admin Authentication](docs/admin-authentication.md) - Admin role implementation and security
+- [Stripe Setup Guide](README-STRIPE-SETUP.md) - Subscription payment integration with Stripe
+- [Team Portfolio Setup](README-SETUP.md) - Setting up and troubleshooting team portfolios
+
+### Development Documentation
+- [Server Components Implementation](docs/server-components-implementation-log.md) - Server components migration details
+- [Server Component Utilization Plan](docs/server-component-utilization-plan.md) - Planning for server components
+- [Server Components Measurement](docs/server-components-measurement.md) - Performance measurement
+- [Ghost Migration](docs/ghost-migration.md) - Content migration from Ghost CMS
+- [AI Chat Setup](docs/AI-CHAT-SETUP.md) - Setting up the AI chat functionality
+- [Scheduler Setup](docs/SCHEDULER-SETUP.md) - Background job scheduling system
+- [API Optimization](docs/API-OPTIMIZATION.md) - API performance optimization strategies
+- [Implementation Steps](docs/IMPLEMENTATION-STEPS.md) - Step-by-step implementation guide
+- [CoinMarketCap Integration](docs/COINMARKETCAP.md) - CoinMarketCap API integration
+
 ## Tech Stack
 
 - **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS

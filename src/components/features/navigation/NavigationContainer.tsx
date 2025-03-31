@@ -20,6 +20,7 @@ import { useCallback } from 'react';
 export default function NavigationContainer() {
   // State management
   const [isScrolled, setIsScrolled] = useState(false);
+  const [hideNav, setHideNav] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   
@@ -32,13 +33,6 @@ export default function NavigationContainer() {
   const visibleNavItems = NAV_ITEMS
     .filter(item => (item.public || user) && item.name !== 'Home');
 
-  // Log navigation items when mobile menu opens
-  useEffect(() => {
-    if (mobileMenuOpen) {
-      console.log('Navigation items:', visibleNavItems);
-    }
-  }, [mobileMenuOpen, visibleNavItems]);
-
   // Mark as mounted to enable client-side behaviors
   useEffect(() => {
     setMounted(true);
@@ -48,34 +42,17 @@ export default function NavigationContainer() {
   useEffect(() => {
     if (!mounted) return;
     
-    // Use requestAnimationFrame to debounce scroll events for better performance
-    let rafId: number;
+    let lastScroll = 0;
     
-    const handleScroll = () => {
-      // Cancel any pending animation frame
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-      }
-      
-      // Schedule new animation frame
-      rafId = requestAnimationFrame(() => {
-        setIsScrolled(window.scrollY > 10);
-      });
-    };
+    function handleScroll() {
+      const currentScroll = window.scrollY;
+      setHideNav(currentScroll > lastScroll && currentScroll > 50);
+      setIsScrolled(currentScroll > 10);
+      lastScroll = currentScroll;
+    }
     
-    // Add scroll listener
     window.addEventListener('scroll', handleScroll);
-    
-    // Initial check
-    handleScroll();
-    
-    // Clean up
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-      }
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [mounted]);
 
   // Lock body scroll when mobile menu is open
@@ -114,12 +91,20 @@ export default function NavigationContainer() {
 
   return (
     <nav
-      className={`fixed top-0 w-full transition-all duration-300 ${
+      className={`fixed top-0 w-full transition-transform duration-300 ease-in-out ${
         isScrolled || mobileMenuOpen
-          ? 'bg-light-bg-card/90 backdrop-blur-md dark:bg-dark-bg-card/90 shadow-sm'
-          : 'bg-transparent'
-      }`}
-      style={{ position: 'fixed', height: '60px', zIndex: mobileMenuOpen ? 900 : 990 }}
+          ? 'bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl shadow-lg border-b border-gray-200/20 dark:border-gray-800/20'
+          : 'bg-transparent backdrop-blur-sm'
+      } ${
+        hideNav && !mobileMenuOpen ? '-translate-y-full' : 'translate-y-0'
+      } gpu-accelerated`}
+      style={{ 
+        position: 'fixed', 
+        height: '60px', 
+        zIndex: mobileMenuOpen ? 900 : 990,
+        transform: 'translateZ(0)',
+        willChange: 'transform, backdrop-filter, background-color, border-color, box-shadow'
+      }}
     >
       <div className="mx-auto flex h-full max-w-7xl items-center px-4 sm:px-6 lg:px-8">
         {/* Container with centered items */}

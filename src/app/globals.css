@@ -39,6 +39,8 @@ html {
   body {
     @apply bg-gradient-to-br from-light-bg-primary to-light-bg-accent dark:from-dark-bg-primary dark:to-dark-bg-secondary text-light-text-primary dark:text-dark-text-primary;
     background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {

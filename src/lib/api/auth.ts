@@ -80,4 +80,54 @@ export class AuthService {
       }
     });
   }
+
+  static async isAdmin(): Promise<boolean> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      return profile?.role === 'admin';
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      return false;
+    }
+  }
+
+  static async makeUserAdmin(userId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .rpc('make_user_admin', { user_id: userId });
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error making user admin:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'An unknown error occurred' 
+      };
+    }
+  }
+
+  static async removeUserAdmin(userId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .rpc('remove_user_admin', { user_id: userId });
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error removing admin status:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'An unknown error occurred' 
+      };
+    }
+  }
 } 
