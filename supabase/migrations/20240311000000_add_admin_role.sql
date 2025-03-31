@@ -104,4 +104,21 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user(); 
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- Function to set up initial admin user
+CREATE OR REPLACE FUNCTION setup_initial_admin()
+RETURNS VOID AS $$
+BEGIN
+  -- Update or insert the admin user
+  INSERT INTO profiles (id, email, role)
+  SELECT id, email, 'admin'
+  FROM auth.users
+  WHERE email = 'admin@learningcrypto.com'
+  ON CONFLICT (id) DO UPDATE
+  SET role = 'admin';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Execute the function to set up initial admin
+SELECT setup_initial_admin(); 
