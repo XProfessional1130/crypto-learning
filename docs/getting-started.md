@@ -1,22 +1,17 @@
-# Getting Started with LearningCrypto Platform
+# Getting Started with LearningCrypto
 
-This guide will help you set up the LearningCrypto platform for local development, testing, and deployment.
+This guide helps you set up the platform for development and deployment.
 
 ## Prerequisites
 
-Before you begin, ensure you have the following installed:
+- Node.js v18+
+- npm or yarn
+- Git
+- Accounts for: Supabase, Stripe, Radom, OpenAI
 
-- **Node.js** (v18.x or later)
-- **npm** or **yarn**
-- **Git**
-- A **Supabase** account
-- A **Stripe** account (for fiat payments)
-- A **Radom** account (for crypto payments)
-- An **OpenAI** API key (for AI chat)
+## Setup Steps
 
-## Installation Steps
-
-### 1. Clone the Repository
+### 1. Clone Repository
 
 ```bash
 git clone https://github.com/your-username/lc-platform.git
@@ -27,135 +22,94 @@ cd lc-platform
 
 ```bash
 npm install
-# or
-yarn install
 ```
 
-### 3. Set Up Environment Variables
+### 3. Configure Environment
 
-Create a `.env.local` file in the root directory based on the `.env.example` file:
+Create `.env.local` from `.env.example`:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Fill in the required values:
+Add your values:
 
 ```
-# Admin API for secure operations
+# Admin API
 ADMIN_API_KEY=your_secure_admin_api_key
-
-# Cron job secret for scheduled tasks
 CRON_SECRET=your_secure_cron_secret
 
-# Supabase configuration
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
-# Stripe configuration
+# Stripe
 STRIPE_SECRET_KEY=your_stripe_secret_key
 STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
-NEXT_PUBLIC_STRIPE_PRICE_ID_MONTHLY=your_stripe_monthly_price_id
-NEXT_PUBLIC_STRIPE_PRICE_ID_YEARLY=your_stripe_yearly_price_id
+NEXT_PUBLIC_STRIPE_PRICE_ID_MONTHLY=monthly_price_id
+NEXT_PUBLIC_STRIPE_PRICE_ID_YEARLY=yearly_price_id
 
-# Application URL for redirects
+# App URL
 NEXT_PUBLIC_URL=http://localhost:3000
 ```
 
-### 4. Set Up Supabase Database
+### 4. Set Up Database
 
-#### Option A: Using the SQL Editor
+**Option A: SQL Editor**
+1. Log in to Supabase dashboard
+2. Go to SQL Editor
+3. Run base tables script, then migration scripts
 
-1. Log in to your Supabase dashboard
-2. Go to the SQL Editor
-3. Run the following migrations in order:
-   - First run the base tables creation script
-   - Then run any additional migration scripts
+**Option B: Supabase CLI**
+1. Install CLI: `npm install -g supabase`
+2. Link project: `supabase link --project-ref your-project-ref`
+3. Run migrations: `supabase db push`
 
-#### Option B: Using the Supabase CLI
-
-1. Install the Supabase CLI if you haven't already:
-   ```bash
-   npm install -g supabase
-   ```
-
-2. Link your project:
-   ```bash
-   supabase link --project-ref your-project-ref
-   ```
-
-3. Run the migrations:
-   ```bash
-   supabase db push
-   ```
-
-### 5. Set Up Your First Admin User
-
-After setting up the database, create your first admin user:
+### 5. Create Admin User
 
 ```bash
 npm run create-first-admin your.email@example.com
 ```
 
-### 6. Set Up Stripe Integration
+### 6. Set Up Integrations
 
-Follow the detailed instructions in [README-STRIPE-SETUP.md](../README-STRIPE-SETUP.md) to:
+Follow these guides for specific features:
+- [Stripe Setup](../README-STRIPE-SETUP.md)
+- [Team Portfolio](../README-SETUP.md)
+- [AI Chat Setup](./AI-CHAT-SETUP.md)
 
-1. Create products and pricing plans in Stripe
-2. Set up webhook endpoints
-3. Update your environment variables with the relevant keys
-
-### 7. Set Up Team Portfolio
-
-Follow the instructions in [README-SETUP.md](../README-SETUP.md) to set up the team portfolio feature.
-
-### 8. Set Up AI Chat Integration
-
-Follow the instructions in [AI-CHAT-SETUP.md](./AI-CHAT-SETUP.md) to:
-
-1. Configure OpenAI API access
-2. Set up the chat system with Tobo and Heido personalities
-
-### 9. Run the Development Server
+### 7. Start Development
 
 ```bash
 npm run dev
-# or
-yarn dev
 ```
 
-Your application should now be running at [http://localhost:3000](http://localhost:3000).
+Your app runs at [http://localhost:3000](http://localhost:3000).
 
-## Common Setup Issues
+## Common Issues
 
-### Supabase Connection Issues
+### Supabase Connection
 
-If you encounter connection issues with Supabase:
+- Check environment variables
+- Verify IP isn't blocked
+- Confirm project is active
 
-1. Verify your environment variables are correct
-2. Check that your IP address is not blocked in Supabase
-3. Ensure your Supabase project is active
+### Multiple Client Warnings
 
-### Multiple Supabase Client Warnings
-
-If you see warnings about "Multiple GoTrueClient instances detected":
-
-- We've implemented a singleton pattern in `lib/services/supabase-client.ts`
-- All Supabase client usage should import from this file
-- Update any duplicate client instantiations
+If you see "Multiple GoTrueClient instances detected":
+- Use singleton from `lib/services/supabase-client.ts`
+- Update duplicate client instantiations
 
 ### API Rate Limiting
 
-If you're encountering rate limit errors:
-
-1. Implement appropriate caching for API calls
-2. Use the background job system for heavy operations
-3. Reduce the frequency of API calls where possible
+- Implement caching
+- Use background jobs for heavy operations
+- Reduce API call frequency
 
 ## Testing
 
-### Running Tests
+### Run Tests
 
 ```bash
 npm run test
@@ -163,50 +117,40 @@ npm run test
 npm run test:watch
 ```
 
-### Testing Stripe Webhooks Locally
+### Test Stripe Webhooks
 
-1. Install the Stripe CLI
+1. Install Stripe CLI
 2. Login: `stripe login`
 3. Forward events: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
-4. Use test cards:
-   - Successful payment: `4242 4242 4242 4242`
-   - Failed payment: `4000 0000 0000 0002`
+4. Test cards:
+   - Success: `4242 4242 4242 4242`
+   - Failure: `4000 0000 0000 0002`
 
 ## Deployment
 
-### Deploying to Vercel
+### Vercel Deployment
 
-1. Push your code to a Git repository
-2. Connect the repository to Vercel
-3. Configure your environment variables in the Vercel dashboard
-4. Deploy! 
+1. Push code to Git repository
+2. Connect to Vercel
+3. Set environment variables
+4. Deploy
 
-For more detailed deployment instructions, see the main [README.md](../README.md#deployment).
+See [README.md](../README.md#deployment) for detailed steps.
 
-## Feature-Specific Setup
+## Feature Setup
 
-For detailed setup of specific features, refer to the following guides:
-
-- [Admin Authentication System](./admin-authentication.md)
-- [Database Schema Documentation](./database-schema.md)
+For specific features, see:
+- [Admin Authentication](./admin-authentication.md)
+- [Database Schema](./database-schema.md)
 - [Scheduler Setup](./SCHEDULER-SETUP.md)
 - [API Optimization](./API-OPTIMIZATION.md)
 - [CoinMarketCap Integration](./COINMARKETCAP.md)
 
-## Getting Help
-
-If you encounter issues not covered in this guide:
-
-1. Check the project issues on GitHub
-2. Consult the existing documentation
-3. Reach out to the development team
-
 ## Next Steps
 
-After successfully setting up the platform, consider:
-
-1. Creating test users
-2. Adding sample content
-3. Exploring the admin dashboard
-4. Testing the user flows
-5. Setting up CI/CD pipelines 
+After setup:
+1. Create test users
+2. Add sample content
+3. Explore admin dashboard
+4. Test user flows
+5. Set up CI/CD 

@@ -10,10 +10,19 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:search": "node scripts/test-search.mjs",
-    "test:subscription": "sh scripts/test-subscription-events.sh",
-    "create-first-admin": "ts-node src/scripts/create-first-admin.ts",
-    "setup": "node scripts/clean-setup.js"
+    "test:search": "node scripts/testing/test-search.mjs",
+    "test:subscription": "sh scripts/testing/test-subscription-events.sh",
+    "test:api": "node scripts/testing/test-api.js",
+    "setup": "node scripts/setup/setup.js",
+    "setup:db": "node scripts/setup/fix-database.js",
+    "setup:auth": "node scripts/setup/fix-auth-db.js",
+    "setup:cleanup": "sh scripts/setup/cleanup-unnecessary-files.sh",
+    "admin:create": "ts-node scripts/utils/create-admin.ts",
+    "data:update-crypto": "node scripts/data/update-crypto.js",
+    "data:update-market": "ts-node scripts/data/update-macro-market-data.ts",
+    "data:import-ghost": "ts-node scripts/data/import-ghost-content.ts",
+    "db:migrate": "ts-node scripts/migrations/run-migration.ts",
+    "scripts:cleanup": "sh scripts/cleanup-old-scripts.sh"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",

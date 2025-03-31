@@ -2,12 +2,12 @@
 
 ## Overview
 
-This document provides comprehensive documentation for the LearningCrypto platform database schema. The database is hosted on Supabase (PostgreSQL) and consists of multiple tables organized by functionality.
+Database schema for the LearningCrypto platform using Supabase (PostgreSQL).
 
 ## Core Tables
 
 ### Profiles Table
-The profiles table stores user profile information and handles role-based access control.
+Stores user profile information and handles access control.
 
 ```sql
 CREATE TABLE profiles (
@@ -25,28 +25,21 @@ CREATE TABLE profiles (
 - `id`: UUID (Primary Key) - References auth.users(id)
 - `email`: TEXT - User's email address
 - `full_name`: TEXT - User's full name
-- `avatar_url`: TEXT - URL to user's avatar image
-- `role`: TEXT - User's role ('user' or 'admin')
-- `created_at`: TIMESTAMP WITH TIME ZONE - Record creation timestamp
-- `updated_at`: TIMESTAMP WITH TIME ZONE - Record update timestamp
+- `avatar_url`: TEXT - Avatar image URL
+- `role`: TEXT - 'user' or 'admin'
+- `created_at`: TIMESTAMP - Creation time
+- `updated_at`: TIMESTAMP - Update time
 
 #### Triggers
-1. `update_profiles_updated_at`
-   - Automatically updates the `updated_at` timestamp when a record is modified
-2. `on_auth_user_created`
-   - Automatically creates a profile when a new user signs up
-   - Sets default role to 'user'
+1. `update_profiles_updated_at`: Updates timestamp on modification
+2. `on_auth_user_created`: Creates profile on user signup
 
-#### Row Level Security (RLS) Policies
-1. "Admins can view all profiles"
-   - Allows admins to view all profiles
-   - Regular users can only view their own profile
-2. "Admins can update all profiles"
-   - Allows admins to update any profile
-   - Regular users can only update their own profile
+#### RLS Policies
+1. Admins view all profiles, users view only their own
+2. Admins update all profiles, users update only their own
 
 ### Content Table
-The content table stores all types of content (articles, guides, tutorials, etc.).
+Stores articles, guides, tutorials, and other content.
 
 ```sql
 CREATE TABLE content (
@@ -86,46 +79,30 @@ CREATE TABLE content (
 #### Columns
 - `id`: UUID (Primary Key)
 - `title`: TEXT - Content title
-- `slug`: TEXT - URL-friendly unique identifier
+- `slug`: TEXT - URL-friendly identifier
 - `content`: TEXT - Main content body
-- `excerpt`: TEXT - Short description/summary
-- `author_id`: UUID - References the author's user ID
-- `status`: TEXT - Content status ('draft', 'published', 'scheduled')
-- `visibility`: TEXT - Access level ('public', 'members', 'paid')
-- `type`: TEXT - Content type (article, guide, tutorial, etc.)
-- SEO Fields:
-  - `seo_title`: TEXT - SEO-optimized title
-  - `seo_description`: TEXT - Meta description
-  - `og_image`, `og_title`, `og_description`: TEXT - OpenGraph metadata
-  - `twitter_image`, `twitter_title`, `twitter_description`: TEXT - Twitter card metadata
-  - `canonical_url`: TEXT - Canonical URL if different from slug
-- Timestamps:
-  - `created_at`: TIMESTAMPTZ - Creation timestamp
-  - `updated_at`: TIMESTAMPTZ - Last update timestamp
-  - `published_at`: TIMESTAMPTZ - Publication timestamp
-- Analytics:
-  - `view_count`: INTEGER - Number of views
-  - `like_count`: INTEGER - Number of likes
-  - `share_count`: INTEGER - Number of shares
+- `excerpt`: TEXT - Summary
+- `author_id`: UUID - Author reference
+- `status`: TEXT - 'draft', 'published', 'scheduled'
+- `visibility`: TEXT - 'public', 'members', 'paid'
+- `type`: TEXT - Content type
+- **SEO Fields**: Various metadata for search engines
+- **Timestamps**: created_at, updated_at, published_at
+- **Analytics**: view_count, like_count, share_count
 
 #### Indexes
-- `idx_content_slug`: For URL lookups
-- `idx_content_status`: For filtering by status
-- `idx_content_visibility`: For access control
-- `idx_content_type`: For content type filtering
-- `idx_content_published_at`: For chronological ordering
-- `idx_content_author_id`: For author lookups
+- `idx_content_slug`: URL lookups
+- `idx_content_status`: Status filtering
+- `idx_content_visibility`: Access control
+- `idx_content_type`: Content type filtering
+- `idx_content_published_at`: Chronological ordering
+- `idx_content_author_id`: Author lookups
 
 #### RLS Policies
-1. "Public can view published public content"
-   - Allows anyone to view published public content
-2. "Members can view member content"
-   - Allows authenticated users to view member content
-   - Allows paid subscribers to view paid content
-3. "Content authors can manage their own content"
-   - Authors can manage their own content
-4. "Admins can manage all content"
-   - Admins have full access to all content
+1. Public users can view published public content
+2. Members access member content, paid subscribers access paid content
+3. Authors manage their own content
+4. Admins manage all content
 
 ### Content Tags Table
 Manages content categorization through tags.
@@ -242,9 +219,9 @@ CREATE TABLE chat_messages (
 - `idx_chat_messages_thread_id`
 
 #### RLS Policies
-1. "Users can view their own messages"
-2. "Users can insert their own messages"
-3. "Service role can do everything"
+1. Users view only their own messages
+2. Users insert only their own messages
+3. Service role has full access
 
 ### Background Jobs
 Manages asynchronous tasks and scheduled operations.
