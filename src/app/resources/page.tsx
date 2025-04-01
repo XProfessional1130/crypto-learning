@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useResources } from '@/hooks/dashboard/useResources';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useContent, useContentTypes } from '@/hooks/content/useContent';
 import { ResourceListSkeleton } from '@/components/molecules/ResourceSkeleton';
 
 // Custom icons
@@ -24,27 +24,56 @@ const FilterIcon = () => (
 );
 
 export default function ResourcesPage() {
-  const { data: resources, isLoading, error } = useResources();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const [allResources, setAllResources] = useState<any[]>([]);
+  const loadingRef = useRef<HTMLDivElement>(null);
+  const observer = useRef<IntersectionObserver | null>(null);
   
-  // Debug logging
-  console.log('Resources:', { resources, isLoading, error });
-
-  // Extract unique resource types for filtering
-  const resourceTypes = resources?.length 
-    ? ['All', ...Array.from(new Set(resources.map(resource => resource.type)))]
-    : ['All'];
-
-  // Filter resources based on search term and selected type
-  const filteredResources = resources?.filter(resource => {
-    const matchesType = selectedType === 'All' || resource.type === selectedType;
-    const matchesSearch = searchTerm === '' || 
-      resource.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      resource.description.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesType && matchesSearch;
+  const { data: contentData, isLoading, error } = useContent(page, 9, {
+    searchTerm,
+    type: selectedType
   });
+
+  const { data: resourceTypes = ['All'] } = useContentTypes();
+
+  // Reset resources when filters change
+  useEffect(() => {
+    setPage(1);
+    setAllResources([]);
+  }, [searchTerm, selectedType]);
+
+  // Update resources when data changes
+  useEffect(() => {
+    if (contentData?.data) {
+      if (page === 1) {
+        setAllResources(contentData.data);
+      } else {
+        setAllResources(prev => [...prev, ...contentData.data]);
+      }
+    }
+  }, [contentData?.data, page]);
+
+  // Intersection Observer setup
+  const lastResourceRef = useCallback((node: HTMLDivElement | null) => {
+    if (isLoading) return;
+    
+    if (observer.current) {
+      observer.current.disconnect();
+    }
+
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && contentData?.hasMore) {
+        setPage(prev => prev + 1);
+      }
+    });
+
+    if (node) {
+      observer.current.observe(node);
+    }
+  }, [isLoading, contentData?.hasMore]);
 
   if (error) {
     return (
@@ -131,9 +160,9 @@ export default function ResourcesPage() {
       </div>
 
       {/* Resources Grid */}
-      {isLoading ? (
+      {isLoading && page === 1 ? (
         <ResourceListSkeleton count={6} />
-      ) : !filteredResources?.length ? (
+      ) : !allResources?.length ? (
         <div className="neo-glass neo-glass-before rounded-xl p-8 text-center">
           <h3 className="text-lg font-medium text-light-text-primary dark:text-dark-text-primary">No resources found</h3>
           <p className="mt-2 text-light-text-secondary dark:text-dark-text-secondary">
@@ -141,38 +170,55 @@ export default function ResourcesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredResources.map((resource) => (
-            <div 
-              key={resource.id} 
-              className="neo-glass neo-glass-before rounded-xl overflow-hidden transition-all duration-300 transform hover:-translate-y-1 hover:shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_15px_30px_rgba(0,0,0,0.4)] perspective-tilt backdrop-glow flex flex-col"
-            >
-              <div className="p-6 flex-grow">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="rounded-full neo-glass px-2.5 py-0.5 text-xs font-medium text-brand-primary dark:text-brand-light border border-brand-primary/20 dark:border-brand-light/20">
-                    {resource.type}
-                  </span>
+        <>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {allResources.map((resource, index) => (
+              <div 
+                key={resource.id}
+                ref={index === allResources.length - 1 ? lastResourceRef : null}
+                className="neo-glass neo-glass-before rounded-xl overflow-hidden transition-all duration-300 transform hover:-translate-y-1 hover:shadow-[0_15px_30px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_15px_30px_rgba(0,0,0,0.4)] perspective-tilt backdrop-glow flex flex-col"
+              >
+                <div className="p-6 flex-grow">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="rounded-full neo-glass px-2.5 py-0.5 text-xs font-medium text-brand-primary dark:text-brand-light border border-brand-primary/20 dark:border-brand-light/20">
+                      {resource.type}
+                    </span>
+                  </div>
+                  <h2 className="text-xl font-semibold text-light-text-primary dark:text-dark-text-primary">
+                    {resource.title}
+                  </h2>
+                  <p className="mt-3 text-light-text-secondary dark:text-dark-text-secondary">
+                    {resource.excerpt}
+                  </p>
                 </div>
-                <h2 className="text-xl font-semibold text-light-text-primary dark:text-dark-text-primary">
-                  {resource.title}
-                </h2>
-                <p className="mt-3 text-light-text-secondary dark:text-dark-text-secondary">
-                  {resource.description}
-                </p>
+                <div className="border-t border-white/10 dark:border-dark-bg-accent/20 p-4 mt-auto">
+                  <a
+                    href={`/resources/${resource.slug}`}
+                    className="block w-full text-center rounded-lg bg-brand-primary hover:bg-brand-dark text-white px-4 py-2 font-medium transition-all duration-300 hover:shadow-[0_0_15px_rgba(77,181,176,0.5)]"
+                  >
+                    Learn More
+                  </a>
+                </div>
               </div>
-              <div className="border-t border-white/10 dark:border-dark-bg-accent/20 p-4 mt-auto">
-                <a
-                  href={resource.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full text-center rounded-lg bg-brand-primary hover:bg-brand-dark text-white px-4 py-2 font-medium transition-all duration-300 hover:shadow-[0_0_15px_rgba(77,181,176,0.5)]"
-                >
-                  Learn More
-                </a>
+            ))}
+          </div>
+          
+          {/* Loading indicator */}
+          <div className="mt-8 text-center">
+            {isLoading && (
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-4 h-4 rounded-full bg-brand-primary animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="w-4 h-4 rounded-full bg-brand-primary animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="w-4 h-4 rounded-full bg-brand-primary animate-bounce"></div>
               </div>
-            </div>
-          ))}
-        </div>
+            )}
+            {!contentData?.hasMore && allResources.length > 0 && (
+              <p className="text-light-text-secondary dark:text-dark-text-secondary">
+                No more resources to load
+              </p>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

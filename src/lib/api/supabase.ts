@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables. Please check your .env.local file.');
+}
 
 // Create Supabase client with explicit auth config for magic link flow
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -12,9 +16,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Also export a method to create admin client when needed
-export const createAdminClient = (serviceRoleKey: string) => {
-  return createClient(supabaseUrl, serviceRoleKey);
+// Create admin client with service role key - only for server-side use
+export const createAdminClient = () => {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    throw new Error('Missing Supabase service role key. This client should only be used server-side.');
+  }
+  return createClient(supabaseUrl, serviceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
 };
 
 // For server-side operations that require higher privileges
