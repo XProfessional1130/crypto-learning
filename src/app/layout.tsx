@@ -26,7 +26,6 @@ const GlobalModal = dynamic(() => import('@/components/features/modals/GlobalMod
   ssr: false
 });
 
-// Split metadata according to Next.js requirements
 export const metadata: Metadata = {
   title: 'LearningCrypto - AI-Powered Crypto Education',
   description: 'Master cryptocurrency with personalized AI education, portfolio tracking, and market analytics.',
@@ -42,7 +41,6 @@ export const metadata: Metadata = {
   }
 };
 
-// Move viewport and themeColor to separate export
 export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
@@ -75,10 +73,7 @@ export default function RootLayout({
                   <AuthTokenScript />
                   <DataPrefetcher />
                   <BackgroundElements />
-                  <Navigation />
-                  <div className="pt-[60px]">
-                    {children}
-                  </div>
+                  {children}
                   <GlobalChat />
                   <GlobalModal />
                 </ModalProvider>

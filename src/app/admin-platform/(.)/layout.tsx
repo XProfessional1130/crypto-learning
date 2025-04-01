@@ -32,6 +32,7 @@ import {
   DataPrefetcher
 } from "@/app/components";
 import { createContext, useContext, useState, useEffect } from 'react';
+import AdminWrapper from '../AdminWrapper';
 
 // Tell Next.js this is a root layout
 export const runtime = 'edge';
@@ -84,9 +85,9 @@ export default function Layout({
 
   return (
     <AdminContext.Provider value={{ activeTab, setActiveTab }}>
-      <div className="h-screen w-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white flex overflow-hidden">
+      <div className="min-h-screen w-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white flex overflow-hidden">
         {/* Admin Sidebar - with premium look and feel */}
-        <aside className="w-72 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 shadow-lg h-screen flex-shrink-0 transition-all duration-300 ease-in-out">
+        <aside className="w-72 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 shadow-lg min-h-screen flex-shrink-0 transition-all duration-300 ease-in-out">
           {/* Logo area */}
           <div className="h-20 flex items-center px-6 border-b border-gray-100 dark:border-gray-700">
             <ThemeLogo width={150} height={38} className="mx-auto" />
