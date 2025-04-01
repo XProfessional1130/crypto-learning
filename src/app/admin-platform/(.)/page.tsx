@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { 
   BarChart2, 
   FilePlus, 
@@ -12,13 +13,89 @@ import {
   ChevronRight,
   Clock,
   Eye,
-  Calendar
+  Calendar,
+  FileText,
+  Settings,
+  Image,
+  Tags,
+  Construction
 } from 'lucide-react';
-import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
+import ContentDisplay from '@/components/admin/content/ContentDisplay';
+import { useAdmin } from './layout';
+
+// Tab configuration
+const tabs = [
+  { id: 'dashboard', label: 'Dashboard', icon: BarChart2 },
+  { id: 'content', label: 'Content', icon: FileText },
+  { id: 'categories', label: 'Categories', icon: Tags },
+  { id: 'tags', label: 'Tags', icon: Tag },
+  { id: 'media', label: 'Media', icon: Image },
+  { id: 'members', label: 'Members', icon: Users },
+  { id: 'emails', label: 'Emails', icon: Mail },
+  { id: 'analytics', label: 'Analytics', icon: BarChart2 },
+  { id: 'settings', label: 'Settings', icon: Settings },
+];
+
+function ComingSoonSection({ title }: { title: string }) {
+  return (
+    <div className="min-h-[80vh] flex flex-col items-center justify-center text-center px-4">
+      <div className="bg-brand-50 dark:bg-brand-900/20 rounded-full p-4 mb-6">
+        <Construction className="w-8 h-8 text-brand-600 dark:text-brand-400" />
+      </div>
+      <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+        {title} Coming Soon
+      </h2>
+      <p className="text-gray-600 dark:text-gray-300 max-w-md">
+        We're working hard to bring you an amazing {title.toLowerCase()} experience. 
+        Stay tuned for updates!
+      </p>
+      <div className="w-24 h-1 bg-brand-600/20 dark:bg-brand-400/20 rounded-full mt-8" />
+    </div>
+  );
+}
 
 export default function AdminPlatformDashboard() {
+  const { activeTab, setActiveTab } = useAdmin();
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'content':
+        return <ContentDisplay />;
+      case 'dashboard':
+        return <DashboardContent />;
+      case 'categories':
+        return <ComingSoonSection title="Categories" />;
+      case 'tags':
+        return <ComingSoonSection title="Tags" />;
+      case 'media':
+        return <ComingSoonSection title="Media Library" />;
+      case 'members':
+        return <ComingSoonSection title="Member Management" />;
+      case 'emails':
+        return <ComingSoonSection title="Email System" />;
+      case 'analytics':
+        return <ComingSoonSection title="Analytics Dashboard" />;
+      case 'settings':
+        return <ComingSoonSection title="Platform Settings" />;
+      default:
+        return <DashboardContent />;
+    }
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="min-h-[calc(100vh-5rem)]">
+      {renderContent()}
+    </div>
+  );
+}
+
+// Original dashboard content moved to a separate component
+function DashboardContent() {
+  const { setActiveTab } = useAdmin();
+
+  return (
+    <div className="space-y-6">
       {/* Welcome section */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -27,22 +104,25 @@ export default function AdminPlatformDashboard() {
             <p className="text-gray-600 dark:text-gray-300">Manage your content, members, and platform settings</p>
           </div>
           <div className="flex space-x-3">
-            <button className="inline-flex items-center px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors text-sm font-medium">
+            <button 
+              onClick={() => setActiveTab('content')}
+              className="inline-flex items-center px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors text-sm font-medium"
+            >
               <FilePlus className="w-4 h-4 mr-2" />
               New Content
             </button>
-            <Link 
-              href="/admin-platform/analytics" 
+            <button 
+              onClick={() => setActiveTab('analytics')}
               className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
             >
               View Analytics
               <ArrowUpRight className="w-4 h-4 ml-2" />
-            </Link>
+            </button>
           </div>
         </div>
       </div>
       
-      {/* Stats overview - redesigned with cleaner look */}
+      {/* Stats overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard 
           title="Total Content" 
@@ -77,43 +157,18 @@ export default function AdminPlatformDashboard() {
           icon={Eye}
         />
       </div>
-      
-      {/* Quick actions - redesigned as features */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <FeatureCard 
-          title="Content Management" 
-          description="Create, edit and manage your learning content"
-          href="/admin-platform/content" 
-          icon={FilePlus} 
-          color="bg-blue-600" 
-          actions={['New Article', 'Manage Content']}
-        />
-        <FeatureCard 
-          title="User Administration" 
-          description="Manage user accounts and permissions"
-          href="/admin-platform/members" 
-          icon={Users} 
-          color="bg-amber-600" 
-          actions={['View Members', 'Roles & Access']}
-        />
-        <FeatureCard 
-          title="Email Campaigns" 
-          description="Create and send email campaigns to your audience"
-          href="/admin-platform/emails" 
-          icon={Mail} 
-          color="bg-green-600" 
-          actions={['New Campaign', 'View Analytics']}
-        />
-      </div>
-      
-      {/* Recent content - redesigned with modern look */}
+
+      {/* Recent content preview */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Content</h3>
-          <Link href="/admin-platform/content" className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium flex items-center">
+          <button
+            onClick={() => setActiveTab('content')}
+            className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium flex items-center"
+          >
             View all
             <ChevronRight className="h-4 w-4 ml-1" />
-          </Link>
+          </button>
         </div>
         
         <div className="overflow-x-auto">
@@ -154,25 +209,6 @@ export default function AdminPlatformDashboard() {
               />
             </tbody>
           </table>
-        </div>
-      </div>
-      
-      {/* Analytics overview - redesigned with placeholder for chart */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Analytics Overview</h3>
-          <Link href="/admin-platform/analytics" className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium flex items-center">
-            View details
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Link>
-        </div>
-        
-        <div className="h-80 flex items-center justify-center bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-          <div className="flex flex-col items-center text-gray-500 dark:text-gray-400">
-            <BarChart2 className="h-12 w-12 mb-3" />
-            <p className="text-base">Analytics visualization would display here</p>
-            <p className="text-xs mt-2">Integration with your preferred analytics platform</p>
-          </div>
         </div>
       </div>
     </div>
@@ -268,20 +304,22 @@ function ContentRow({
   views: number;
 }) {
   return (
-    <tr className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-      <th scope="row" className="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
-        {title}
-      </th>
+    <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
       <td className="px-6 py-4">
-        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-          status === 'published' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
-          status === 'draft' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' :
-          'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+        <div className="font-medium text-gray-900 dark:text-white">{title}</div>
+      </td>
+      <td className="px-6 py-4">
+        <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
+          status === 'published'
+            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+            : status === 'scheduled'
+            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+            : 'bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-400'
         }`}>
           {status}
         </span>
       </td>
-      <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
+      <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
         {date === '--' ? (
           <span className="text-gray-400 dark:text-gray-500">--</span>
         ) : (
@@ -291,7 +329,7 @@ function ContentRow({
           </div>
         )}
       </td>
-      <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
+      <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
         {views === 0 ? (
           <span className="text-gray-400 dark:text-gray-500">--</span>
         ) : (
@@ -302,14 +340,9 @@ function ContentRow({
         )}
       </td>
       <td className="px-6 py-4">
-        <div className="flex items-center space-x-3">
-          <button className="text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">
-            Edit
-          </button>
-          <button className="text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400">
-            View
-          </button>
-        </div>
+        <button className="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300">
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </td>
     </tr>
   );
