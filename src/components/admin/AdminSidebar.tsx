@@ -17,7 +17,7 @@ import {
 const navItems = [
   { name: 'Dashboard', href: '/admin-platform', icon: LayoutDashboard },
   { name: 'Content', href: '/admin-platform/content', icon: FileText },
-  { name: 'Categories', href: '/admin-platform/categories', icon: Tags },
+  { name: 'Categories', href: '/admin-platform/(.)/categories', icon: Tags },
   { name: 'Tags', href: '/admin-platform/tags', icon: Tag },
   { name: 'Media', href: '/admin-platform/media', icon: Image },
   { name: 'Members', href: '/admin-platform/members', icon: Users },
