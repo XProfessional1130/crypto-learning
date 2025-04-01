@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/lib/providers/theme-provider";
 import { DataCacheProvider } from "@/lib/providers/data-cache-provider";
 import { ModalProvider } from "@/lib/providers/modal-provider";
 import QueryProvider from "@/lib/providers/query-provider";
+import { Toaster } from "react-hot-toast";
 import { 
   Navigation, 
   Footer, 
@@ -76,6 +77,7 @@ export default function RootLayout({
                   {children}
                   <GlobalChat />
                   <GlobalModal />
+                  <Toaster position="top-right" />
                 </ModalProvider>
               </DataCacheProvider>
             </ThemeProvider>

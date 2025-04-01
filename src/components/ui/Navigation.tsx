@@ -11,7 +11,7 @@ import NavigationContainer from '@/components/features/navigation/NavigationCont
 export default function Navigation() {
   const pathname = usePathname();
   
-  // Don't render navigation on admin pages
+  // Don't render navigation on admin-platform pages
   if (pathname?.startsWith('/admin-platform')) {
     return null;
   }
