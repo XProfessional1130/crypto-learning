@@ -2,7 +2,7 @@
 
 import { AdminAuthWrapper } from '@/components/admin/AdminAuthWrapper';
 import ThemeLogo from '@/components/ui/ThemeLogo';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard,
   FileText,
@@ -31,7 +31,7 @@ import {
   BackgroundElements,
   DataPrefetcher
 } from "@/app/components";
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 // Tell Next.js this is a root layout
 export const runtime = 'edge';
@@ -72,92 +72,86 @@ export default function Layout({
 }: {
   children: React.ReactNode;
 }) {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const pathname = usePathname();
+  const initialTab = pathname.split('/').pop() || 'dashboard';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Update active tab when pathname changes
+  useEffect(() => {
+    const currentTab = pathname.split('/').pop() || 'dashboard';
+    setActiveTab(currentTab);
+  }, [pathname]);
 
   return (
-    <html lang="en" suppressHydrationWarning className="h-full">
-      <body className="h-full antialiased overflow-x-hidden">
-        <QueryProvider>
-          <AuthProvider>
-            <ThemeProvider>
-              <DataCacheProvider>
-                <ModalProvider>
-                  <AppEnhancer />
-                  <GlobalStyles />
-                  <AuthTokenScript />
-                  <DataPrefetcher />
-                  <BackgroundElements />
-                  <AdminAuthWrapper>
-                    <AdminContext.Provider value={{ activeTab, setActiveTab }}>
-                      <div className="h-screen w-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white flex overflow-hidden">
-                        {/* Admin Sidebar - with premium look and feel */}
-                        <aside className="w-72 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 shadow-lg h-screen flex-shrink-0 transition-all duration-300 ease-in-out">
-                          {/* Logo area */}
-                          <div className="h-20 flex items-center px-6 border-b border-gray-100 dark:border-gray-700">
-                            <ThemeLogo width={150} height={38} className="mx-auto" />
-                          </div>
-                          
-                          {/* Navigation menu */}
-                          <div className="py-6 px-4 overflow-y-auto h-[calc(100vh-5rem)]">
-                            <div className="mb-6">
-                              <h3 className="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 px-3 mb-3 tracking-wider">
-                                Platform Management
-                              </h3>
-                              <nav className="space-y-1">
-                                {navItems.map((item) => (
-                                  <AdminNavItem key={item.name} item={item} />
-                                ))}
-                              </nav>
-                            </div>
-                            
-                            <div className="mt-auto pt-6 border-t border-gray-100 dark:border-gray-700">
-                              <ThemeToggle />
-                              <SignOutButton />
-                            </div>
-                          </div>
-                        </aside>
-                        
-                        {/* Main content area */}
-                        <div className="flex-1 flex flex-col overflow-hidden">
-                          {/* Admin Header */}
-                          <header className="h-20 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shadow-sm flex-shrink-0">
-                            <div className="h-full px-8 flex items-center justify-between">
-                              <h1 className="text-2xl font-semibold">Admin Platform</h1>
-                              <div className="flex items-center">
-                                <AdminProfileSection />
-                              </div>
-                            </div>
-                          </header>
-                          
-                          {/* Main content with professional spacing and scrolling behavior */}
-                          <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-8">
-                            <div className="max-w-7xl mx-auto">
-                              {children}
-                            </div>
-                          </main>
-                        </div>
-                      </div>
-                    </AdminContext.Provider>
-                  </AdminAuthWrapper>
-                </ModalProvider>
-              </DataCacheProvider>
-            </ThemeProvider>
-          </AuthProvider>
-        </QueryProvider>
-      </body>
-    </html>
+    <AdminContext.Provider value={{ activeTab, setActiveTab }}>
+      <div className="h-screen w-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white flex overflow-hidden">
+        {/* Admin Sidebar - with premium look and feel */}
+        <aside className="w-72 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 shadow-lg h-screen flex-shrink-0 transition-all duration-300 ease-in-out">
+          {/* Logo area */}
+          <div className="h-20 flex items-center px-6 border-b border-gray-100 dark:border-gray-700">
+            <ThemeLogo width={150} height={38} className="mx-auto" />
+          </div>
+          
+          {/* Navigation menu */}
+          <div className="py-6 px-4 overflow-y-auto h-[calc(100vh-5rem)]">
+            <div className="mb-6">
+              <h3 className="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 px-3 mb-3 tracking-wider">
+                Platform Management
+              </h3>
+              <nav className="space-y-1">
+                {navItems.map((item) => (
+                  <AdminNavItem key={item.name} item={item} />
+                ))}
+              </nav>
+            </div>
+            
+            <div className="mt-auto pt-6 border-t border-gray-100 dark:border-gray-700">
+              <ThemeToggle />
+              <SignOutButton />
+            </div>
+          </div>
+        </aside>
+        
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Admin Header */}
+          <header className="h-20 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shadow-sm flex-shrink-0">
+            <div className="h-full px-8 flex items-center justify-between">
+              <h1 className="text-2xl font-semibold">Admin Platform</h1>
+              <div className="flex items-center">
+                <AdminProfileSection />
+              </div>
+            </div>
+          </header>
+          
+          {/* Main content with professional spacing and scrolling behavior */}
+          <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-8">
+            <div className="max-w-7xl mx-auto">
+              {children}
+            </div>
+          </main>
+        </div>
+      </div>
+    </AdminContext.Provider>
   );
 }
 
 // Sub-components to improve organization and readability
 function AdminNavItem({ item }: { item: { id: string; name: string; icon: any } }) {
   const { activeTab, setActiveTab } = useAdmin();
-  const isActive = activeTab === item.id;
+  const router = useRouter();
+  const pathname = usePathname();
+  const isActive = pathname.includes(`/admin-platform/${item.id}`);
   const Icon = item.icon;
+  
+  const handleClick = () => {
+    setActiveTab(item.id);
+    router.push(`/admin-platform/${item.id === 'dashboard' ? '' : item.id}`, { scroll: false });
+  };
   
   return (
     <button
-      onClick={() => setActiveTab(item.id)}
+      onClick={handleClick}
       className={`w-full flex items-center px-3 py-3 rounded-lg transition-all ${
         isActive 
           ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400 font-medium'

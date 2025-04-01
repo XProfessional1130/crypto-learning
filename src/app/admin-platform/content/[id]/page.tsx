@@ -4,21 +4,18 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/api/supabase';
-import { useState } from 'react';
+import { useParams } from 'next/navigation';
 
-interface ContentEditorProps {
-  contentId: string;
-  onBack: () => void;
-}
+export default function ContentEditor() {
+  const { id } = useParams();
 
-export default function ContentEditor({ contentId, onBack }: ContentEditorProps) {
   const { data: content, isLoading } = useQuery({
-    queryKey: ['content', contentId],
+    queryKey: ['content', id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('content')
         .select('*')
-        .eq('id', contentId)
+        .eq('id', id)
         .single();
 
       if (error) throw error;
@@ -50,21 +47,13 @@ export default function ContentEditor({ contentId, onBack }: ContentEditorProps)
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <button
-            onClick={onBack}
-            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-2"
-          >
-            ← Back to Content List
-          </button>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {content?.title}
-          </h1>
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          {content?.title}
+        </h1>
       </div>
-
+      
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
         <EditorContent editor={editor} />
       </div>

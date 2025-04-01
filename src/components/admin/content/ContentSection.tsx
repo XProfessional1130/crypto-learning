@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/api/supabase';
-import Link from 'next/link';
 import { FilePlus, ChevronRight, Search } from 'lucide-react';
+import ContentEditor from '@/components/admin/content/ContentEditor';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 interface Content {
   id: string;
@@ -19,10 +20,28 @@ interface Content {
   view_count: number;
 }
 
-export default function ContentPage() {
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+export default function ContentSection() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
+  const [typeFilter, setTypeFilter] = useState(searchParams.get('type') || 'all');
+  
+  // Get the content ID from the URL instead of local state
+  const selectedContentId = searchParams.get('edit');
+
+  // Update URL when filters change
+  const updateFilters = (newSearch: string, newStatus: string, newType: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newSearch) params.set('search', newSearch);
+    else params.delete('search');
+    if (newStatus !== 'all') params.set('status', newStatus);
+    else params.delete('status');
+    if (newType !== 'all') params.set('type', newType);
+    else params.delete('type');
+    
+    router.push(`/admin-platform/content?${params.toString()}`, { scroll: false });
+  };
 
   const { data: content, isLoading } = useQuery<Content[]>({
     queryKey: ['admin-content'],
@@ -45,6 +64,27 @@ export default function ContentPage() {
     return matchesSearch && matchesStatus && matchesType;
   });
 
+  const handleContentClick = (id: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('edit', id);
+    router.push(`/admin-platform/content?${params.toString()}`, { scroll: false });
+  };
+
+  const handleBack = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('edit');
+    router.push(`/admin-platform/content?${params.toString()}`, { scroll: false });
+  };
+
+  if (selectedContentId) {
+    return (
+      <ContentEditor
+        contentId={selectedContentId}
+        onBack={handleBack}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Quick actions */}
@@ -54,16 +94,16 @@ export default function ContentPage() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Quick Actions</h3>
           </div>
           <div className="space-y-3">
-            <Link 
-              href="/admin-platform/content/new"
-              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            <button 
+              onClick={() => handleContentClick('new')}
+              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors w-full"
             >
               <div className="flex items-center">
                 <FilePlus className="w-5 h-5 text-brand-600 dark:text-brand-400 mr-3" />
                 <span className="text-sm font-medium text-gray-900 dark:text-white">New Content</span>
               </div>
               <ChevronRight className="w-4 h-4 text-gray-400" />
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -80,13 +120,21 @@ export default function ContentPage() {
                   type="text"
                   placeholder="Search content..."
                   value={search}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    const newSearch = e.target.value;
+                    setSearch(newSearch);
+                    updateFilters(newSearch, statusFilter, typeFilter);
+                  }}
                   className="pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 />
               </div>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  const newStatus = e.target.value;
+                  setStatusFilter(newStatus);
+                  updateFilters(search, newStatus, typeFilter);
+                }}
                 className="px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="all">All Status</option>
@@ -96,7 +144,11 @@ export default function ContentPage() {
               </select>
               <select
                 value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
+                onChange={(e) => {
+                  const newType = e.target.value;
+                  setTypeFilter(newType);
+                  updateFilters(search, statusFilter, newType);
+                }}
                 className="px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="all">All Types</option>
@@ -136,12 +188,14 @@ export default function ContentPage() {
                 </tr>
               ) : (
                 filteredContent?.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                  <tr 
+                    key={item.id} 
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer"
+                    onClick={() => handleContentClick(item.id)}
+                  >
                     <td className="px-6 py-4">
-                      <Link href={`/admin-platform/content/${item.id}`} className="block">
-                        <div className="font-medium text-gray-900 dark:text-white">{item.title}</div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">{item.slug}</div>
-                      </Link>
+                      <div className="font-medium text-gray-900 dark:text-white">{item.title}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{item.slug}</div>
                     </td>
                     <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{item.type}</td>
                     <td className="px-6 py-4">
@@ -160,12 +214,7 @@ export default function ContentPage() {
                       {new Date(item.updated_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">
-                      <Link 
-                        href={`/admin-platform/content/${item.id}`}
-                        className="block text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </Link>
+                      <ChevronRight className="w-4 h-4 text-brand-600 dark:text-brand-400" />
                     </td>
                   </tr>
                 ))
