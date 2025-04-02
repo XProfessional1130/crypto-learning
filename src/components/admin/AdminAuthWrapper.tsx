@@ -22,7 +22,7 @@ export function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
         setAuthorized(true);
       } else {
         // Redirect to login if not authenticated
-        router.push('/login?redirect=/admin-platform');
+        router.push(`/auth/signin?redirect=${encodeURIComponent('/admin-platform')}`);
       }
     }
   }, [user, loading, router]);

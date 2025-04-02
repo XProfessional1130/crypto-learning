@@ -74,14 +74,39 @@ export default function Layout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const initialTab = pathname.split('/').pop() || 'dashboard';
   const [activeTab, setActiveTab] = useState(initialTab);
+  const { user, loading } = useAuth();
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      // User is not authenticated, redirect to login
+      router.push(`/auth/signin?redirect=${encodeURIComponent('/admin-platform')}`);
+    }
+  }, [user, loading, router]);
+  
   // Update active tab when pathname changes
   useEffect(() => {
     const currentTab = pathname.split('/').pop() || 'dashboard';
     setActiveTab(currentTab);
   }, [pathname]);
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen w-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-600"></div>
+      </div>
+    );
+  }
+
+  // If not authenticated and not loading, don't render anything
+  // The redirect will handle this case
+  if (!user) {
+    return null;
+  }
 
   return (
     <AdminContext.Provider value={{ activeTab, setActiveTab }}>
