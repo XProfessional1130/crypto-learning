@@ -4,6 +4,7 @@ export interface UserProfile extends SupabaseUser {
   displayName?: string;
   avatarUrl?: string;
   role?: 'user' | 'admin';
+  plan_type?: 'free' | 'paid';
   preferences?: {
     emailNotifications: boolean;
     theme: 'light' | 'dark' | 'system';

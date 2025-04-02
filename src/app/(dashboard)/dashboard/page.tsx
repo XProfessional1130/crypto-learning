@@ -8,6 +8,7 @@ import { useAuthRedirect } from '@/hooks/auth/useAuthRedirect';
 import { useDataCache } from '@/lib/providers/data-cache-provider';
 import PortfolioDashboard from '@/components/features/dashboard/PortfolioDashboard';
 import DashboardLayout from '@/components/features/dashboard/DashboardLayout';
+import PaidMembersOnly from '@/components/auth/PaidMembersOnly';
 
 // Create consistent loading skeleton that matches the lc-dashboard style
 function DashboardSkeleton() {
@@ -79,6 +80,7 @@ function DashboardSkeleton() {
 
 /**
  * Dashboard page - shows the user's portfolio and watchlist
+ * Now restricted to paid members only
  */
 export default function DashboardPage() {
   const { user, authLoading, showContent } = useAuthRedirect();
@@ -152,38 +154,40 @@ export default function DashboardPage() {
   };
   
   return (
-    <DashboardLayout showTitle={false}>
-      <div className="w-full">
-        {/* Page Header with Welcome Message */}
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
-            Your Dashboard
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">
-            Welcome back, {getUserDisplayName()}!
-          </p>
-        </div>
-        
-        {/* Main Content */}
-        {isLoading && !shouldShowContent ? (
-          <DashboardSkeleton />
-        ) : (
-          <Suspense fallback={<DashboardSkeleton />}>
-            <PortfolioDashboard />
-          </Suspense>
-        )}
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-3">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Welcome to Learning Crypto!</h2>
-            <p className="mb-4">
-              This is your dashboard where you can manage your account and access your learning resources.
+    <PaidMembersOnly>
+      <DashboardLayout showTitle={false}>
+        <div className="w-full">
+          {/* Page Header with Welcome Message */}
+          <div className="mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+              Your Dashboard
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300 mt-1">
+              Welcome back, {getUserDisplayName()}!
             </p>
           </div>
+          
+          {/* Main Content */}
+          {isLoading && !shouldShowContent ? (
+            <DashboardSkeleton />
+          ) : (
+            <Suspense fallback={<DashboardSkeleton />}>
+              <PortfolioDashboard />
+            </Suspense>
+          )}
         </div>
-      </div>
-    </DashboardLayout>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-3">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Welcome to Learning Crypto!</h2>
+              <p className="mb-4">
+                This is your premium dashboard where you can manage your account and access your advanced features.
+              </p>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    </PaidMembersOnly>
   );
 } 

@@ -14,7 +14,8 @@ export default function QueryProvider({ children }: { children: ReactNode }) {
             gcTime: 10 * 60 * 1000, // 10 minutes
             retry: 1,
             refetchOnMount: false,
-            refetchOnWindowFocus: false, // Prevent unnecessary refetches when window regains focus
+            refetchOnWindowFocus: false, // Prevent refetches when window regains focus
+            refetchOnReconnect: false, // Prevent refetches when reconnecting
           },
         },
       })

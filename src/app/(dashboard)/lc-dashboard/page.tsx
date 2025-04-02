@@ -20,6 +20,7 @@ import {
 import MarketOverview from '@/components/features/dashboard/MarketOverview';
 import TeamAddCoinModal from '@/components/features/dashboard/TeamAddCoinModal';
 import TeamAddToWatchlistModal from '@/components/features/dashboard/TeamAddToWatchlistModal';
+import PaidMembersOnly from '@/components/auth/PaidMembersOnly';
 
 // Loading skeletons for better UX during component loading
 const PortfolioLoadingSkeleton = () => (
@@ -695,16 +696,19 @@ export default function LCDashboard() {
     // This runs only once and immediately prefetches all data
     const fetchAllData = async () => {
       try {
+        // Only prefetch market data if it's not already loaded
         if (!btcPrice || !ethPrice || !globalData) {
           console.log('Prefetching market data');
           refreshData().catch(err => console.error('Error prefetching market data:', err));
         }
         
+        // Only prefetch portfolio data if it's not already loaded
         if (!portfolio) {
           console.log('Prefetching portfolio data');
           refreshPortfolio().catch(err => console.error('Error prefetching portfolio data:', err));
         }
         
+        // Only prefetch watchlist data if it's not already loaded
         if (!watchlist) {
           console.log('Prefetching watchlist data');
           refreshWatchlist().catch(err => console.error('Error prefetching watchlist data:', err));
@@ -714,7 +718,22 @@ export default function LCDashboard() {
       }
     };
     
-    fetchAllData();
+    // Add a flag to prevent duplicate fetches when component remounts after tab switching
+    if (typeof window !== 'undefined') {
+      const lastFetchTime = parseInt(sessionStorage.getItem('dashboard_last_fetch') || '0', 10);
+      const currentTime = Date.now();
+      const timeSinceLastFetch = currentTime - lastFetchTime;
+      
+      // Only fetch if it's been more than 5 minutes since the last fetch or if it's the first fetch
+      if (timeSinceLastFetch > 5 * 60 * 1000 || lastFetchTime === 0) {
+        fetchAllData();
+        sessionStorage.setItem('dashboard_last_fetch', currentTime.toString());
+      } else {
+        console.log('Skipping data fetch, last fetch was', Math.round(timeSinceLastFetch/1000), 'seconds ago');
+      }
+    } else {
+      fetchAllData();
+    }
   }, []); // Empty dependency array means this runs once on mount
   
   // Simplify loading state logic - never go back to loading once content shown
@@ -747,147 +766,149 @@ export default function LCDashboard() {
   }
 
   return (
-    <div className={`container mx-auto py-6 px-4 max-w-7xl transition-opacity-transform duration-600 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
-      {/* Dashboard Header */}
-      <div className="w-full flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-3 md:mb-0">Team Dashboard</h1>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={handleManualRefresh}
-            disabled={isRefreshing}
-            className={`px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors flex items-center ${isRefreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
-          >
-            <svg className={`w-4 h-4 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-            {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
-          </button>
-          {lastUpdated && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              Last updated: {lastUpdated.toLocaleTimeString()}
-            </span>
-          )}
-        </div>
-      </div>
-      
-      {/* Consolidated Market Card - replaces the four separate cards */}
-      <div className="mb-8">
-        <div className={initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform"} style={{ transitionDelay: '100ms', animationDelay: '100ms' }}>
-          <ConsolidatedMarketCard 
-            loading={isLoading} 
-            globalData={globalData}
-            btcPrice={btcPrice}
-            ethPrice={ethPrice}
-          />
-        </div>
-      </div>
-      
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Team Portfolio Section - Takes up 2/3 of the space */}
-        <div className={`lg:col-span-2 ${initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform"}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
-          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)', overflow: 'visible' }}>
-            {/* Portfolio Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight flex items-center">
-                <div className="w-2 h-8 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
-                Team Portfolio
-              </h2>
-              <div className="flex items-center gap-2">
-                {portfolio && !portfolioLoading && isAdmin && (
-                  <button 
-                    onClick={handleOpenAddCoinModal}
-                    className="text-white bg-teal-600 hover:bg-teal-700 rounded-full w-7 h-7 flex items-center justify-center"
-                  >
-                    <PlusCircle className="h-5 w-5" />
-                  </button>
-                )}
-                <div className="flex items-center mt-1 sm:mt-0 bg-gray-100/80 dark:bg-slate-800/80 px-3 py-1.5 rounded-full border border-gray-200 dark:border-slate-700/50 backdrop-blur-sm">
-                  <span className="text-xs text-gray-600 dark:text-slate-300 flex items-center">
-                    <span>Assets:</span>
-                    <span className="ml-1.5 font-medium text-gray-800 dark:text-white">
-                      {portfolio?.items?.length || 0}
-                    </span>
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            {/* Render without Suspense to prevent duplicate initialization */}
-            {portfolioLoading ? (
-              <PortfolioLoadingSkeleton />
-            ) : (
-              <div className="z-0" style={{ position: 'static' }}>
-                <TeamPortfolio 
-                  portfolio={portfolio}
-                  loading={portfolioLoading}
-                  error={portfolioError}
-                  isDataLoading={isLoading}
-                  btcPrice={btcPrice}
-                  ethPrice={ethPrice}
-                  globalData={globalData}
-                />
-              </div>
+    <PaidMembersOnly>
+      <div className={`container mx-auto py-6 px-4 max-w-7xl transition-opacity-transform duration-600 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Dashboard Header */}
+        <div className="w-full flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-3 md:mb-0">Team Dashboard</h1>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className={`px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors flex items-center ${isRefreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+              <svg className={`w-4 h-4 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+            </button>
+            {lastUpdated && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </span>
             )}
-            
-            <div className="relative pointer-events-none">
-              {/* Decorative Elements */}
-              <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-xl"></div>
-              <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-blue-500/5 dark:bg-blue-500/10 blur-xl"></div>
-            </div>
           </div>
         </div>
         
-        {/* Team Watchlist Section - Takes up 1/3 of the space */}
-        <div className={`lg:col-span-1 ${initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform"}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
-          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)', overflow: 'visible' }}>
-            {/* Watchlist Header */}
-            <div className="flex flex-row justify-between items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight flex items-center">
-                <div className="w-2 h-8 bg-violet-500 rounded-full mr-2 animate-pulse"></div>
-                Altcoin Watchlist
-              </h2>
-              <div className="flex items-center gap-2">
-                {watchlist && !watchlistLoading && isAdmin && (
-                  <button 
-                    onClick={handleOpenAddToWatchlistModal}
-                    className="text-white bg-teal-600 hover:bg-teal-700 rounded-full w-7 h-7 flex items-center justify-center"
-                  >
-                    <PlusCircle className="h-5 w-5" />
-                  </button>
-                )}
-                <div className="flex items-center bg-gray-100/80 dark:bg-slate-800/80 px-3 py-1.5 rounded-full border border-gray-200 dark:border-slate-700/50 backdrop-blur-sm">
-                  <span className="text-xs text-gray-600 dark:text-slate-300">
-                    {watchlist?.length || 0} assets
-                  </span>
+        {/* Consolidated Market Card - replaces the four separate cards */}
+        <div className="mb-8">
+          <div className={initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform"} style={{ transitionDelay: '100ms', animationDelay: '100ms' }}>
+            <ConsolidatedMarketCard 
+              loading={isLoading} 
+              globalData={globalData}
+              btcPrice={btcPrice}
+              ethPrice={ethPrice}
+            />
+          </div>
+        </div>
+        
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Team Portfolio Section - Takes up 2/3 of the space */}
+          <div className={`lg:col-span-2 ${initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform"}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
+            <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)', overflow: 'visible' }}>
+              {/* Portfolio Header */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight flex items-center">
+                  <div className="w-2 h-8 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
+                  Team Portfolio
+                </h2>
+                <div className="flex items-center gap-2">
+                  {portfolio && !portfolioLoading && isAdmin && (
+                    <button 
+                      onClick={handleOpenAddCoinModal}
+                      className="text-white bg-teal-600 hover:bg-teal-700 rounded-full w-7 h-7 flex items-center justify-center"
+                    >
+                      <PlusCircle className="h-5 w-5" />
+                    </button>
+                  )}
+                  <div className="flex items-center mt-1 sm:mt-0 bg-gray-100/80 dark:bg-slate-800/80 px-3 py-1.5 rounded-full border border-gray-200 dark:border-slate-700/50 backdrop-blur-sm">
+                    <span className="text-xs text-gray-600 dark:text-slate-300 flex items-center">
+                      <span>Assets:</span>
+                      <span className="ml-1.5 font-medium text-gray-800 dark:text-white">
+                        {portfolio?.items?.length || 0}
+                      </span>
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            {/* Render without Suspense to prevent duplicate initialization */}
-            {watchlistLoading ? (
-              <WatchlistLoadingSkeleton />
-            ) : (
-              <div className="z-0" style={{ position: 'static' }}>
-                <TeamWatchlist 
-                  watchlist={watchlist}
-                  loading={watchlistLoading}
-                  error={watchlistError}
-                  isDataLoading={isLoading}
-                  globalData={globalData}
-                  getTargetPercentage={getTargetPercentage}
-                />
+              
+              {/* Render without Suspense to prevent duplicate initialization */}
+              {portfolioLoading ? (
+                <PortfolioLoadingSkeleton />
+              ) : (
+                <div className="z-0" style={{ position: 'static' }}>
+                  <TeamPortfolio 
+                    portfolio={portfolio}
+                    loading={portfolioLoading}
+                    error={portfolioError}
+                    isDataLoading={isLoading}
+                    btcPrice={btcPrice}
+                    ethPrice={ethPrice}
+                    globalData={globalData}
+                  />
+                </div>
+              )}
+              
+              <div className="relative pointer-events-none">
+                {/* Decorative Elements */}
+                <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-xl"></div>
+                <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-blue-500/5 dark:bg-blue-500/10 blur-xl"></div>
               </div>
-            )}
-            
-            <div className="relative pointer-events-none">
-              {/* Decorative Elements */}
-              <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full bg-violet-500/5 dark:bg-violet-500/10 blur-xl"></div>
-              <div className="absolute -top-8 -left-8 w-24 h-24 rounded-full bg-indigo-500/5 dark:bg-indigo-500/10 blur-xl"></div>
+            </div>
+          </div>
+          
+          {/* Team Watchlist Section - Takes up 1/3 of the space */}
+          <div className={`lg:col-span-1 ${initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform"}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
+            <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)', overflow: 'visible' }}>
+              {/* Watchlist Header */}
+              <div className="flex flex-row justify-between items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight flex items-center">
+                  <div className="w-2 h-8 bg-violet-500 rounded-full mr-2 animate-pulse"></div>
+                  Altcoin Watchlist
+                </h2>
+                <div className="flex items-center gap-2">
+                  {watchlist && !watchlistLoading && isAdmin && (
+                    <button 
+                      onClick={handleOpenAddToWatchlistModal}
+                      className="text-white bg-teal-600 hover:bg-teal-700 rounded-full w-7 h-7 flex items-center justify-center"
+                    >
+                      <PlusCircle className="h-5 w-5" />
+                    </button>
+                  )}
+                  <div className="flex items-center bg-gray-100/80 dark:bg-slate-800/80 px-3 py-1.5 rounded-full border border-gray-200 dark:border-slate-700/50 backdrop-blur-sm">
+                    <span className="text-xs text-gray-600 dark:text-slate-300">
+                      {watchlist?.length || 0} assets
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Render without Suspense to prevent duplicate initialization */}
+              {watchlistLoading ? (
+                <WatchlistLoadingSkeleton />
+              ) : (
+                <div className="z-0" style={{ position: 'static' }}>
+                  <TeamWatchlist 
+                    watchlist={watchlist}
+                    loading={watchlistLoading}
+                    error={watchlistError}
+                    isDataLoading={isLoading}
+                    globalData={globalData}
+                    getTargetPercentage={getTargetPercentage}
+                  />
+                </div>
+              )}
+              
+              <div className="relative pointer-events-none">
+                {/* Decorative Elements */}
+                <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full bg-violet-500/5 dark:bg-violet-500/10 blur-xl"></div>
+                <div className="absolute -top-8 -left-8 w-24 h-24 rounded-full bg-indigo-500/5 dark:bg-indigo-500/10 blur-xl"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </PaidMembersOnly>
   );
 } 

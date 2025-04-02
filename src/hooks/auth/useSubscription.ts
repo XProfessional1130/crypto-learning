@@ -57,7 +57,14 @@ export default function useSubscription(userId?: string): UseSubscriptionReturn 
         .single();
 
       if (error) {
-        // Just log the error and throw it for error handling
+        // Handle the specific case where no subscription exists
+        if (error.code === 'PGRST116' && error.details === 'The result contains 0 rows') {
+          console.log('No subscription found for user:', userId);
+          setSubscription(null);
+          return;
+        }
+        
+        // Just log the error and throw it for other error handling
         console.error('Supabase error details:', error);
         throw error;
       }
@@ -94,15 +101,25 @@ export default function useSubscription(userId?: string): UseSubscriptionReturn 
         if (response.ok) {
           const result = await response.json();
           console.log('Subscription synced with Stripe:', result);
+        } else {
+          // Log error but continue without throwing
+          console.error('Error response from sync API:', await response.text());
         }
       } catch (err) {
+        // Log error but continue without throwing
         console.error('Error syncing subscription with Stripe:', err);
       }
     }
     
     // Then fetch the latest data from the database
-    await fetchSubscription();
-    setIsLoading(false);
+    try {
+      await fetchSubscription();
+    } catch (err) {
+      console.error('Error refreshing subscription data:', err);
+      // Don't throw here, just log the error
+    } finally {
+      setIsLoading(false);
+    }
   }, [fetchSubscription, userId, subscription?.stripe_subscription_id]);
 
   // Fetch subscription data when component mounts or userId changes

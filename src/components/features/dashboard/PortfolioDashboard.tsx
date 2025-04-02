@@ -460,14 +460,40 @@ function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolea
       const needsPortfolioRefresh = !portfolio || !portfolio.items || portfolio.items.length === 0;
       const needsWatchlistRefresh = !watchlist || watchlist.length === 0;
       
-      // Only refresh data if we actually need to
-      if (needsDataRefresh || needsPortfolioRefresh || needsWatchlistRefresh) {
-        // Use Promise.all to batch all requests together for efficiency
-        Promise.all([
-          needsDataRefresh ? refreshData().catch((err: unknown) => console.error("Data refresh error:", err)) : Promise.resolve(),
-          needsPortfolioRefresh ? refreshPortfolio(false).catch((err: unknown) => console.error("Portfolio refresh error:", err)) : Promise.resolve(),
-          needsWatchlistRefresh ? refreshWatchlist(false).catch((err: unknown) => console.error("Watchlist refresh error:", err)) : Promise.resolve()
-        ]);
+      // Check for a recent refresh in sessionStorage to prevent unnecessary refreshes
+      if (typeof window !== 'undefined') {
+        const lastFetchTime = parseInt(sessionStorage.getItem('portfolio_dashboard_last_fetch') || '0', 10);
+        const currentTime = Date.now();
+        const timeSinceLastFetch = currentTime - lastFetchTime;
+        
+        // Only refresh if it's been more than 5 minutes (or if we have no cached timestamp)
+        if (timeSinceLastFetch > 5 * 60 * 1000 || lastFetchTime === 0) {
+          // Only refresh data if we actually need to
+          if (needsDataRefresh || needsPortfolioRefresh || needsWatchlistRefresh) {
+            console.log('Refreshing portfolio dashboard data');
+            // Use Promise.all to batch all requests together for efficiency
+            Promise.all([
+              needsDataRefresh ? refreshData().catch((err: unknown) => console.error("Data refresh error:", err)) : Promise.resolve(),
+              needsPortfolioRefresh ? refreshPortfolio(false).catch((err: unknown) => console.error("Portfolio refresh error:", err)) : Promise.resolve(),
+              needsWatchlistRefresh ? refreshWatchlist(false).catch((err: unknown) => console.error("Watchlist refresh error:", err)) : Promise.resolve()
+            ]);
+            
+            // Store the current timestamp in sessionStorage
+            sessionStorage.setItem('portfolio_dashboard_last_fetch', currentTime.toString());
+          }
+        } else {
+          console.log('Skipping portfolio dashboard refresh, last fetch was', Math.round(timeSinceLastFetch/1000), 'seconds ago');
+        }
+      } else {
+        // If no window object (SSR), just refresh the data if needed
+        if (needsDataRefresh || needsPortfolioRefresh || needsWatchlistRefresh) {
+          // Use Promise.all to batch all requests together for efficiency
+          Promise.all([
+            needsDataRefresh ? refreshData().catch((err: unknown) => console.error("Data refresh error:", err)) : Promise.resolve(),
+            needsPortfolioRefresh ? refreshPortfolio(false).catch((err: unknown) => console.error("Portfolio refresh error:", err)) : Promise.resolve(),
+            needsWatchlistRefresh ? refreshWatchlist(false).catch((err: unknown) => console.error("Watchlist refresh error:", err)) : Promise.resolve()
+          ]);
+        }
       }
     }
     

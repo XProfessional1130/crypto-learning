@@ -9,8 +9,8 @@ export function useDashboardMetrics() {
     queryKey: ['dashboard-metrics', user?.id],
     queryFn: () => DatabaseService.getDashboardMetrics(user?.id || ''),
     enabled: !!user?.id, // Only fetch if we have a user ID
-    staleTime: 1 * 60 * 1000, // Consider data fresh for 1 minute
-    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    refetchOnWindowFocus: true, // Refetch when window regains focus for real-time updates
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
   });
 } 
