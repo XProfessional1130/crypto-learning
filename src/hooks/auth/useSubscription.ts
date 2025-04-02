@@ -56,15 +56,20 @@ export default function useSubscription(userId?: string): UseSubscriptionReturn 
         .limit(1)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Just log the error and throw it for error handling
+        console.error('Supabase error details:', error);
+        throw error;
+      }
       
       // Debug log to inspect what data is being returned from Supabase
-      console.log('Subscription data from Supabase:', JSON.stringify(data, null, 2));
+      console.log('Subscription data from Supabase:', data ? 'Found' : 'Not found');
       
       setSubscription(data);
     } catch (err) {
       console.error('Error fetching subscription:', err);
-      setError(err instanceof Error ? err : new Error('An unknown error occurred'));
+      // Simplify error handling - just set the error state
+      setError(err instanceof Error ? err : new Error('Failed to load subscription'));
     }
   }, [userId]);
 
