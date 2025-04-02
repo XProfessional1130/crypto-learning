@@ -33,6 +33,7 @@ import {
 } from "@/app/components";
 import { createContext, useContext, useState, useEffect } from 'react';
 import AdminWrapper from '../AdminWrapper';
+import { AuthService } from '@/lib/api/auth';
 
 // Tell Next.js this is a root layout
 export const runtime = 'edge';
@@ -78,6 +79,38 @@ export default function Layout({
   const initialTab = pathname.split('/').pop() || 'dashboard';
   const [activeTab, setActiveTab] = useState(initialTab);
   const { user, loading } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
+
+  // Check for admin role
+  useEffect(() => {
+    async function checkAdminStatus() {
+      if (!user) return;
+      
+      setIsCheckingAdmin(true);
+      try {
+        const isAdminUser = await AuthService.isAdmin();
+        setIsAdmin(isAdminUser);
+        
+        if (!isAdminUser) {
+          // Redirect to unauthorized page if not an admin
+          router.push('/unauthorized');
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+        router.push('/error?message=Authentication%20failed');
+      } finally {
+        setIsCheckingAdmin(false);
+      }
+    }
+
+    if (!loading && user) {
+      checkAdminStatus();
+    } else {
+      setIsCheckingAdmin(false);
+    }
+  }, [user, loading, router]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -94,7 +127,7 @@ export default function Layout({
   }, [pathname]);
 
   // Show loading state while checking auth
-  if (loading) {
+  if (loading || isCheckingAdmin) {
     return (
       <div className="min-h-screen w-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-600"></div>
@@ -104,7 +137,7 @@ export default function Layout({
 
   // If not authenticated and not loading, don't render anything
   // The redirect will handle this case
-  if (!user) {
+  if (!user || !isAdmin) {
     return null;
   }
 
