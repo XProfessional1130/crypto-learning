@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
-import { Loader2, ArrowLeft, Edit, Clock, CreditCard, CheckCircle, XCircle, AlertTriangle, ShieldCheck, Calendar, Mail, User, Sparkles, AlertCircle, ClipboardCopy, ChevronRight, CreditCard as Card, BadgeCheck, RefreshCw, Archive, CheckSquare, XSquare, Users } from 'lucide-react';
+import { Loader2, ArrowLeft, Edit, Clock, CreditCard, CheckCircle, XCircle, AlertTriangle, ShieldCheck, Calendar, Mail, User, Sparkles, AlertCircle, ClipboardCopy, ChevronRight, CreditCard as Card, BadgeCheck, RefreshCw, Archive, CheckSquare, XSquare, Users, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/providers/auth-provider';
 import AddSubscriptionModal from '@/components/admin/subscriptions/AddSubscriptionModal';
 
@@ -15,6 +15,8 @@ export default function MemberDetailPage({ params }: { params: { id: string } })
   const [statusMessage, setStatusMessage] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
   const supabase = createClientComponentClient();
   const { user: authUser } = useAuth();
@@ -173,6 +175,41 @@ export default function MemberDetailPage({ params }: { params: { id: string } })
         setTimeout(() => setCopySuccess(null), 2000);
       }
     );
+  };
+  
+  // Function to delete user
+  const deleteUser = async () => {
+    setIsDeleting(true);
+    setStatusMessage(null);
+    
+    try {
+      // Call the delete user API
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: params.id
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete user');
+      }
+      
+      // Navigate back to members list on success
+      router.push('/admin-platform/members');
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      setStatusMessage({
+        type: 'error',
+        text: error.message || 'Failed to delete user'
+      });
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
   
   if (isLoading) {
@@ -662,6 +699,54 @@ export default function MemberDetailPage({ params }: { params: { id: string } })
           window.location.reload();
         }}
       />
+      
+      {/* Add the delete button to the member details actions section */}
+      <div className="flex space-x-3 mt-4">
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+          disabled={isUpdating || isDeleting}
+        >
+          <Trash2 className="w-4 h-4" />
+          Delete User
+        </button>
+      </div>
+      
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-center mb-2 text-gray-900 dark:text-white">
+              Delete User
+            </h3>
+            <p className="text-center text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to delete this user? This action is permanent and cannot be undone.
+            </p>
+            <div className="flex justify-center space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteUser}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                disabled={isDeleting}
+              >
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

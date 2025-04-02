@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Loader2, Search, Filter, UserPlus, RefreshCw, CheckCircle, XCircle, Clock, Info, User, Users, ChevronDown, Calendar, Mail, AlertCircle, ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { Loader2, Search, Filter, UserPlus, RefreshCw, CheckCircle, XCircle, Clock, Info, User, Users, ChevronDown, Calendar, Mail, AlertCircle, ArrowUpDown, MoreHorizontal, Trash2, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import AddSubscriptionModal from '@/components/admin/subscriptions/AddSubscriptionModal';
 import { useAuth } from '@/lib/providers/auth-provider';
@@ -20,6 +20,9 @@ export default function MembersPage() {
   const [sortDirection, setSortDirection] = useState('desc');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Use the pre-initialized supabase instance rather than creating a new one
   // const supabase = createClientComponentClient();
@@ -499,6 +502,46 @@ If you can see profiles here but not in the UI, it's definitely an RLS issue.
     }
   };
 
+  // Function to delete a user
+  const deleteUser = async (userId: string) => {
+    setIsDeleting(true);
+    
+    try {
+      // Call the delete user API
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete user');
+      }
+      
+      // Refresh data after deletion
+      await fetchData();
+      setDebugMessage('User deleted successfully');
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      setDebugMessage(`Error deleting user: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
+      setUserToDelete(null);
+      setShowDeleteConfirm(false);
+    }
+  };
+  
+  // Function to handle delete click
+  const handleDeleteClick = (userId: string) => {
+    setUserToDelete(userId);
+    setShowDeleteConfirm(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header with stats */}
@@ -829,6 +872,16 @@ If you can see profiles here but not in the UI, it's definitely an RLS issue.
                           >
                             <MoreHorizontal className="w-5 h-5" />
                           </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(user.id);
+                            }}
+                            className="p-1 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                            title="Delete user"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -931,6 +984,45 @@ If you can see profiles here but not in the UI, it's definitely an RLS issue.
           Fix Admin Policies
         </button>
       </div>
+
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-center mb-2 text-gray-900 dark:text-white">
+              Delete User
+            </h3>
+            <p className="text-center text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to delete this user? This action is permanent and cannot be undone.
+            </p>
+            <div className="flex justify-center space-x-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setUserToDelete(null);
+                }}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => userToDelete && deleteUser(userToDelete)}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                disabled={isDeleting}
+              >
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
