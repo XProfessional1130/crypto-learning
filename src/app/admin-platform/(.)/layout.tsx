@@ -15,7 +15,8 @@ import {
   BarChart,
   Moon,
   Sun,
-  LogOut
+  LogOut,
+  Ticket
 } from 'lucide-react';
 import { useTheme } from '@/lib/providers/theme-provider';
 import { useAuth } from '@/lib/providers/auth-provider';
@@ -45,6 +46,7 @@ const navItems = [
   { id: 'content', name: 'Content', icon: FileText },
   { id: 'categories', name: 'Categories', icon: Tags },
   { id: 'tags', name: 'Tags', icon: Tag },
+  { id: 'discounts', name: 'Discounts', icon: Ticket },
   { id: 'media', name: 'Media', icon: Image },
   { id: 'members', name: 'Members', icon: Users },
   { id: 'emails', name: 'Emails', icon: Mail },
