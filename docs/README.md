@@ -1,118 +1,65 @@
 # Learning Crypto Platform Documentation
 
-This directory contains comprehensive documentation for the Learning Crypto Platform. Use this guide to find specific documentation about different aspects of the platform.
+This is the central documentation hub for the Learning Crypto Platform. We've organized documentation into key sections to help you quickly find what you need.
 
 ## Core Documentation
 
 | Document | Description |
 |----------|-------------|
-| [Architecture](ARCHITECTURE.md) | Overview of application architecture, code organization, and design patterns |
-| [Database](DATABASE.md) | Database schema, table relationships, and RLS policies |
+| [Architecture](ARCHITECTURE.md) | System architecture, code organization, and design patterns |
+| [Database](DATABASE.md) | Database schema, relationships, and access controls |
+| [Getting Started](getting-started.md) | Setup guide for new developers |
 
-## Setup Guides
+## Features
 
-| Guide | Description |
-|-------|-------------|
-| [Getting Started](getting-started.md) | Initial setup for developers |
-| [Admin Authentication](admin-authentication.md) | Setting up and managing admin access |
-| [AI Chat Setup](AI-CHAT-SETUP.md) | Configuration for the AI assistant features |
-
-## Feature Documentation
-
-| Feature | Documentation |
-|---------|---------------|
-| [Portfolio Management](portfolio.md) | User and team portfolio functionality |
-| [Watchlist](watchlist.md) | User and team watchlist functionality |
-| [Cryptocurrency Data](crypto-data.md) | Cryptocurrency data sources and management |
-| [Background Jobs](jobs.md) | Scheduled tasks and background processing |
-| [Subscriptions](subscriptions.md) | User subscription management (Stripe and Radom) |
-
-## API Documentation
-
-| API | Documentation |
-|-----|---------------|
-| [Authentication API](api/auth.md) | User authentication endpoints |
-| [Portfolio API](api/portfolio.md) | Portfolio management endpoints |
-| [Watchlist API](api/watchlist.md) | Watchlist management endpoints |
-| [Market Data API](api/market-data.md) | Cryptocurrency market data endpoints |
-
-## Development Guides
-
-| Guide | Description |
-|-------|-------------|
-| [Coding Standards](coding-standards.md) | Coding conventions and best practices |
-| [Testing Guide](testing.md) | Testing strategy and examples |
-| [Deployment](deployment.md) | Deployment process and environments |
-| [Contributing](contributing.md) | Guidelines for contributing to the project |
-
-## Troubleshooting
-
-| Guide | Description |
-|-------|-------------|
-| [Common Issues](troubleshooting.md) | Solutions to common problems |
-| [Database Troubleshooting](database-troubleshooting.md) | Database-specific issues and solutions |
-| [Authentication Issues](auth-troubleshooting.md) | Authentication-related problems and fixes |
-
-## External Services Integration
-
-| Integration | Documentation |
-|-------------|---------------|
-| [Stripe Integration](stripe-integration.md) | Stripe payment processing setup |
-| [Radom Integration](radom-integration.md) | Radom crypto payment processing setup |
-| [OpenAI Integration](openai-integration.md) | OpenAI API integration details |
-| [CoinMarketCap Integration](coinmarketcap-integration.md) | CoinMarketCap API integration |
-
-## Architecture Diagrams
-
-| Diagram | Description |
+| Feature | Description |
 |---------|-------------|
-| [System Overview](diagrams/system-overview.md) | High-level system architecture |
-| [Data Flow](diagrams/data-flow.md) | Data flow between components |
-| [Authentication Flow](diagrams/auth-flow.md) | User authentication process |
-| [Database Schema](diagrams/db-schema.md) | Visual database schema representation |
-
-## Getting Started
-
-- [Getting Started Guide](getting-started.md) - Setup instructions for new developers
-
-## Core Documentation
-
-- [Database Schema](database-schema.md) - Database tables documentation
-- [Admin Authentication](admin-authentication.md) - Admin role implementation
-
-## Feature Documentation
-
-- [Scheduler Setup](SCHEDULER-SETUP.md) - Background job system
-- [API Optimization](API-OPTIMIZATION.md) - API performance strategies
-
-## Setup Guides
-
-- [Stripe Setup](../README-STRIPE-SETUP.md) - Stripe payment integration
-- [Team Portfolio Setup](../README-SETUP.md) - Team portfolios setup
+| [User Management](features/users.md) | User authentication, profiles, and access control |
+| [Portfolio System](features/portfolio.md) | User and team portfolio functionality |
+| [Watchlist System](features/watchlist.md) | User and team watchlist functionality |
+| [Crypto Data](features/crypto-data.md) | Market data integration and management |
+| [AI Chat](features/ai-chat.md) | AI assistant implementation |
+| [Payments](features/payments.md) | Stripe and Radom integration |
 
 ## Development Guides
 
-- [Server Components Implementation](server-components-implementation-log.md) - Migration details
-- [Server Component Plan](server-component-utilization-plan.md) - Planning
-- [Server Components Measurement](server-components-measurement.md) - Performance measurement
-- [Ghost Migration](ghost-migration.md) - Content migration from Ghost CMS
-- [Implementation Steps](IMPLEMENTATION-STEPS.md) - Step-by-step guide
+| Guide | Description |
+|-------|-------------|
+| [Deployment](guides/deployment.md) | Deployment process and environments |
+| [Testing](guides/testing.md) | Testing strategy and implementation |
+| [Troubleshooting](guides/troubleshooting.md) | Common issues and solutions |
 
 ## Coding Standards
 
-1. **Simple Solutions**: Choose simple, readable options
-2. **Code Reuse**: Avoid duplication
-3. **Multiple Environments**: Support dev, test, and prod
-4. **File Size Limits**: Keep files under 300 lines
-5. **No Mock Data in Production**: Mock only for tests
-6. **Clean Architecture**: Clear separation of concerns
+We follow these core principles in our codebase:
 
-See [Tech Stack](../.cursor/rules/techstack.mdc) and [Coding Preferences](../.cursor/rules/codingpref.mdc) for more details.
+1. **Simple Solutions**: Choose simple, readable code over complex implementations
+2. **Code Reuse**: Avoid duplication and leverage existing components
+3. **Environment Awareness**: Write code that functions across dev, test, and prod
+4. **Clean Architecture**: Maintain separation of concerns
+5. **File Size Limits**: Keep files under 300 lines for maintainability
+6. **No Mocks in Production**: Use mock data only for testing
 
-## Support & Troubleshooting
+## Directory Structure
 
-If you encounter issues:
+The main application structure:
 
-1. Check the [Getting Started Guide](getting-started.md#common-setup-issues)
-2. Review feature-specific documentation
-3. Contact the development team 
+```
+/src
+  /app           # Next.js App Router routes and pages
+  /components    # Reusable UI components
+  /lib           # Core logic and utilities
+    /api         # API client functions
+    /providers   # React context providers
+    /supabase    # Supabase configuration
+    /utils       # Utility functions
+  /hooks         # Custom React hooks
+  /types         # TypeScript type definitions
+```
+
+## Quick Links
+
+- [Main README](../README.md) - Project overview
+- [Getting Started](getting-started.md) - Setup instructions
+- [Architecture](ARCHITECTURE.md) - System architecture
+- [Database](DATABASE.md) - Database documentation 

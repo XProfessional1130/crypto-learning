@@ -23,14 +23,15 @@ An AI-driven cryptocurrency education and portfolio management platform built wi
 
 ## Documentation
 
-We maintain comprehensive documentation to help developers understand and contribute to the project:
+We maintain streamlined documentation to help developers understand and contribute to the project:
 
-- [**Architecture**](docs/ARCHITECTURE.md): Detailed overview of application architecture and design patterns
-- [**Database**](docs/DATABASE.md): Database schema, table relationships, and RLS policies
 - [**Getting Started**](docs/getting-started.md): Setup guide for new developers
-- [**Admin Authentication**](docs/admin-authentication.md): Admin access and permissions
-- [**AI Chat Setup**](docs/AI-CHAT-SETUP.md): How to configure the AI chat feature
-- [**More guides...**](docs/README.md)
+- [**Architecture**](docs/ARCHITECTURE.md): System design and patterns
+- [**Database**](docs/DATABASE.md): Database schema and security model
+- [**Features**](docs/README.md#features): Documentation for specific features
+- [**Troubleshooting**](docs/guides/troubleshooting.md): Solutions to common problems
+
+The full documentation is available in the [docs directory](docs/README.md).
 
 ## Getting Started
 
