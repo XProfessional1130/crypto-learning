@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { PortfolioSummary } from '@/types/portfolio';
 import { getTeamPortfolio } from '@/lib/api/team-portfolio';
 import { useToast } from '@/hooks/useToast';
-import { initCoinDataService, cleanupCaches } from '@/lib/api/coinmarketcap';
+import { initCoinDataService } from '@/lib/api/coinmarketcap';
 import { useAuth } from '@/lib/providers/auth-provider';
 
 // Admin ID for permission checks
@@ -131,15 +131,8 @@ export function useTeamPortfolioData() {
       backgroundRefresh();
     }, AUTO_REFRESH_INTERVAL);
     
-    // Set up cache cleanup interval
-    const cacheCleanupIntervalId = setInterval(() => {
-      console.log('Cleaning up coin data caches...');
-      cleanupCaches();
-    }, CACHE_CLEANUP_INTERVAL);
-    
     return () => {
       clearInterval(refreshIntervalId);
-      clearInterval(cacheCleanupIntervalId);
     };
   }, [fetchTeamPortfolio]);
 

@@ -1,7 +1,7 @@
 ---
-description: How I like to code
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 
 # Coding workflow preference

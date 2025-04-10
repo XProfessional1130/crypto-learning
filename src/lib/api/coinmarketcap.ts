@@ -331,24 +331,6 @@ export async function fetchMultipleCoinsData(coinIds: string[]): Promise<Record<
 }
 
 /**
- * Get coin data from the cache or fetch if needed
- * This function is provided for backward compatibility - new components should use useDataCache
- */
-export async function getCoinData(coinId: string): Promise<CoinData | null> {
-  console.warn('getCoinData is deprecated - use useDataCache().getCoinData() in components instead');
-  return fetchCoinData(coinId);
-}
-
-/**
- * Get multiple coins data from the cache or fetch if needed
- * This function is provided for backward compatibility - new components should use useDataCache
- */
-export async function getMultipleCoinsData(coinIds: string[]): Promise<Record<string, CoinData>> {
-  console.warn('getMultipleCoinsData is deprecated - use useDataCache().getMultipleCoinsData() in components instead');
-  return fetchMultipleCoinsData(coinIds);
-}
-
-/**
  * Search for coins by keyword
  */
 export async function searchCoins(query: string): Promise<CoinData[]> {
@@ -420,20 +402,4 @@ export async function getTopCoins(limit = 100): Promise<CoinData[]> {
     console.error('Error fetching top coins:', error);
     return [];
   }
-}
-
-/**
- * Clean up expired cache entries to prevent memory bloat
- * This is a no-op now since we're using DataCacheProvider
- */
-export function cleanupCaches(): void {
-  console.log('cleanupCaches is deprecated - DataCacheProvider now handles cache management');
-}
-
-/**
- * Clear the global data cache
- * This is a no-op now since we're using DataCacheProvider
- */
-export function clearGlobalDataCache(): void {
-  console.log('clearGlobalDataCache is deprecated - use useDataCache().clearCache() instead');
 } 

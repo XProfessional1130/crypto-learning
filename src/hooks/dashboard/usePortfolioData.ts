@@ -3,7 +3,6 @@ import { useAuth } from '@/lib/providers/auth-provider';
 import { PortfolioSummary } from '@/types/portfolio';
 import { getUserPortfolio } from '@/lib/api/portfolio';
 import { useToast } from '@/hooks/useToast';
-import { cleanupCaches } from '@/lib/api/coinmarketcap';
 
 // Refresh intervals and cache settings
 const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
@@ -168,15 +167,8 @@ export function usePortfolioData() {
       }
     }, AUTO_REFRESH_INTERVAL);
     
-    // Set up cache cleanup interval
-    const cacheCleanupIntervalId = setInterval(() => {
-      console.log('Cleaning up coin data caches...');
-      cleanupCaches();
-    }, CACHE_CLEANUP_INTERVAL);
-    
     return () => {
       clearInterval(refreshIntervalId);
-      clearInterval(cacheCleanupIntervalId);
     };
   }, [user, fetchPortfolio]);
 

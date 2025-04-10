@@ -7,7 +7,6 @@ import { useToast } from '@/hooks/ui/useToast';
 import { useAuth } from '@/lib/providers/auth-provider';
 import { 
   searchCoins,
-  cleanupCaches,
   isCoinDataServiceInitialized 
 } from '@/lib/api/coinmarketcap';
 import {
@@ -209,7 +208,6 @@ export function TeamDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isActive = true;
     let refreshIntervalId: NodeJS.Timeout | null = null;
-    let cacheCleanupIntervalId: NodeJS.Timeout | null = null;
     
     const setup = async () => {
       try {
@@ -247,12 +245,6 @@ export function TeamDataProvider({ children }: { children: ReactNode }) {
           fetchPortfolio().catch(err => console.error('Error refreshing portfolio:', err));
           fetchWatchlist().catch(err => console.error('Error refreshing watchlist:', err));
         }, AUTO_REFRESH_INTERVAL);
-        
-        // Set up cache cleanup interval
-        cacheCleanupIntervalId = setInterval(() => {
-          console.log('Cleaning up coin data caches...');
-          cleanupCaches();
-        }, CACHE_CLEANUP_INTERVAL);
       } catch (error) {
         console.error('Error in team data setup:', error);
         
@@ -268,7 +260,6 @@ export function TeamDataProvider({ children }: { children: ReactNode }) {
     return () => {
       isActive = false;
       if (refreshIntervalId) clearInterval(refreshIntervalId);
-      if (cacheCleanupIntervalId) clearInterval(cacheCleanupIntervalId);
     };
   }, []);
   
