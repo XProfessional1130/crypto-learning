@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { WatchlistItem } from '@/hooks/useWatchlist';
+import { WatchlistItem } from '@/lib/api/team-watchlist';
 import ModalContent from '../modals/ModalContent';
 
 interface TeamWatchlistItemDetailModalProps {

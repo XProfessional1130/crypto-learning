@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { PortfolioSummary, CoinData } from '@/types/portfolio';
-import { WatchlistItem } from '@/hooks/dashboard/useWatchlist';
+import { WatchlistItem } from '@/lib/api/team-watchlist';
 import { useToast } from '@/hooks/ui/useToast';
 import { useAuth } from '@/lib/providers/auth-provider';
 import { 

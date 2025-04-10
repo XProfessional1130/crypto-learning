@@ -8,25 +8,16 @@ import { useRouter } from 'next/navigation';
 export function useAuthRedirect() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [showContent, setShowContent] = useState(false);
+  const [showContent, setShowContent] = useState(true); // Start with true to avoid flicker
 
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth/signin');
+    } else if (!authLoading && user) {
+      setShowContent(true);
     }
   }, [user, authLoading, router]);
-
-  // Add a short delay before showing content for smoother transitions
-  useEffect(() => {
-    if (!authLoading && user) {
-      const timer = setTimeout(() => {
-        setShowContent(true);
-      }, 300);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [authLoading, user]);
 
   return {
     user,

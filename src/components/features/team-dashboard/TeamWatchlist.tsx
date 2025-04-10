@@ -1,5 +1,5 @@
 import { useMemo, useState, memo } from 'react';
-import { WatchlistItem } from '@/hooks/useWatchlist';
+import { WatchlistItem } from '@/lib/api/team-watchlist';
 import { GlobalData } from '@/lib/api/coinmarketcap';
 import { useTeamData } from '@/lib/providers/team-data-provider';
 import { CoinData } from '@/types/portfolio';

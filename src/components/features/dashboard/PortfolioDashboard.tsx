@@ -411,21 +411,12 @@ function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolea
   const [selectedAsset, setSelectedAsset] = useState<PortfolioItemWithPrice | null>(null);
   const [isAssetDetailModalOpen, setIsAssetDetailModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const mountedRef = useRef(true); // Track if component is mounted
   const hasInitializedRef = useRef(false); // Track initial data load
   
-  // Calculate loading and error states
-  const [hasShownContent, setHasShownContent] = useState(false);
-  const loading = forceShow ? false : (hasShownContent ? false : (portfolioLoading || loadingPrices));
+  // Simplify loading logic - forceShow overrides all loading states
+  const loading = forceShow ? false : (portfolioLoading || loadingPrices);
   const error = portfolioError || watchlistError;
-  
-  // Effect to track if content has been shown - once shown, never go back to loading state
-  useEffect(() => {
-    if (!portfolioLoading && !loadingPrices && (portfolio || btcPrice || ethPrice)) {
-      setHasShownContent(true);
-    }
-  }, [portfolioLoading, loadingPrices, portfolio, btcPrice, ethPrice]);
   
   // Create a sorted version of the portfolio items
   const sortedPortfolioItems = useMemo(() => {
@@ -439,11 +430,6 @@ function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolea
     return portfolio?.totalValueUsd || 0;
   }, [portfolio]);
   
-  // Create consistent animation classes based on loading state
-  const contentAnimationClass = initialLoadComplete ? "animate-fadeIn" : "opacity-0 transition-opacity-transform";
-  const cardAnimationClass = initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform";
-  const listItemAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
-  
   // Simplified useEffect for component initialization and cleanup
   useEffect(() => {
     mountedRef.current = true;
@@ -451,9 +437,6 @@ function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolea
     // Handle initial data loading (only once per component lifecycle)
     if (!hasInitializedRef.current) {
       hasInitializedRef.current = true;
-      
-      // Set initial load complete state to improve perceived performance
-      setInitialLoadComplete(true);
       
       // Check what data we need to refresh, but don't refresh unnecessarily
       const needsDataRefresh = !btcPrice || !ethPrice;
@@ -561,7 +544,7 @@ function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolea
     }
   };
   
-  if (loading) {
+  if (loading && !forceShow) {
     return (
       <div className="max-w-7xl mx-auto py-6 px-4">
         {/* Skeleton Loading UI */}
@@ -634,23 +617,23 @@ function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolea
       {/* Stats Cards Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Combined Portfolio Stats Card */}
-        <div className={cardAnimationClass} style={{ transitionDelay: '100ms', animationDelay: '100ms' }}>
+        <div>
           <PortfolioStatsCard 
             portfolioValue={portfolio?.totalValueUsd || 0}
             dailyChange={portfolio?.dailyChangePercentage || 0}
-            loading={loading}
+            loading={loading && !forceShow}
             portfolioItems={sortedPortfolioItems}
           />
         </div>
         
         {/* Combined Market Leaders Card */}
-        <div className={cardAnimationClass} style={{ transitionDelay: '150ms', animationDelay: '150ms' }}>
+        <div>
           <MarketLeadersCard 
             btcPrice={btcPrice}
             ethPrice={ethPrice}
             btcDominance={typeof globalData?.btcDominance === 'number' ? globalData.btcDominance : 0}
             ethDominance={typeof globalData?.ethDominance === 'number' ? globalData.ethDominance : 0}
-            loading={loading}
+            loading={loading && !forceShow}
           />
         </div>
       </div>
@@ -658,18 +641,18 @@ function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolea
       {/* Main Content - Portfolio and Watchlist */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Portfolio Section - Takes up 2/3 of the space */}
-        <div className={`lg:col-span-2 ${contentAnimationClass}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
-          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300 relative overflow-hidden" style={{ minHeight: 'calc(100vh - 24rem)' }}>
+        <div className="lg:col-span-2">
+          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 relative overflow-hidden" style={{ minHeight: 'calc(100vh - 24rem)' }}>
             {/* Portfolio Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50 relative z-10">
               <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight flex items-center">
-                <div className="w-2 h-8 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
+                <div className="w-2 h-8 bg-emerald-500 rounded-full mr-2"></div>
                 Your Portfolio
               </h2>
               <div className="flex items-center mt-2 sm:mt-0">
                 <button 
                   onClick={() => setIsAddModalOpen(true)}
-                  className="text-white bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded-lg transition-colors transform hover:scale-105 active:scale-95 hover:shadow-md"
+                  className="text-white bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded-lg"
                 >
                   Add Asset
                 </button>
@@ -689,15 +672,15 @@ function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolea
                 <p className="text-lg mb-4 text-gray-600 dark:text-gray-300">You don't have any assets yet</p>
                 <button 
                   onClick={() => setIsAddModalOpen(true)}
-                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors transform hover:scale-105 active:scale-95"
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg"
                 >
                   Add your first asset
                 </button>
               </div>
             ) : (
               <div className="overflow-y-auto h-[calc(100vh-32rem)] scrollbar-thin relative z-10">
-                {sortedPortfolioItems.map((item, index) => (
-                  <div key={item.id} className={listItemAnimationClass} style={{ transitionDelay: `${350 + (index * 30)}ms`, animationDelay: `${350 + (index * 30)}ms` }}>
+                {sortedPortfolioItems.map((item) => (
+                  <div key={item.id}>
                     <PortfolioItem 
                       item={item} 
                       onItemClick={handleAssetClick} 
@@ -714,24 +697,24 @@ function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolea
           </div>
           
           {/* Recent News */}
-          <div className={`mt-6 ${contentAnimationClass}`} style={{ transitionDelay: '400ms', animationDelay: '400ms' }}>
+          <div className="mt-6">
             <CryptoNews />
           </div>
         </div>
 
         {/* Watchlist Section - Takes up 1/3 of the space */}
-        <div className={`lg:col-span-1 ${contentAnimationClass}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
-          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300 relative overflow-hidden" style={{ minHeight: 'calc(100vh - 24rem)' }}>
+        <div className="lg:col-span-1">
+          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 relative overflow-hidden" style={{ minHeight: 'calc(100vh - 24rem)' }}>
             {/* Watchlist Header */}
             <div className="flex flex-row justify-between items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50 relative z-10">
               <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight flex items-center">
-                <div className="w-2 h-8 bg-violet-500 rounded-full mr-2 animate-pulse"></div>
+                <div className="w-2 h-8 bg-violet-500 rounded-full mr-2"></div>
                 Watchlist
               </h2>
               <div className="flex items-center">
                 <button 
                   onClick={() => document.dispatchEvent(new CustomEvent('lc:open-add-to-watchlist'))}
-                  className="text-white bg-teal-600 hover:bg-teal-700 p-2 rounded-full w-7 h-7 flex items-center justify-center transition-colors transform hover:scale-105 active:scale-95 hover:shadow-md mr-2"
+                  className="text-white bg-teal-600 hover:bg-teal-700 p-2 rounded-full w-7 h-7 flex items-center justify-center mr-2"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                     <path d="M12 5v14M5 12h14" />
@@ -748,7 +731,6 @@ function PortfolioDashboardComponent({ forceShow = false }: { forceShow?: boolea
             <div className="relative z-10 overflow-y-auto h-[calc(100vh-32rem)] scrollbar-thin">
               <WatchlistComponent 
                 onRefresh={getWatchlist} 
-                initialLoadComplete={initialLoadComplete} 
                 hideControls={true}
                 className="border-none shadow-none bg-transparent p-0"
               />

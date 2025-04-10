@@ -1,3 +1,16 @@
+/**
+ * CoinMarketCap API Integration
+ * 
+ * This module provides functions to interact with cryptocurrency data.
+ * Initially used direct CoinMarketCap API calls, now primarily uses Supabase for data retrieval.
+ * 
+ * The module includes functions for:
+ * - Initializing cryptocurrency data services
+ * - Fetching individual coin data
+ * - Retrieving global market statistics
+ * - Searching and listing cryptocurrencies
+ */
+
 import { CoinData } from '@/types/portfolio';
 import { 
   getBtcPriceFromSupabase, 
@@ -22,7 +35,10 @@ let processingQueue = false;
 const BATCH_SIZE = 50; // CMC allows up to 100 at once, increased from 25
 const QUEUE_PROCESS_DELAY = 300; // Reduced delay to 300ms for better responsiveness
 
-// Define global data type
+/**
+ * Global market data interface
+ * Contains overall cryptocurrency market statistics
+ */
 export interface GlobalData {
   btcDominance: number;
   ethDominance: number;
@@ -50,7 +66,11 @@ export interface GlobalData {
   totalExchanges?: number;
 }
 
-// Helper to handle API response and error handling
+/**
+ * Helper to handle API response and error handling
+ * @param url API endpoint URL
+ * @returns Parsed JSON response
+ */
 const fetchWithErrorHandling = async (url: string) => {
   try {
     const response = await fetch(url);
@@ -149,6 +169,7 @@ export async function initCoinDataService(): Promise<void> {
 
 /**
  * Check if the service is initialized
+ * @returns Boolean indicating if the service is initialized
  */
 export function isCoinDataServiceInitialized(): boolean {
   return isServiceInitialized;
@@ -156,6 +177,7 @@ export function isCoinDataServiceInitialized(): boolean {
 
 /**
  * Get Bitcoin price in USD
+ * @returns BTC price in USD
  */
 export async function getBtcPrice(): Promise<number> {
   try {
@@ -169,6 +191,7 @@ export async function getBtcPrice(): Promise<number> {
 
 /**
  * Get Ethereum price in USD
+ * @returns ETH price in USD
  */
 export async function getEthPrice(): Promise<number> {
   try {
@@ -182,6 +205,7 @@ export async function getEthPrice(): Promise<number> {
 
 /**
  * Get global market data
+ * @returns Object with market statistics (BTC dominance, market cap, etc.)
  */
 export async function getGlobalData(): Promise<GlobalData> {
   try {
@@ -237,6 +261,9 @@ export async function getGlobalData(): Promise<GlobalData> {
 /**
  * Fetch data for a single coin by ID from API
  * This is the underlying fetch function that should be used by the DataCacheProvider
+ * 
+ * @param coinId The unique identifier of the coin
+ * @returns Coin data or null if not found/error
  */
 export async function fetchCoinData(coinId: string): Promise<CoinData | null> {
   try {
@@ -277,6 +304,9 @@ export async function fetchCoinData(coinId: string): Promise<CoinData | null> {
 /**
  * Fetch data for multiple coins by ID from API
  * This is the underlying fetch function that should be used by the DataCacheProvider
+ * 
+ * @param coinIds Array of coin IDs to fetch
+ * @returns Object mapping coin IDs to their data
  */
 export async function fetchMultipleCoinsData(coinIds: string[]): Promise<Record<string, CoinData>> {
   if (!coinIds || coinIds.length === 0) {
@@ -332,6 +362,9 @@ export async function fetchMultipleCoinsData(coinIds: string[]): Promise<Record<
 
 /**
  * Search for coins by keyword
+ * 
+ * @param query Search term
+ * @returns Array of matching coin data
  */
 export async function searchCoins(query: string): Promise<CoinData[]> {
   if (!query || query.trim().length < 2) {
@@ -371,6 +404,9 @@ export async function searchCoins(query: string): Promise<CoinData[]> {
 
 /**
  * Get the top cryptocurrencies by market cap
+ * 
+ * @param limit Maximum number of coins to return (default: 100)
+ * @returns Array of top coins sorted by market cap
  */
 export async function getTopCoins(limit = 100): Promise<CoinData[]> {
   try {

@@ -12,7 +12,6 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children, title = "Dashboard", showTitle = true }: DashboardLayoutProps) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [showContent, setShowContent] = useState(false);
   
   // Check authentication and redirect if needed
   useEffect(() => {
@@ -20,17 +19,6 @@ export default function DashboardLayout({ children, title = "Dashboard", showTit
       router.push('/auth/signin');
     }
   }, [user, authLoading, router]);
-  
-  // Add a smooth transition for the main content
-  useEffect(() => {
-    if (!authLoading && user) {
-      const timer = setTimeout(() => {
-        setShowContent(true);
-      }, 300);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [authLoading, user]);
 
   // Loading state
   if (authLoading) {
@@ -38,7 +26,7 @@ export default function DashboardLayout({ children, title = "Dashboard", showTit
       <div className="flex min-h-[calc(100vh-16rem)] items-center justify-center">
         <div className="flex flex-col items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-300 animate-pulse">Loading your dashboard...</p>
+          <p className="text-gray-600 dark:text-gray-300">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -50,7 +38,7 @@ export default function DashboardLayout({ children, title = "Dashboard", showTit
   }
 
   return (
-    <main className={`container mx-auto px-4 py-8 transition-opacity-transform duration-600 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+    <main className="container mx-auto px-4 py-8">
       {showTitle && <h1 className="text-3xl font-bold mb-6">{title}</h1>}
       {children}
     </main>

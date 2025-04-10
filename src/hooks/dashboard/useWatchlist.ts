@@ -10,19 +10,7 @@ import {
 import { useToast } from '@/hooks/ui/useToast';
 import { useDataCache } from '@/lib/providers/data-cache-provider';
 import supabase from '@/lib/api/supabase-client';
-
-// Define watchlist item type
-export interface WatchlistItem {
-  id: string;
-  coinId: string;  // Added coinId to track the CoinMarketCap ID
-  symbol: string;
-  name: string;
-  price: number;
-  change24h: number;
-  icon: string;
-  priceTarget?: number;
-  createdAt?: string;
-}
+import { WatchlistItem } from '@/lib/api/team-watchlist';
 
 // Cache settings
 const REFRESH_COOLDOWN = 30000; // 30 seconds between API requests (increased from 10s)

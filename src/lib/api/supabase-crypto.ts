@@ -1,3 +1,16 @@
+/**
+ * Supabase Cryptocurrency Data Service
+ * 
+ * This module provides functions to interact with cryptocurrency data stored in Supabase.
+ * It serves as the primary data source for cryptocurrency prices, market data, and related information.
+ * 
+ * The module includes functions for:
+ * - Fetching individual coin prices (BTC, ETH)
+ * - Retrieving global market statistics
+ * - Searching and listing cryptocurrencies from the database
+ * - Retrieving batch data for multiple cryptocurrencies
+ */
+
 import supabase from './supabase-client';
 import { CoinData } from '@/types/portfolio';
 import { GlobalData } from './coinmarketcap';
@@ -7,6 +20,10 @@ let tableExistsCache: Record<string, boolean> = {};
 
 /**
  * Check if a table exists without excessive querying
+ * Uses caching to avoid repeated database calls
+ * 
+ * @param tableName Name of the table to check
+ * @returns Boolean indicating if the table exists
  */
 async function checkTableExists(tableName: string): Promise<boolean> {
   // Return from cache if we've already checked
@@ -33,6 +50,8 @@ async function checkTableExists(tableName: string): Promise<boolean> {
 
 /**
  * Fetch Bitcoin price from Supabase
+ * 
+ * @returns BTC price in USD or 0 if not available
  */
 export async function getBtcPriceFromSupabase(): Promise<number> {
   try {
@@ -67,6 +86,8 @@ export async function getBtcPriceFromSupabase(): Promise<number> {
 
 /**
  * Fetch Ethereum price from Supabase
+ * 
+ * @returns ETH price in USD or 0 if not available
  */
 export async function getEthPriceFromSupabase(): Promise<number> {
   try {
@@ -101,6 +122,9 @@ export async function getEthPriceFromSupabase(): Promise<number> {
 
 /**
  * Calculate global market data from Supabase
+ * Aggregates market data to provide totals and dominance percentages
+ * 
+ * @returns GlobalData object with market statistics
  */
 export async function getGlobalDataFromSupabase(): Promise<GlobalData> {
   try {
@@ -161,7 +185,10 @@ export async function getGlobalDataFromSupabase(): Promise<GlobalData> {
 }
 
 /**
- * Fetch coin data from Supabase
+ * Fetch coin data from Supabase for a single coin
+ * 
+ * @param coinId The unique identifier of the coin
+ * @returns CoinData object or null if not found/error
  */
 export async function fetchCoinDataFromSupabase(coinId: string): Promise<CoinData | null> {
   try {
@@ -201,7 +228,10 @@ export async function fetchCoinDataFromSupabase(coinId: string): Promise<CoinDat
 }
 
 /**
- * Fetch multiple coins data from Supabase
+ * Fetch multiple coins data from Supabase in a single query
+ * 
+ * @param coinIds Array of coin IDs to fetch
+ * @returns Object mapping coin IDs to their data
  */
 export async function fetchMultipleCoinsDataFromSupabase(coinIds: string[]): Promise<Record<string, CoinData>> {
   if (!coinIds || coinIds.length === 0) {
@@ -257,7 +287,10 @@ export async function fetchMultipleCoinsDataFromSupabase(coinIds: string[]): Pro
 }
 
 /**
- * Get top coins from Supabase
+ * Get top coins from Supabase ordered by market cap
+ * 
+ * @param limit Maximum number of coins to return (default: 100)
+ * @returns Array of top coins sorted by market cap
  */
 export async function getTopCoinsFromSupabase(limit: number = 100): Promise<CoinData[]> {
   try {
@@ -295,7 +328,11 @@ export async function getTopCoinsFromSupabase(limit: number = 100): Promise<Coin
 }
 
 /**
- * Search coins from Supabase
+ * Search coins from Supabase by name or symbol
+ * 
+ * @param query Search term (minimum 2 characters)
+ * @param limit Maximum number of results to return (default: 20)
+ * @returns Array of matching coin data
  */
 export async function searchCoinsFromSupabase(query: string, limit: number = 20): Promise<CoinData[]> {
   if (!query || query.trim().length < 2) {

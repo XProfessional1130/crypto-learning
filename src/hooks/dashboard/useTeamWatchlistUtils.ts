@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { WatchlistItem } from '@/hooks/useWatchlist';
+import { WatchlistItem } from '@/lib/api/team-watchlist';
 
 export function useTeamWatchlistUtils() {
   // Calculate target percentage (useful for watchlist items with price targets)

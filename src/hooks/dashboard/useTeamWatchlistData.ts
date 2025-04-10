@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { WatchlistItem } from '@/hooks/useWatchlist';
+import { WatchlistItem } from '@/lib/api/team-watchlist';
 import { getTeamWatchlist } from '@/lib/api/team-watchlist';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/hooks/ui/useToast';
 import { initCoinDataService } from '@/lib/api/coinmarketcap';
 import { useAuth } from '@/lib/providers/auth-provider';
 

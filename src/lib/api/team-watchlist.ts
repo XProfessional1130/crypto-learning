@@ -1,7 +1,19 @@
-import { WatchlistItem } from '@/hooks/useWatchlist';
-import { getMultipleCoinsData } from './coinmarketcap';
+import { fetchMultipleCoinsData } from './coinmarketcap';
 import supabase from './supabase-client';
 import { CoinData } from '@/types/portfolio';
+
+// Define the WatchlistItem interface here to avoid circular dependencies
+export interface WatchlistItem {
+  id: string;
+  coinId: string;
+  symbol: string;
+  name: string;
+  price: number;
+  change24h: number;
+  icon: string;
+  priceTarget?: number;
+  createdAt?: string;
+}
 
 // Admin ID is needed for permission checks
 const TEAM_ADMIN_ID = process.env.NEXT_PUBLIC_TEAM_ADMIN_ID || '529cfde5-d8c3-4a6a-a9dc-5bb67fb039b5';
@@ -184,7 +196,7 @@ export async function processWatchlistItems(watchlistItems: any[]): Promise<{ it
   
   // Get all coin prices - ensure IDs are strings
   const coinIds = watchlistItems.map(item => String(item.coin_id));
-  const coinsData = await getMultipleCoinsData(coinIds);
+  const coinsData = await fetchMultipleCoinsData(coinIds);
   
   const items: WatchlistItem[] = watchlistItems.map((item: any) => {
     // Ensure we're looking up with a string ID

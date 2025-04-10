@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { CoinData } from '@/types/portfolio';
 import ModalContent from '../modals/ModalContent';
-import { useCoinSearch } from '@/hooks/useCoinSearch';
+import { useCoinSearch } from '@/hooks/dashboard/useCoinSearch';
 
 interface TeamAddToWatchlistModalProps {
   onClose: () => void;

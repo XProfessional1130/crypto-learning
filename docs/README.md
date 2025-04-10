@@ -1,6 +1,75 @@
-# LearningCrypto Documentation
+# Learning Crypto Platform Documentation
 
-This index provides an overview of all available documentation.
+This directory contains comprehensive documentation for the Learning Crypto Platform. Use this guide to find specific documentation about different aspects of the platform.
+
+## Core Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](ARCHITECTURE.md) | Overview of application architecture, code organization, and design patterns |
+| [Database](DATABASE.md) | Database schema, table relationships, and RLS policies |
+
+## Setup Guides
+
+| Guide | Description |
+|-------|-------------|
+| [Getting Started](getting-started.md) | Initial setup for developers |
+| [Admin Authentication](admin-authentication.md) | Setting up and managing admin access |
+| [AI Chat Setup](AI-CHAT-SETUP.md) | Configuration for the AI assistant features |
+
+## Feature Documentation
+
+| Feature | Documentation |
+|---------|---------------|
+| [Portfolio Management](portfolio.md) | User and team portfolio functionality |
+| [Watchlist](watchlist.md) | User and team watchlist functionality |
+| [Cryptocurrency Data](crypto-data.md) | Cryptocurrency data sources and management |
+| [Background Jobs](jobs.md) | Scheduled tasks and background processing |
+| [Subscriptions](subscriptions.md) | User subscription management (Stripe and Radom) |
+
+## API Documentation
+
+| API | Documentation |
+|-----|---------------|
+| [Authentication API](api/auth.md) | User authentication endpoints |
+| [Portfolio API](api/portfolio.md) | Portfolio management endpoints |
+| [Watchlist API](api/watchlist.md) | Watchlist management endpoints |
+| [Market Data API](api/market-data.md) | Cryptocurrency market data endpoints |
+
+## Development Guides
+
+| Guide | Description |
+|-------|-------------|
+| [Coding Standards](coding-standards.md) | Coding conventions and best practices |
+| [Testing Guide](testing.md) | Testing strategy and examples |
+| [Deployment](deployment.md) | Deployment process and environments |
+| [Contributing](contributing.md) | Guidelines for contributing to the project |
+
+## Troubleshooting
+
+| Guide | Description |
+|-------|-------------|
+| [Common Issues](troubleshooting.md) | Solutions to common problems |
+| [Database Troubleshooting](database-troubleshooting.md) | Database-specific issues and solutions |
+| [Authentication Issues](auth-troubleshooting.md) | Authentication-related problems and fixes |
+
+## External Services Integration
+
+| Integration | Documentation |
+|-------------|---------------|
+| [Stripe Integration](stripe-integration.md) | Stripe payment processing setup |
+| [Radom Integration](radom-integration.md) | Radom crypto payment processing setup |
+| [OpenAI Integration](openai-integration.md) | OpenAI API integration details |
+| [CoinMarketCap Integration](coinmarketcap-integration.md) | CoinMarketCap API integration |
+
+## Architecture Diagrams
+
+| Diagram | Description |
+|---------|-------------|
+| [System Overview](diagrams/system-overview.md) | High-level system architecture |
+| [Data Flow](diagrams/data-flow.md) | Data flow between components |
+| [Authentication Flow](diagrams/auth-flow.md) | User authentication process |
+| [Database Schema](diagrams/db-schema.md) | Visual database schema representation |
 
 ## Getting Started
 
@@ -13,10 +82,8 @@ This index provides an overview of all available documentation.
 
 ## Feature Documentation
 
-- [AI Chat Setup](AI-CHAT-SETUP.md) - AI chat functionality setup
 - [Scheduler Setup](SCHEDULER-SETUP.md) - Background job system
 - [API Optimization](API-OPTIMIZATION.md) - API performance strategies
-- [CoinMarketCap Integration](COINMARKETCAP.md) - CoinMarketCap API integration
 
 ## Setup Guides
 

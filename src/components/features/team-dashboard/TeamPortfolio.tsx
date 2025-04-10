@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useTeamPortfolio } from '@/hooks/useTeamPortfolio';
+import { useTeamPortfolio } from '@/hooks/dashboard/useTeamPortfolio';
 import { PortfolioItemWithPrice } from '@/types/portfolio';
 import { CoinData } from '@/types/portfolio';
 import { PlusCircle, Edit2, Trash2 } from 'lucide-react';

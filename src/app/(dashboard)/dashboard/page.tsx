@@ -16,15 +16,15 @@ function DashboardSkeleton() {
     <div className="w-full max-w-7xl mx-auto space-y-6">
       {/* Header Skeleton */}
       <div className="mb-2">
-        <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
-        <div className="h-4 w-40 mt-2 bg-gray-200 dark:bg-gray-700 rounded-md animate-pulse"></div>
+        <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
+        <div className="h-4 w-40 mt-2 bg-gray-200 dark:bg-gray-700 rounded-md"></div>
       </div>
       
       {/* Market Card Skeleton */}
-      <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300">
+      <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="animate-pulse">
+            <div key={i}>
               <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
               <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
               <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
@@ -37,12 +37,12 @@ function DashboardSkeleton() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Portfolio Section */}
         <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)' }}>
+          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5" style={{ minHeight: 'calc(100vh - 24rem)' }}>
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50">
-              <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              <div className="h-8 w-28 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-8 w-28 bg-gray-200 dark:bg-gray-700 rounded"></div>
             </div>
-            <div className="animate-pulse space-y-4">
+            <div className="space-y-4">
               <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex justify-between items-center p-3 border-b border-gray-100 dark:border-gray-700">
@@ -57,12 +57,12 @@ function DashboardSkeleton() {
         
         {/* Watchlist Section */}
         <div className="lg:col-span-1">
-          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)' }}>
+          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5" style={{ minHeight: 'calc(100vh - 24rem)' }}>
             <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50">
-              <div className="h-8 w-36 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-8 w-36 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
             </div>
-            <div className="animate-pulse space-y-4">
+            <div className="space-y-4">
               <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="flex justify-between items-center p-3 border-b border-gray-100 dark:border-gray-700">
@@ -83,63 +83,15 @@ function DashboardSkeleton() {
  * Now restricted to paid members only
  */
 export default function DashboardPage() {
-  const { user, authLoading, showContent } = useAuthRedirect();
+  const { user, authLoading } = useAuthRedirect();
   const router = useRouter();
-  
-  // Add a fail-safe timeout to ensure we eventually exit the loading state
-  const [hasTimedOut, setHasTimedOut] = useState(false);
   
   // Use our shared data cache for market data
   const { 
     btcPrice, 
     ethPrice, 
-    globalData, 
-    isLoading: marketDataLoading,
-    isRefreshing,
-    refreshData,
-    lastUpdated
+    globalData
   } = useDataCache();
-  
-  // Create consistent animation classes based on loading state - initialize to true to avoid flicker
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  
-  // Track if content has been shown - once shown, never go back to loading
-  const [hasShownContent, setHasShownContent] = useState(false);
-  
-  // Loading and error handling
-  const isLoading = !hasShownContent && (authLoading || marketDataLoading);
-  
-  // Ensure we eventually exit the loading state if it's taking too long
-  useEffect(() => {
-    const timer = setTimeout(() => setHasTimedOut(true), 7000);
-    return () => clearTimeout(timer);
-  }, []);
-  
-  // Once loaded, update the animation state
-  useEffect(() => {
-    let mounted = true;
-    if (!isLoading || hasTimedOut) {
-      // Small delay to ensure smoother transitions
-      const timer = setTimeout(() => {
-        if (mounted) {
-          setInitialLoadComplete(true);
-          setHasShownContent(true);
-        }
-      }, 200);
-      return () => {
-        mounted = false;
-        clearTimeout(timer);
-      };
-    }
-    return () => { mounted = false; };
-  }, [isLoading, hasTimedOut]);
-  
-  // Determine if we should show content or loading state
-  const shouldShowContent = showContent || hasTimedOut;
-  
-  // Animation classes based on state
-  const cardAnimationClass = initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform";
-  const contentAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
   
   // Get the user's first name or email username for the welcome message
   const getUserDisplayName = () => {
@@ -153,6 +105,7 @@ export default function DashboardPage() {
     return 'there';
   };
   
+  // No conditional rendering here - directly render the content
   return (
     <PaidMembersOnly>
       <DashboardLayout showTitle={false}>
@@ -167,14 +120,8 @@ export default function DashboardPage() {
             </p>
           </div>
           
-          {/* Main Content */}
-          {isLoading && !shouldShowContent ? (
-            <DashboardSkeleton />
-          ) : (
-            <Suspense fallback={<DashboardSkeleton />}>
-              <PortfolioDashboard />
-            </Suspense>
-          )}
+          {/* Always render the actual dashboard component and pass forceShow */}
+          <PortfolioDashboard forceShow={true} />
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

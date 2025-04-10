@@ -18,8 +18,8 @@ import {
   ErrorDisplay
 } from '@/components/features/dashboard/DashboardUI';
 import MarketOverview from '@/components/features/dashboard/MarketOverview';
-import TeamAddCoinModal from '@/components/features/team-dashboard/TeamAddCoinModal';
-import TeamAddToWatchlistModal from '@/components/features/team-dashboard/TeamAddToWatchlistModal';
+import TeamAddCoinModal from '@/components/features/dashboard/TeamAddCoinModal';
+import TeamAddToWatchlistModal from '@/components/features/dashboard/TeamAddToWatchlistModal';
 import PaidMembersOnly from '@/components/auth/PaidMembersOnly';
 
 // Loading skeletons for better UX during component loading
@@ -67,12 +67,12 @@ const WatchlistLoadingSkeleton = () => (
 );
 
 // Dynamically import heavy components with proper loading skeletons
-const TeamPortfolio = dynamic(() => import('@/components/features/team-dashboard/TeamPortfolio'), {
+const TeamPortfolio = dynamic(() => import('@/components/features/dashboard/TeamPortfolio'), {
   loading: () => <PortfolioLoadingSkeleton />,
   ssr: false // Disable SSR for these components to prevent double initialization
 });
 
-const TeamWatchlist = dynamic(() => import('@/components/features/team-dashboard/TeamWatchlist'), {
+const TeamWatchlist = dynamic(() => import('@/components/features/dashboard/TeamWatchlist'), {
   loading: () => <WatchlistLoadingSkeleton />,
   ssr: false // Disable SSR for these components to prevent double initialization
 });
@@ -590,8 +590,8 @@ export default function LCDashboard() {
   const { user, authLoading, showContent } = useAuthRedirect();
   const router = useRouter();
   
-  // Initialize to true to prevent flickering
-  const [hasTimedOut, setHasTimedOut] = useState(true);
+  // Add a fail-safe timeout to ensure we eventually exit the loading state
+  const [hasTimedOut, setHasTimedOut] = useState(false);
   
   // Use our shared data cache for market data
   const { 
@@ -625,7 +625,7 @@ export default function LCDashboard() {
   const [initialLoadComplete, setInitialLoadComplete] = useState(true);
   
   // Track if content has been shown - once shown, never go back to loading
-  const [hasShownContent, setHasShownContent] = useState(true);
+  const [hasShownContent, setHasShownContent] = useState(false);
   
   // Create handler functions for opening modals
   const handleOpenAddCoinModal = useCallback(() => {
@@ -671,16 +671,24 @@ export default function LCDashboard() {
     }
   }, [watchlist, isAdmin, openModal, closeModal, refreshWatchlist]);
   
-  // Effect to track if content has been shown - we'll always show content now
+  // Effect to track if content has been shown
   useEffect(() => {
-    setHasShownContent(true);
-  }, []);
+    if (!marketDataLoading && !portfolioLoading && !watchlistLoading && 
+        (portfolio || btcPrice || ethPrice || watchlist)) {
+      setHasShownContent(true);
+    }
+  }, [marketDataLoading, portfolioLoading, watchlistLoading, 
+      portfolio, btcPrice, ethPrice, watchlist]);
   
-  // Ensure we exit loading state immediately
+  // Ensure we exit loading state after a reasonable timeout
   useEffect(() => {
-    setHasTimedOut(true);
-    setInitialLoadComplete(true);
-    setHasShownContent(true);
+    const timeoutId = setTimeout(() => {
+      setHasTimedOut(true);
+      setInitialLoadComplete(true);
+      setHasShownContent(true);
+    }, 5000); // Reduced to 5 seconds
+    
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // Force immediate data prefetch on first render to avoid white flash in widgets
@@ -690,16 +698,19 @@ export default function LCDashboard() {
       try {
         // Only prefetch market data if it's not already loaded
         if (!btcPrice || !ethPrice || !globalData) {
+          console.log('Prefetching market data');
           refreshData().catch(err => console.error('Error prefetching market data:', err));
         }
         
         // Only prefetch portfolio data if it's not already loaded
         if (!portfolio) {
+          console.log('Prefetching portfolio data');
           refreshPortfolio().catch(err => console.error('Error prefetching portfolio data:', err));
         }
         
         // Only prefetch watchlist data if it's not already loaded
         if (!watchlist) {
+          console.log('Prefetching watchlist data');
           refreshWatchlist().catch(err => console.error('Error prefetching watchlist data:', err));
         }
       } catch (error) {
@@ -725,8 +736,9 @@ export default function LCDashboard() {
     }
   }, []); // Empty dependency array means this runs once on mount
   
-  // Always show content, never go back to loading once shown
-  const isLoading = false;
+  // Simplify loading state logic - never go back to loading once content shown
+  const isLoading = hasTimedOut || hasShownContent ? false : 
+                   (marketDataLoading || portfolioLoading || watchlistLoading);
   
   // Manual refresh function with visual feedback - simplified to prevent additional re-renders
   const handleManualRefresh = useCallback(() => {
@@ -736,8 +748,8 @@ export default function LCDashboard() {
       refreshData()
     ];
     
-    Promise.all(refreshPromises).catch(err => {
-      console.error('Error during manual refresh:', err);
+    Promise.all(refreshPromises).catch(error => {
+      console.error("Error during manual refresh:", error);
     });
   }, [refreshPortfolio, refreshWatchlist, refreshData]);
 
@@ -755,105 +767,148 @@ export default function LCDashboard() {
 
   return (
     <PaidMembersOnly>
-      <DashboardLayout>
-        <div className="w-full max-w-7xl mx-auto">
-          {/* Header Section */}
-          <div className="mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
-              Team Dashboard
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300 mt-1">
-              Tracking your team's crypto assets and watchlist
-            </p>
+      <div className={`container mx-auto py-6 px-4 max-w-7xl transition-opacity-transform duration-600 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Dashboard Header */}
+        <div className="w-full flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-3 md:mb-0">Team Dashboard</h1>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className={`px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors flex items-center ${isRefreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+              <svg className={`w-4 h-4 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+            </button>
+            {lastUpdated && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </span>
+            )}
           </div>
-          
-          {/* Market Overview Card - Always visible */}
-          <div className="mb-8">
+        </div>
+        
+        {/* Consolidated Market Card - replaces the four separate cards */}
+        <div className="mb-8">
+          <div className={initialLoadComplete ? "animate-scaleIn" : "opacity-0 transition-opacity-transform"} style={{ transitionDelay: '100ms', animationDelay: '100ms' }}>
             <ConsolidatedMarketCard 
-              loading={false} 
+              loading={isLoading} 
               globalData={globalData}
               btcPrice={btcPrice}
               ethPrice={ethPrice}
             />
           </div>
-          
-          {/* Main Content Grid - Always visible */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Portfolio Section - Takes up 2/3 of the space */}
-            <div className="lg:col-span-2">
-              <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 relative overflow-hidden">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50 relative z-10">
-                  <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight flex items-center">
-                    <div className="w-2 h-8 bg-emerald-500 rounded-full mr-2"></div>
-                    Team Portfolio
-                  </h2>
-                  <div className="flex items-center mt-2 sm:mt-0">
-                    {isAdmin && (
-                      <button 
-                        onClick={handleOpenAddCoinModal}
-                        className="text-white bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded-lg"
-                      >
-                        Add Asset
-                      </button>
-                    )}
+        </div>
+        
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Team Portfolio Section - Takes up 2/3 of the space */}
+          <div className={`lg:col-span-2 ${initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform"}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
+            <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)', overflow: 'visible' }}>
+              {/* Portfolio Header */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight flex items-center">
+                  <div className="w-2 h-8 bg-emerald-500 rounded-full mr-2 animate-pulse"></div>
+                  Team Portfolio
+                </h2>
+                <div className="flex items-center gap-2">
+                  {portfolio && !portfolioLoading && isAdmin && (
+                    <button 
+                      onClick={handleOpenAddCoinModal}
+                      className="text-white bg-teal-600 hover:bg-teal-700 rounded-full w-7 h-7 flex items-center justify-center"
+                    >
+                      <PlusCircle className="h-5 w-5" />
+                    </button>
+                  )}
+                  <div className="flex items-center mt-1 sm:mt-0 bg-gray-100/80 dark:bg-slate-800/80 px-3 py-1.5 rounded-full border border-gray-200 dark:border-slate-700/50 backdrop-blur-sm">
+                    <span className="text-xs text-gray-600 dark:text-slate-300 flex items-center">
+                      <span>Assets:</span>
+                      <span className="ml-1.5 font-medium text-gray-800 dark:text-white">
+                        {portfolio?.items?.length || 0}
+                      </span>
+                    </span>
                   </div>
                 </div>
-                
-                {/* Portfolio Content */}
-                <TeamPortfolio
-                  portfolio={portfolio}
-                  loading={false}  
-                  error={portfolioError}
-                  isDataLoading={false}
-                  btcPrice={btcPrice}
-                  ethPrice={ethPrice}
-                  globalData={globalData}
-                />
-                
+              </div>
+              
+              {/* Render without Suspense to prevent duplicate initialization */}
+              {portfolioLoading ? (
+                <PortfolioLoadingSkeleton />
+              ) : (
+                <div className="z-0" style={{ position: 'static' }}>
+                  <TeamPortfolio 
+                    portfolio={portfolio}
+                    loading={portfolioLoading}
+                    error={portfolioError}
+                    isDataLoading={isLoading}
+                    btcPrice={btcPrice}
+                    ethPrice={ethPrice}
+                    globalData={globalData}
+                  />
+                </div>
+              )}
+              
+              <div className="relative pointer-events-none">
                 {/* Decorative Elements */}
                 <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-xl"></div>
                 <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-blue-500/5 dark:bg-blue-500/10 blur-xl"></div>
               </div>
             </div>
-            
-            {/* Watchlist Section - Takes up 1/3 of the space */}
-            <div className="lg:col-span-1">
-              <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 relative overflow-hidden">
-                <div className="flex flex-row justify-between items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50 relative z-10">
-                  <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight flex items-center">
-                    <div className="w-2 h-8 bg-violet-500 rounded-full mr-2"></div>
-                    Team Watchlist
-                  </h2>
-                  <div className="flex items-center">
-                    {isAdmin && (
-                      <button 
-                        onClick={handleOpenAddToWatchlistModal}
-                        className="text-white bg-teal-600 hover:bg-teal-700 p-2 rounded-full w-8 h-8 flex items-center justify-center"
-                      >
-                        <PlusCircle className="w-5 h-5" />
-                      </button>
-                    )}
+          </div>
+          
+          {/* Team Watchlist Section - Takes up 1/3 of the space */}
+          <div className={`lg:col-span-1 ${initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform"}`} style={{ transitionDelay: '300ms', animationDelay: '300ms' }}>
+            <div className="bg-white dark:bg-gradient-to-br dark:from-slate-800 dark:to-slate-900 rounded-xl shadow-md dark:shadow-lg border border-gray-200 dark:border-slate-700/50 p-5 transition-all duration-300" style={{ minHeight: 'calc(100vh - 24rem)', overflow: 'visible' }}>
+              {/* Watchlist Header */}
+              <div className="flex flex-row justify-between items-center mb-4 pb-3 border-b border-gray-200 dark:border-slate-700/50">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight flex items-center">
+                  <div className="w-2 h-8 bg-violet-500 rounded-full mr-2 animate-pulse"></div>
+                  Altcoin Watchlist
+                </h2>
+                <div className="flex items-center gap-2">
+                  {watchlist && !watchlistLoading && isAdmin && (
+                    <button 
+                      onClick={handleOpenAddToWatchlistModal}
+                      className="text-white bg-teal-600 hover:bg-teal-700 rounded-full w-7 h-7 flex items-center justify-center"
+                    >
+                      <PlusCircle className="h-5 w-5" />
+                    </button>
+                  )}
+                  <div className="flex items-center bg-gray-100/80 dark:bg-slate-800/80 px-3 py-1.5 rounded-full border border-gray-200 dark:border-slate-700/50 backdrop-blur-sm">
+                    <span className="text-xs text-gray-600 dark:text-slate-300">
+                      {watchlist?.length || 0} assets
+                    </span>
                   </div>
                 </div>
-                
-                {/* Watchlist Content */}
-                <TeamWatchlist
-                  watchlist={watchlist || []}
-                  loading={false}
-                  error={watchlistError}
-                  isDataLoading={false}
-                  globalData={globalData}
-                  getTargetPercentage={getTargetPercentage}
-                />
-                
+              </div>
+              
+              {/* Render without Suspense to prevent duplicate initialization */}
+              {watchlistLoading ? (
+                <WatchlistLoadingSkeleton />
+              ) : (
+                <div className="z-0" style={{ position: 'static' }}>
+                  <TeamWatchlist 
+                    watchlist={watchlist}
+                    loading={watchlistLoading}
+                    error={watchlistError}
+                    isDataLoading={isLoading}
+                    globalData={globalData}
+                    getTargetPercentage={getTargetPercentage}
+                  />
+                </div>
+              )}
+              
+              <div className="relative pointer-events-none">
                 {/* Decorative Elements */}
                 <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full bg-violet-500/5 dark:bg-violet-500/10 blur-xl"></div>
-                <div className="absolute -top-8 -left-8 w-32 h-32 rounded-full bg-indigo-500/5 dark:bg-indigo-500/10 blur-xl"></div>
+                <div className="absolute -top-8 -left-8 w-24 h-24 rounded-full bg-indigo-500/5 dark:bg-indigo-500/10 blur-xl"></div>
               </div>
             </div>
           </div>
         </div>
-      </DashboardLayout>
+      </div>
     </PaidMembersOnly>
   );
 } 

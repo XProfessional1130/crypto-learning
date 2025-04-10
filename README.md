@@ -1,11 +1,11 @@
-# LearningCrypto Platform
+# Learning Crypto Platform
 
-AI-driven crypto education platform with Next.js, TypeScript, Tailwind CSS, and Supabase.
+An AI-driven cryptocurrency education and portfolio management platform built with Next.js, TypeScript, Tailwind CSS, and Supabase.
 
 ## Features
 
-- **AI Chat**: Learn crypto with AI assistants Tobo & Heido
-- **Portfolio Tracking**: Monitor crypto investments
+- **AI Chat**: Learn about cryptocurrency with AI assistants
+- **Portfolio Tracking**: Monitor cryptocurrency investments
 - **Market Analytics**: Real-time market data and on-chain analytics
 - **Team Insights**: View the team's portfolio and analysis
 - **Resources**: Articles and guides on crypto topics
@@ -20,6 +20,17 @@ AI-driven crypto education platform with Next.js, TypeScript, Tailwind CSS, and 
 - **AI**: OpenAI API
 - **Analytics**: TradingView, Arkham API
 - **Deployment**: Vercel
+
+## Documentation
+
+We maintain comprehensive documentation to help developers understand and contribute to the project:
+
+- [**Architecture**](docs/ARCHITECTURE.md): Detailed overview of application architecture and design patterns
+- [**Database**](docs/DATABASE.md): Database schema, table relationships, and RLS policies
+- [**Getting Started**](docs/getting-started.md): Setup guide for new developers
+- [**Admin Authentication**](docs/admin-authentication.md): Admin access and permissions
+- [**AI Chat Setup**](docs/AI-CHAT-SETUP.md): How to configure the AI chat feature
+- [**More guides...**](docs/README.md)
 
 ## Getting Started
 
@@ -59,11 +70,12 @@ AI-driven crypto education platform with Next.js, TypeScript, Tailwind CSS, and 
    NEXT_PUBLIC_STRIPE_PRICE_ID_MONTHLY=your_stripe_monthly_price_id
    NEXT_PUBLIC_STRIPE_PRICE_ID_YEARLY=your_stripe_yearly_price_id
 
-   # Radom, FirstPromoter, OpenAI, Arkham
+   # External Services
    RADOM_API_KEY=your_radom_api_key
    FIRST_PROMOTER_API_KEY=your_firstpromoter_api_key
    OPENAI_API_KEY=your_openai_api_key
    ARKHAM_API_KEY=your_arkham_api_key
+   CMC_API_KEY=your_coinmarketcap_api_key
 
    # App URL
    NEXT_PUBLIC_URL=http://localhost:3000
@@ -99,54 +111,38 @@ AI-driven crypto education platform with Next.js, TypeScript, Tailwind CSS, and 
 npm run create-first-admin your.email@example.com
 ```
 
-## Setup Guides
-
-### Stripe Subscriptions
-
-1. **Create Products**:
-   - Create Monthly ($29.99/month) and Annual ($299.99/year) products
-   - Add Price IDs to environment variables
-
-2. **Set Up Webhooks**:
-   - Endpoint: `https://your-domain.com/api/stripe/webhook`
-   - Events: checkout.session.completed, customer.subscription.updated, customer.subscription.deleted, invoice.payment_succeeded
-   - Add signing secret to env vars
-
-3. **Local Testing**:
-   - Install Stripe CLI and login
-   - Forward events: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
-   - Test cards: 4242 4242 4242 4242 (success), 4000 0000 0000 0002 (fail)
-
-### Team Portfolio
-
-1. **Setup**: Run SQL script or migrations
-2. **Config**: Set `NEXT_PUBLIC_TEAM_ADMIN_EMAIL` environment variable
-3. **Usage**: Admin manages portfolio; displays as "Team Portfolio" for users
-
-### AI Chat & Scheduled Jobs
-
-See detailed setup in docs directory.
-
 ## Project Structure
 
 ```
 lc-platform/
-├── /src
-│   ├── /app                  # Next.js routes
+├── /src                      # Application source code
+│   ├── /app                  # Next.js routes and page components
 │   │   ├── /api              # API routes
-│   │   ├── /auth             # Auth routes
-│   │   ├── /dashboard        # User dashboard
-│   │   ├── /lc-dashboard     # Team dashboard
-│   │   ├── /chat             # AI chat
+│   │   ├── /auth             # Authentication routes
+│   │   ├── /dashboard        # User dashboard routes
+│   │   ├── /lc-dashboard     # Team dashboard routes
+│   │   ├── /chat             # AI chat interface
 │   │   ├── /about            # About page
-│   │   ├── /resources        # Articles
-│   │   ├── /discounts        # Deals page
-│   │   └── /components       # React components
-│   ├── /lib                  # Utilities
-│   └── /types                # TypeScript types
+│   │   ├── /resources        # Articles and resources
+│   │   └── /discounts        # Deals page
+│   ├── /components           # Reusable UI components
+│   ├── /lib                  # Core application logic and utilities
+│   │   ├── /api              # API client functions and data fetching
+│   │   ├── /providers        # React context providers
+│   │   ├── /supabase         # Supabase client configuration
+│   │   ├── /utils            # Utility functions
+│   │   ├── /config           # Application configuration
+│   │   └── /hoc              # Higher-order components
+│   ├── /hooks                # Custom React hooks
+│   ├── /types                # TypeScript type definitions
+│   ├── /styles               # Global styles
+│   └── /scripts              # Utility scripts
 ├── /public                   # Static assets
 ├── /docs                     # Documentation
-├── /supabase                 # Database config
+├── /supabase                 # Database migrations and config
+│   └── /migrations           # Database migration files
+├── /__tests__                # Test files
+├── /scripts                  # Development and deployment scripts
 ├── package.json
 ├── tailwind.config.js
 └── tsconfig.json
@@ -163,7 +159,7 @@ lc-platform/
    git push
    ```
 
-2. **Set Environment Variables** in Vercel dashboard
+2. **Set Environment Variables** in the Vercel dashboard
 
 3. **Deploy**:
    - Connect GitHub repo to Vercel, or
@@ -188,18 +184,19 @@ lc-platform/
 
 3. **Test Authentication Flow**
 
-### Git Workflow
+## Git Workflow
 
-- **Main**: Production code (no direct commits)
-- **Development**: Ongoing development
+- **main**: Production code (no direct commits)
+- **development**: Ongoing development
 - **Feature Branches**: `feature/name` or `fix/name`
 
-## Common Issues
+## Common Issues and Troubleshooting
 
-- **Supabase Connection**: Check env vars and IP access
+- **Supabase Connection**: Check environment variables and IP access
 - **Multiple Client Warnings**: Use singleton pattern
 - **API Rate Limiting**: Implement caching
 - **Auth Problems**: Check Supabase Site URL and PKCE flow
+- **Database Issues**: Check [Database Troubleshooting](docs/DATABASE.md#troubleshooting)
 
 ## Coding Standards
 
@@ -208,15 +205,6 @@ lc-platform/
 3. **Environment Awareness**: Handle dev/test/prod differences
 4. **File Size**: Keep under 200-300 lines
 5. **No Mock Data in Production**: Only for testing
-
-## Documentation
-
-See the `docs/` directory for detailed guides:
-- [Getting Started](docs/getting-started.md)
-- [Database Schema](docs/database-schema.md)
-- [Admin Authentication](docs/admin-authentication.md)
-- [AI Chat Setup](docs/AI-CHAT-SETUP.md)
-- [More guides...](docs/README.md)
 
 ## Testing
 

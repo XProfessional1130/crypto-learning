@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
-import { useWatchlist, WatchlistItem } from '@/hooks/dashboard/useWatchlist';
+import { useWatchlist } from '@/hooks/dashboard/useWatchlist';
 import { CoinData } from '@/types/portfolio';
 import WatchlistItemDetailModal from './WatchlistItemDetailModal';
 import AddToWatchlistModal from './AddToWatchlistModal';
@@ -7,6 +7,10 @@ import { calculateProgressPercentage, formatCryptoPrice, formatLargeNumber, form
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDataCache } from '@/lib/providers/data-cache-provider';
+import { WatchlistItem } from '@/lib/api/team-watchlist';
+import { RefreshCw, TrendingDown, TrendingUp, PlusCircle, Search, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/lib/providers/auth-provider';
+import WatchlistItemSkeletonComponent from './WatchlistItemSkeleton';
 
 // Simple utility to combine class names
 const cn = (...classes: (string | boolean | undefined)[]) => {
@@ -155,10 +159,6 @@ const WatchlistComponent = ({
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [coinDataMap, setCoinDataMap] = useState<Record<string, CoinData>>({});
   
-  // Create consistent animation classes based on loading state
-  const contentAnimationClass = initialLoadComplete ? "animate-fadeIn" : "opacity-0 transition-opacity-transform";
-  const itemAnimationClass = initialLoadComplete ? "animate-slide-up" : "opacity-0 transition-opacity-transform";
-  
   // Listen for custom events to open the add modal
   useEffect(() => {
     const handleOpenAddModal = () => {
@@ -265,14 +265,14 @@ const WatchlistComponent = ({
       <div className={cn("flex flex-col", className)} style={{ height: hideControls ? 'auto' : 'calc(100vh - 24rem)' }}>
         {!hideControls && (
           <div className="flex justify-between items-center mb-6">
-            <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-            <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
           </div>
         )}
         
         <div className="space-y-1 w-full">
           {[...Array(5)].map((_, i) => (
-            <WatchlistItemSkeleton key={i} />
+            <WatchlistItemSkeletonComponent key={i} />
           ))}
         </div>
       </div>
@@ -303,7 +303,7 @@ const WatchlistComponent = ({
       {watchlistLoading ? (
         <div className="flex-1 flex flex-col p-3 space-y-3">
           {[...Array(3)].map((_, i) => (
-            <WatchlistItemSkeleton key={i} />
+            <WatchlistItemSkeletonComponent key={i} />
           ))}
         </div>
       ) : watchlistError ? (
@@ -376,11 +376,7 @@ const WatchlistComponent = ({
                     : 0;
                   
                   return (
-                    <div 
-                      key={item.id} 
-                      className={itemAnimationClass} 
-                      style={{ transitionDelay: `${index * 30}ms`, animationDelay: `${index * 30}ms` }}
-                    >
+                    <div key={item.id}>
                       <WatchlistItemCard
                         item={item}
                         progressPercentage={progressPercentage}

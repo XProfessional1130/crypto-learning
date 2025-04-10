@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useWatchlist, WatchlistItem } from '@/hooks/dashboard/useWatchlist';
+import { useWatchlist } from '@/hooks/dashboard/useWatchlist';
+import { WatchlistItem } from '@/lib/api/team-watchlist';
 import { formatCryptoPrice, formatPercentage } from '@/lib/utils/format';
 import { ModalSkeleton } from '@/components/ui/ModalSkeleton';
 import ErrorDisplay from '@/components/ui/ErrorDisplay';

@@ -1,4 +1,4 @@
-import { WatchlistItem } from '@/hooks/useWatchlist';
+import { WatchlistItem } from './team-watchlist';
 import { CoinData } from '@/types/portfolio';
 import supabase from './supabase-client';
 

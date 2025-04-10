@@ -151,7 +151,7 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
             totalVolume24h: 98000000000
           });
         }
-      }, 2000); // 2 seconds max loading time (reduced from 5 seconds)
+      }, 800); // Reduced from 2000ms to 800ms for faster exit from loading state
       
       return () => clearTimeout(timeoutId);
     }
@@ -225,7 +225,7 @@ export function DataCacheProvider({ children }: { children: ReactNode }) {
       } else {
         // Even without valid cache, exit loading state after a short delay
         // since we already set default values
-        setTimeout(() => setIsLoading(false), 500);
+        setTimeout(() => setIsLoading(false), 100); // Reduced from 500ms to 100ms
       }
     };
     
