@@ -2,6 +2,8 @@
 
 This is the central documentation hub for the Learning Crypto Platform. We've organized documentation into key sections to help you quickly find what you need.
 
+> **Note**: This documentation has been simplified and consolidated to make it more maintainable and easier to navigate. Many previously separate documents have been merged into more comprehensive guides.
+
 ## Core Documentation
 
 | Document | Description |
@@ -20,6 +22,7 @@ This is the central documentation hub for the Learning Crypto Platform. We've or
 | [Crypto Data](features/crypto-data.md) | Market data integration and management |
 | [AI Chat](features/ai-chat.md) | AI assistant implementation |
 | [Payments](features/payments.md) | Stripe and Radom integration |
+| [User Tiers](features/user-tiers.md) | Subscription tiers and feature access control |
 
 ## Development Guides
 
@@ -28,6 +31,9 @@ This is the central documentation hub for the Learning Crypto Platform. We've or
 | [Deployment](guides/deployment.md) | Deployment process and environments |
 | [Testing](guides/testing.md) | Testing strategy and implementation |
 | [Troubleshooting](guides/troubleshooting.md) | Common issues and solutions |
+| [Server Components](guides/server-components.md) | Server component implementation strategy |
+| [Authentication](guides/authentication.md) | Authentication system and user management |
+| [Optimization](guides/optimization.md) | API and performance optimization strategies |
 
 ## Coding Standards
 

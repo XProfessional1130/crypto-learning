@@ -13,6 +13,7 @@
     "test:search": "node scripts/testing/test-search.mjs",
     "test:subscription": "sh scripts/testing/test-subscription-events.sh",
     "test:api": "node scripts/testing/test-api.js",
+    "test:db": "node scripts/testing/test-database-security.js",
     "setup": "node scripts/setup/setup.js",
     "setup:db": "node scripts/setup/fix-database.js",
     "setup:auth": "node scripts/setup/fix-auth-db.js",
