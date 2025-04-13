@@ -107,7 +107,7 @@ export default function DashboardPage() {
   
   // No conditional rendering here - directly render the content
   return (
-    <PaidMembersOnly>
+    // <PaidMembersOnly>
       <DashboardLayout showTitle={false}>
         <div className="w-full">
           {/* Page Header with Welcome Message */}
@@ -135,6 +135,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </DashboardLayout>
-    </PaidMembersOnly>
+    // </PaidMembersOnly>
   );
 } 
