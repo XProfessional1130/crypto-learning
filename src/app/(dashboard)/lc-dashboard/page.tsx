@@ -754,7 +754,7 @@ export default function LCDashboard() {
   }
 
   return (
-    <PaidMembersOnly>
+    // <PaidMembersOnly>
       <DashboardLayout>
         <div className="w-full max-w-7xl mx-auto">
           {/* Header Section */}
@@ -854,6 +854,6 @@ export default function LCDashboard() {
           </div>
         </div>
       </DashboardLayout>
-    </PaidMembersOnly>
+    // </PaidMembersOnly>
   );
 } 
