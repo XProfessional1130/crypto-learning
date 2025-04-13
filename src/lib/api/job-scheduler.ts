@@ -155,7 +155,7 @@ export class JobScheduler {
       await adminClient
         .from('background_jobs')
         .update({
-          status: JobStatus.COMPLETED,
+          status: JobStatus.PENDING,
           result,
           completed_at: new Date().toISOString()
         })
@@ -171,7 +171,7 @@ export class JobScheduler {
       await adminClient
         .from('background_jobs')
         .update({
-          status: JobStatus.FAILED,
+          status: JobStatus.PENDING,
           error: error instanceof Error ? error.message : String(error),
           completed_at: new Date().toISOString()
         })
